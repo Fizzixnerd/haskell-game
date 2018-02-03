@@ -21,6 +21,13 @@ description:         Please see the README on Github at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- lens
+- classy-prelude
+- containers
+- text
+- bytestring
+- JuicyPixels
+- GLFW-b
 
 library:
   source-dirs: src
