@@ -7,23 +7,23 @@ module Lib
     ) where
 
 import ClassyPrelude
-import Graphics.UI.GLFW as GLFW
+import qualified Graphics.UI.GLFW as G
 import Data.Maybe
 
 someFunc :: IO ()
 someFunc = do
-  GLFW.init
-  mwin <- createWindow 640 640 "Haskell Game Hello World" Nothing Nothing
+  G.init
+  mwin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   case mwin of
     Nothing -> error "Could not create window."
     Just win -> do
-      makeContextCurrent mwin
-      setWindowCloseCallback win (Just $ \w -> setWindowShouldClose w True)
+      G.makeContextCurrent mwin
+      G.setWindowCloseCallback win (Just $ \w -> G.setWindowShouldClose w True)
       listenForEvents win
   where
     listenForEvents w = do
-      pollEvents
-      sc <- windowShouldClose w
+      G.pollEvents
+      sc <- G.windowShouldClose w
       when sc $
-        terminate
+        G.terminate
       listenForEvents w
