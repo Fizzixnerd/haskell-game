@@ -36,33 +36,43 @@ printContextVersion win = do
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min rev
 
+makeShader :: FilePath -> G.ShaderType -> IO G.Shader
+makeShader shaderName shaderType = do
+  shaderText <- readFile shaderName
+  shader <- G.createShader shaderType
+  G.shaderSourceBS shader G.$= shaderText
+  G.compileShader shader
+  G.shaderInfoLog shader >>= print
+  return shader
+
 compileShaders :: IO G.Program
 compileShaders = do
-  vertexShaderText <- readFile "shader.vs"
-  fragmentShaderText <- readFile "shader.fs"
 
-  vertexShader <- G.createShader G.VertexShader
-  G.shaderSourceBS vertexShader G.$= vertexShaderText
-  G.compileShader vertexShader
-
-  fragmentShader <- G.createShader G.FragmentShader
-  G.shaderSourceBS fragmentShader G.$= fragmentShaderText
-  G.compileShader fragmentShader
+  vertexShader <- makeShader "shader.vs" G.VertexShader
+  tessellationControlShader <- makeShader "shader.tcs" G.TessControlShader
+  tessellationEvaluationShader <- makeShader "shader.tes" G.TessEvaluationShader
+  fragmentShader <- makeShader "shader.fs" G.FragmentShader
 
   program <- G.createProgram
   G.attachShader program vertexShader
+  G.attachShader program tessellationControlShader
+  G.attachShader program tessellationEvaluationShader
   G.attachShader program fragmentShader
   G.linkProgram program
   G.validateProgram program
+  G.programInfoLog program >>= print
 
-  -- I guess I don't need to delete the shaders??
+  G.deleteObjectNames [ fragmentShader
+                      , tessellationControlShader
+                      , tessellationEvaluationShader
+                      , vertexShader ]
   
   return program
 
 render :: G.VertexArrayObject -> G.Program -> IO ()
 render vao p = do
   G.currentProgram G.$= (Just p)
-  G.drawArrays G.Points 0 1
+  G.drawArrays G.Triangles 0 3
 
 someFunc :: IO ()
 someFunc = do
@@ -73,10 +83,18 @@ someFunc = do
         printContextVersion win
         G.setWindowCloseCallback win (Just $ \w -> G.setWindowShouldClose w True)
         prog <- compileShaders
-        G.programInfoLog prog >>= printf
+        G.polygonMode G.$= (G.Line, G.Line)
+        G.patchVertices G.$= 3
+
         vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
+        let offsetLocation = G.AttribLocation 0
+            colorLocation = G.AttribLocation 1
+        G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
+        G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
         G.bindVertexArrayObject G.$= (Just vertexArrayObject)
-        G.setWindowRefreshCallback win (Just $ \w -> render vertexArrayObject prog)
+        G.setWindowRefreshCallback win (Just $ \w -> do
+                                           render vertexArrayObject prog
+                                           G.swapBuffers w)
         loop win vertexArrayObject prog)
   where
     loop w vao p = do
@@ -84,9 +102,8 @@ someFunc = do
       sc <- G.windowShouldClose w
       when sc $ do
         G.deleteObjectName vao
-        G.destroyWindow w
         G.deleteObjectName p
+        G.destroyWindow w
         G.terminate
         exitSuccess
-      G.swapBuffers w
       loop w vao p
