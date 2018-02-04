@@ -28,6 +28,8 @@ dependencies:
 - bytestring
 - JuicyPixels
 - GLFW-b
+- OpenGL
+- ObjectName
 
 library:
   source-dirs: src

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c9a16d554cf129050c89005d9e30d8db83b883b9f73cdc05b3230b0ad3eda357
+-- hash: b8574197e56103c7852602ac1585fda08d2adffb2c96b7e1f7a130146d16e27b
 
 name:           haskell-game
 version:        0.1.0.0
@@ -31,6 +31,8 @@ library
   build-depends:
       GLFW-b
     , JuicyPixels
+    , ObjectName
+    , OpenGL
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -51,6 +53,8 @@ executable haskell-game-exe
   build-depends:
       GLFW-b
     , JuicyPixels
+    , ObjectName
+    , OpenGL
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -71,6 +75,8 @@ test-suite haskell-game-test
   build-depends:
       GLFW-b
     , JuicyPixels
+    , ObjectName
+    , OpenGL
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
