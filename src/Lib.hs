@@ -111,7 +111,7 @@ someFunc = do
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
-                                render vao prog
+                                render prog
                                 G.swapBuffers w) <$> eTick
 
               B.reactimate eClose
@@ -148,4 +148,3 @@ someFunc = do
       G.pollEvents
       sc <- G.windowShouldClose w
       unless sc $ loop w
-
