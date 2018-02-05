@@ -83,8 +83,8 @@ makeArrayBuffer = do
   poke ptr (69420 :: Int)
   G.bufferData G.ArrayBuffer G.$= (CPtrdiff 8, ptr, G.StreamDraw)
 
-render :: G.VertexArrayObject -> G.Program -> IO ()
-render _ p = do
+render :: G.Program -> IO ()
+render p = do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
   G.drawArrays G.Patches 0 3
@@ -100,8 +100,8 @@ someFunc = do
         (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
         (addHandlerTick, fireTick) <- B.newAddHandler
 
-        let network :: G.VertexArrayObject -> G.Program -> B.MomentIO ()
-            network vao prog = mdo
+        let network :: G.Program -> B.MomentIO ()
+            network prog = mdo
               eTick <- B.fromAddHandler addHandlerTick
               eShouldClose <- B.fromAddHandler addHandlerShouldClose
 
@@ -110,7 +110,7 @@ someFunc = do
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
-                                render vao prog
+                                render prog
                                 G.swapBuffers w) <$> eTick
 
               B.reactimate eClose
@@ -135,7 +135,7 @@ someFunc = do
         G.bindVertexArrayObject G.$= Just vertexArrayObject
         G.setWindowRefreshCallback win (Just fireTick)
 
-        net <- B.compile $ network vertexArrayObject prog
+        net <- B.compile $ network prog
         B.actuate net
         loop win
         G.deleteObjectName vertexArrayObject
