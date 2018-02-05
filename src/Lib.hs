@@ -1,5 +1,4 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -101,8 +100,8 @@ someFunc = do
         (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
         (addHandlerTick, fireTick) <- B.newAddHandler
 
-        let network :: G.VertexArrayObject -> G.Program -> B.MomentIO ()
-            network vao prog = mdo
+        let network :: G.Program -> B.MomentIO ()
+            network prog = mdo
               eTick <- B.fromAddHandler addHandlerTick
               eShouldClose <- B.fromAddHandler addHandlerShouldClose
 
@@ -136,7 +135,7 @@ someFunc = do
         G.bindVertexArrayObject G.$= Just vertexArrayObject
         G.setWindowRefreshCallback win (Just fireTick)
 
-        net <- B.compile $ network vertexArrayObject prog
+        net <- B.compile $ network prog
         B.actuate net
         loop win
         G.deleteObjectName vertexArrayObject
