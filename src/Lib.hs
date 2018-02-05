@@ -1,5 +1,4 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
@@ -11,12 +10,8 @@ module Lib
 import ClassyPrelude
 import qualified Graphics.UI.GLFW as G
 import qualified Graphics.Rendering.OpenGL.GL as G
-import qualified Graphics.Rendering.OpenGL.GL.Shaders as G
-import qualified Graphics.Rendering.OpenGL.GL.DebugOutput as G
-import qualified Data.ObjectName as G
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks as B
-import qualified Control.Event.Handler as B
 import Foreign.C.Types
 import Foreign
 import Text.Printf
@@ -41,9 +36,9 @@ withWindow f = do
 printContextVersion :: G.Window -> IO ()
 printContextVersion win = do
   maj <- G.getWindowContextVersionMajor win
-  min <- G.getWindowContextVersionMinor win
+  min_ <- G.getWindowContextVersionMinor win
   rev <- G.getWindowContextVersionRevision win
-  printf "%i.%i.%i\n" maj min rev
+  printf "%i.%i.%i\n" maj min_ rev
 
 makeShader :: FilePath -> G.ShaderType -> IO G.Shader
 makeShader shaderName shaderType = do
@@ -89,7 +84,7 @@ makeArrayBuffer = do
   G.bufferData G.ArrayBuffer G.$= (CPtrdiff 8, ptr, G.StreamDraw)
 
 render :: G.VertexArrayObject -> G.Program -> IO ()
-render vao p = do
+render _ p = do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
   G.drawArrays G.Patches 0 3
@@ -120,8 +115,6 @@ someFunc = do
 
               B.reactimate eClose
               B.reactimate eRender
-
-
 
         G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
         printContextVersion win
@@ -154,4 +147,3 @@ someFunc = do
       G.pollEvents
       sc <- G.windowShouldClose w
       unless sc $ loop w
-
