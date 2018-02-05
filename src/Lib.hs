@@ -17,14 +17,16 @@ import Text.Printf
 
 graphicsInit :: IO ()
 graphicsInit = do
-  G.init
+  _ <- G.init
   G.windowHint $ G.WindowHint'ContextVersionMajor 4
   G.windowHint $ G.WindowHint'ContextVersionMinor 5
+  G.windowHint $ G.WindowHint'OpenGLForwardCompat True
+  G.windowHint $ G.WindowHint'Samples 4
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
 
 withWindow :: (G.Window -> IO ()) -> IO ()
 withWindow f = do
-  mwin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
+  mwin <- G.createWindow 800 600 "Haskell Game Hello World" Nothing Nothing
   case mwin of
     Nothing -> error "Could not create window."
     Just win -> f win
@@ -45,7 +47,7 @@ makeShader shaderName shaderType = do
   G.shaderInfoLog shader >>= print
   return shader
 
-compileShaders :: IO G.Program
+compileShaders :: IO (G.Program, G.VertexArrayObject)
 compileShaders = do
 
   vertexShader <- makeShader "shader.vs" G.VertexShader
@@ -61,49 +63,55 @@ compileShaders = do
   G.linkProgram program
   G.validateProgram program
   G.programInfoLog program >>= print
+  vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
+  G.bindVertexArrayObject G.$= Just vertexArrayObject
+  G.polygonMode G.$= (G.Line, G.Line)
+  G.patchVertices G.$= 3
+  G.pointSize G.$= 40.0
+
+  G.maxPatchVertices >>= print
 
   G.deleteObjectNames [ fragmentShader
                       , tessellationControlShader
                       , tessellationEvaluationShader
                       , vertexShader ]
-  
-  return program
+
+  return (program, vertexArrayObject)
 
 render :: G.VertexArrayObject -> G.Program -> IO ()
 render vao p = do
-  G.currentProgram G.$= (Just p)
-  G.drawArrays G.Triangles 0 3
+  G.clear [G.ColorBuffer]
+  G.currentProgram G.$= Just p
+  let offsetLocation = G.AttribLocation 0
+      colorLocation = G.AttribLocation 1
+  G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
+  G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
+  G.drawArrays G.Patches 0 3
 
 someFunc :: IO ()
 someFunc = do
   graphicsInit
-  withWindow 
+  withWindow
     (\win -> do
         G.makeContextCurrent $ Just win
+        G.clearColor G.$= G.Color4 0.5 0 0 0
+        G.viewport G.$= (G.Position 0 0, G.Size 800 600)
+
         printContextVersion win
         G.setWindowCloseCallback win (Just $ \w -> G.setWindowShouldClose w True)
-        prog <- compileShaders
-        G.polygonMode G.$= (G.Line, G.Line)
-        G.patchVertices G.$= 3
+        (prog, vertexArrayObject) <- compileShaders
 
-        vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
-        let offsetLocation = G.AttribLocation 0
-            colorLocation = G.AttribLocation 1
-        G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
-        G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
-        G.bindVertexArrayObject G.$= (Just vertexArrayObject)
         G.setWindowRefreshCallback win (Just $ \w -> do
                                            render vertexArrayObject prog
                                            G.swapBuffers w)
-        loop win vertexArrayObject prog)
+        loop win vertexArrayObject prog
+        G.deleteObjectName vertexArrayObject
+        G.deleteObjectName prog
+        G.destroyWindow win
+        G.terminate
+    )
   where
     loop w vao p = do
       G.pollEvents
       sc <- G.windowShouldClose w
-      when sc $ do
-        G.deleteObjectName vao
-        G.deleteObjectName p
-        G.destroyWindow w
-        G.terminate
-        exitSuccess
-      loop w vao p
+      unless sc $ loop w vao p
