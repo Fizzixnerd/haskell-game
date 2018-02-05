@@ -23,6 +23,7 @@ graphicsInit = do
   G.windowHint $ G.WindowHint'OpenGLForwardCompat True
   G.windowHint $ G.WindowHint'Samples 4
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
+  G.windowHint $ G.WindowHint'OpenGLDebugContext True
 
 withWindow :: (G.Window -> IO ()) -> IO ()
 withWindow f = do
@@ -47,45 +48,36 @@ makeShader shaderName shaderType = do
   G.shaderInfoLog shader >>= print
   return shader
 
-compileShaders :: IO (G.Program, G.VertexArrayObject)
+compileShaders :: IO G.Program
 compileShaders = do
-
   vertexShader <- makeShader "shader.vs" G.VertexShader
   tessellationControlShader <- makeShader "shader.tcs" G.TessControlShader
   tessellationEvaluationShader <- makeShader "shader.tes" G.TessEvaluationShader
+  geometryShader <- makeShader "shader.gs" G.GeometryShader
   fragmentShader <- makeShader "shader.fs" G.FragmentShader
 
   program <- G.createProgram
   G.attachShader program vertexShader
   G.attachShader program tessellationControlShader
   G.attachShader program tessellationEvaluationShader
+  G.attachShader program geometryShader
   G.attachShader program fragmentShader
   G.linkProgram program
   G.validateProgram program
   G.programInfoLog program >>= print
-  vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
-  G.bindVertexArrayObject G.$= Just vertexArrayObject
-  G.polygonMode G.$= (G.Line, G.Line)
-  G.patchVertices G.$= 3
-  G.pointSize G.$= 40.0
-
-  G.maxPatchVertices >>= print
 
   G.deleteObjectNames [ fragmentShader
                       , tessellationControlShader
                       , tessellationEvaluationShader
+                      , geometryShader
                       , vertexShader ]
 
-  return (program, vertexArrayObject)
+  return program
 
 render :: G.VertexArrayObject -> G.Program -> IO ()
 render vao p = do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
-  let offsetLocation = G.AttribLocation 0
-      colorLocation = G.AttribLocation 1
-  G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
-  G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
   G.drawArrays G.Patches 0 3
 
 someFunc :: IO ()
@@ -99,7 +91,16 @@ someFunc = do
 
         printContextVersion win
         G.setWindowCloseCallback win (Just $ \w -> G.setWindowShouldClose w True)
-        (prog, vertexArrayObject) <- compileShaders
+
+        prog <- compileShaders
+        G.polygonMode G.$= (G.Line, G.Line)
+
+        vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
+        let offsetLocation = G.AttribLocation 0
+            colorLocation  = G.AttribLocation 1
+        G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
+        G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
+        G.bindVertexArrayObject G.$= Just vertexArrayObject
 
         G.setWindowRefreshCallback win (Just $ \w -> do
                                            render vertexArrayObject prog

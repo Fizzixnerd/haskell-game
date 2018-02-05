@@ -4,13 +4,13 @@ layout (vertices = 3) out;
 
 in VS_OUT {
   vec4 color;
-} tsc_color [];
+} tcs_in[];
 
 patch out VS_OUT {
   vec4 color;
-} patch_color;
+} tcs_out;
 
-void main(void) {
+void main() {
   if (gl_InvocationID == 0) {
     gl_TessLevelInner[0] = 5.0;
     gl_TessLevelOuter[0] = 5.0;
@@ -19,5 +19,5 @@ void main(void) {
   }
   
   gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-  patch_color.color = tsc_color [gl_InvocationID].color  ;
+  tcs_out.color = tcs_in[gl_InvocationID].color;
 }
