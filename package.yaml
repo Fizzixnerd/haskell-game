@@ -30,6 +30,7 @@ dependencies:
 - GLFW-b
 - OpenGL
 - ObjectName
+- reactive-banana
 
 library:
   source-dirs: src
