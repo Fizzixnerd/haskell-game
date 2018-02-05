@@ -21,6 +21,7 @@ graphicsInit = do
   G.windowHint $ G.WindowHint'ContextVersionMajor 4
   G.windowHint $ G.WindowHint'ContextVersionMinor 5
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
+  G.windowHint $ G.WindowHint'OpenGLDebugContext True
 
 withWindow :: (G.Window -> IO ()) -> IO ()
 withWindow f = do
@@ -55,9 +56,9 @@ compileShaders = do
 
   program <- G.createProgram
   G.attachShader program vertexShader
---  G.attachShader program tessellationControlShader
---  G.attachShader program tessellationEvaluationShader
---  G.attachShader program geometryShader
+  G.attachShader program tessellationControlShader
+  G.attachShader program tessellationEvaluationShader
+  G.attachShader program geometryShader
   G.attachShader program fragmentShader
   G.linkProgram program
   G.validateProgram program
@@ -74,7 +75,7 @@ compileShaders = do
 render :: G.VertexArrayObject -> G.Program -> IO ()
 render vao p = do
   G.currentProgram G.$= Just p
-  G.drawArrays G.Triangles 0 3
+  G.drawArrays G.Patches 0 3
 
 someFunc :: IO ()
 someFunc = do
