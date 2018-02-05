@@ -136,7 +136,7 @@ someFunc = do
         G.deleteObjectName vertexArrayObject
         G.deleteObjectName prog
         G.destroyWindow win
-        G.terminate
+        G.terminate)
   where
     loop w vao p = do
       G.pollEvents
