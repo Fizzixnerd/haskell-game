@@ -2,10 +2,9 @@
 
 in VS_OUT {
   vec4 color;
-} fs_in;
-
+} tes_color;
 out vec4 color;
 
-void main() {
-  color = fs_in.color;
+void main(void) {
+  color = tes_color.color;
 }

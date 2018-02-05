@@ -24,15 +24,17 @@ import Text.Printf
 
 graphicsInit :: IO ()
 graphicsInit = do
-  G.init
+  _ <- G.init
   G.windowHint $ G.WindowHint'ContextVersionMajor 4
   G.windowHint $ G.WindowHint'ContextVersionMinor 5
+  G.windowHint $ G.WindowHint'OpenGLForwardCompat True
+  G.windowHint $ G.WindowHint'Samples 4
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
   G.windowHint $ G.WindowHint'OpenGLDebugContext True
 
 withWindow :: (G.Window -> IO ()) -> IO ()
 withWindow f = do
-  mwin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
+  mwin <- G.createWindow 800 600 "Haskell Game Hello World" Nothing Nothing
   case mwin of
     Nothing -> error "Could not create window."
     Just win -> f win
@@ -76,7 +78,7 @@ compileShaders = do
                       , tessellationEvaluationShader
                       , geometryShader
                       , vertexShader ]
-  
+
   return program
 
 makeArrayBuffer :: IO ()
@@ -89,6 +91,7 @@ makeArrayBuffer = do
 
 render :: G.VertexArrayObject -> G.Program -> IO ()
 render vao p = do
+  G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
   G.drawArrays G.Patches 0 3
 
@@ -117,6 +120,9 @@ someFunc = do
         prog <- compileShaders
         G.polygonMode G.$= (G.Line, G.Line)
         G.pointSize G.$= 5.0
+        G.clearColor G.$= G.Color4 0.5 0 0 0
+        G.viewport G.$= (G.Position 0 0, G.Size 800 600)
+
         vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
         makeArrayBuffer
         let offsetLocation = G.AttribLocation 0
@@ -126,15 +132,13 @@ someFunc = do
         G.bindVertexArrayObject G.$= Just vertexArrayObject
         G.setWindowRefreshCallback win (Just $ (\w -> fireTick w))
 
-        loop win vertexArrayObject prog)
+        loop win vertexArrayObject prog
+        G.deleteObjectName vertexArrayObject
+        G.deleteObjectName prog
+        G.destroyWindow win
+        G.terminate
   where
     loop w vao p = do
       G.pollEvents
       sc <- G.windowShouldClose w
-      when sc $ do
-        G.deleteObjectName vao
-        G.deleteObjectName p
-        G.destroyWindow w
-        G.terminate
-        exitSuccess
-      loop w vao p
+      unless sc $ loop w vao p
