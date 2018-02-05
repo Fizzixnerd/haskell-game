@@ -14,9 +14,9 @@ import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.Rendering.OpenGL.GL.Shaders as G
 import qualified Graphics.Rendering.OpenGL.GL.DebugOutput as G
 import qualified Data.ObjectName as G
-import Reactive.Banana.Combinators as B
-import Reactive.Banana.Frameworks as B
-import Control.Event.Handler as B
+import qualified Reactive.Banana.Combinators as B
+import qualified Reactive.Banana.Frameworks as B
+import qualified Control.Event.Handler as B
 import Foreign.C.Types
 import Foreign
 import Text.Printf
@@ -105,16 +105,27 @@ someFunc = do
         (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
         (addHandlerTick, fireTick) <- B.newAddHandler
 
-        let tellWindowToClose = G.setWindowShouldClose win True
-            network :: IO () = mdo
-              return ()
-              -- \w -> do
-              --   render vertexArrayObject prog
-              --   G.swapBuffers w)
+        let network :: G.VertexArrayObject -> G.Program -> B.MomentIO ()
+            network vao prog = mdo
+              eTick <- B.fromAddHandler addHandlerTick
+              eShouldClose <- B.fromAddHandler addHandlerShouldClose
+
+              let eClose :: B.Event (IO ())
+                  eClose = (`G.setWindowShouldClose` True) <$> eShouldClose
+
+                  eRender :: B.Event (IO ())
+                  eRender = (\w -> do
+                                render vao prog
+                                G.swapBuffers w) <$> eTick
+
+              B.reactimate eClose
+              B.reactimate eRender
+
+
 
         G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
         printContextVersion win
-        G.setWindowCloseCallback win (Just $ \w -> fireShouldClose w)
+        G.setWindowCloseCallback win (Just fireShouldClose)
 
         prog <- compileShaders
         G.polygonMode G.$= (G.Line, G.Line)
@@ -129,15 +140,18 @@ someFunc = do
         G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
         G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
         G.bindVertexArrayObject G.$= Just vertexArrayObject
-        G.setWindowRefreshCallback win (Just $ (\w -> fireTick w))
+        G.setWindowRefreshCallback win (Just fireTick)
 
-        loop win vertexArrayObject prog
+        net <- B.compile $ network vertexArrayObject prog
+        B.actuate net
+        loop win
         G.deleteObjectName vertexArrayObject
         G.deleteObjectName prog
         G.destroyWindow win
         G.terminate)
   where
-    loop w vao p = do
+    loop w = do
       G.pollEvents
       sc <- G.windowShouldClose w
-      unless sc $ loop w vao p
+      unless sc $ loop w
+
