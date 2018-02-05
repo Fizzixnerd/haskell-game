@@ -100,15 +100,15 @@ someFunc = do
         -- get the Handlers we need.
         (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
         (addHandlerTick, fireTick) <- B.newAddHandler
-        
+
         let network :: G.VertexArrayObject -> G.Program -> B.MomentIO ()
             network vao prog = mdo
               eTick <- B.fromAddHandler addHandlerTick
               eShouldClose <- B.fromAddHandler addHandlerShouldClose
- 
+
               let eClose :: B.Event (IO ())
-                  eClose = (\w -> G.setWindowShouldClose w True) <$> eShouldClose
-                  
+                  eClose = (`G.setWindowShouldClose` True) <$> eShouldClose
+
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
                                 render vao prog
@@ -116,7 +116,7 @@ someFunc = do
 
               B.reactimate eClose
               B.reactimate eRender
-        
+
         G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
         printContextVersion win
         G.setWindowCloseCallback win (Just fireShouldClose)
