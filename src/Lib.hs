@@ -19,7 +19,6 @@ import Reactive.Banana.Frameworks as B
 import Control.Event.Handler as B
 import Foreign.C.Types
 import Foreign
-import System.Exit
 import Text.Printf
 
 graphicsInit :: IO ()
@@ -105,17 +104,17 @@ someFunc = do
         -- get the Handlers we need.
         (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
         (addHandlerTick, fireTick) <- B.newAddHandler
-        
+
         let tellWindowToClose = G.setWindowShouldClose win True
             network :: IO () = mdo
               return ()
               -- \w -> do
               --   render vertexArrayObject prog
               --   G.swapBuffers w)
-        
+
         G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
         printContextVersion win
-        G.setWindowCloseCallback win (Just $ \w -> fireShouldClose w) 
+        G.setWindowCloseCallback win (Just $ \w -> fireShouldClose w)
 
         prog <- compileShaders
         G.polygonMode G.$= (G.Line, G.Line)
