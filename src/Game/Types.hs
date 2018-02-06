@@ -20,6 +20,16 @@ data Camera = Camera
   , _cameraFOV :: Float
   } deriving (Eq, Show, Ord)
 
+data Movement =
+    MoveLeft
+  | MoveRight
+  | MoveForward
+  | MoveBackward
+  | MoveUp
+  | MoveDown
+  | MoveCameraDir Double Double
+  deriving (Eq, Show, Ord)
+
 data NamedHandler a = NamedHandler
   { _namedHandlerName :: Text
   , _namedHandlerHandler :: B.Handler a

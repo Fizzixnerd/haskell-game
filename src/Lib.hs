@@ -32,8 +32,19 @@ translateCamera v cam = cam & cameraPosition +~ v
 mousePosToRot :: Float -> Double -> Double -> L.Quaternion Float
 mousePosToRot mouseSpeed x y = L.slerp xrot yrot 0.5
   where
-    xrot = L.axisAngle (L.V3 1 0 0) (double2Float $ mouseSpeed * (1920/2 - x))
-    yrot = L.axisAngle (L.V3 0 1 0) (double2Float $ mouseSpeed * (1080/2 - y))
+    xrot = L.axisAngle (L.V3 1 0 0) (mouseSpeed * double2Float (1920/2 - x))
+    yrot = L.axisAngle (L.V3 0 1 0) (mouseSpeed * double2Float (1080/2 - y))
+
+moveCamera :: Float -> Movement -> Camera -> Camera
+moveCamera c MoveLeft            = translateCamera (L.V3 (negate c) 0 0)
+moveCamera c MoveRight           = translateCamera (L.V3 c 0 0)
+moveCamera c MoveForward         = translateCamera (L.V3 0 0 (negate c))
+moveCamera c MoveBackward        = translateCamera (L.V3 0 0 c)
+moveCamera c MoveUp              = translateCamera (L.V3 0 c 0)
+moveCamera c MoveDown            = translateCamera (L.V3 0 (negate c) 0)
+moveCamera c (MoveCameraDir x y) = rotateCamera q
+  where
+    q = mousePosToRot c x y
 ---
 
 graphicsInit :: IO ()
