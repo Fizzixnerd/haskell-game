@@ -17,7 +17,7 @@ import qualified Codec.Wavefront as W
 import Foreign.C.Types
 import Foreign
 import Text.Printf
-import Data.Monoid ((<>), Sum(..))
+import Data.Monoid (Sum(..))
 import Control.Lens
 
 graphicsInit :: IO ()
@@ -135,10 +135,10 @@ bufferData :: G.AttribLocation -> (Ptr CUShort, Int) -> (Ptr CFloat, Int) -> IO 
 bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  G.bufferData G.ArrayBuffer G.$= (fromIntegral lenv, vtxs, G.StaticDraw)
+  G.bufferData G.ArrayBuffer G.$= (3 * (fromIntegral . sizeOf $ (1.0 :: CFloat)) * fromIntegral lenv, vtxs, G.StaticDraw)
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= (fromIntegral leni, idxs, G.StaticDraw)
+  G.bufferData G.ElementArrayBuffer G.$= ((fromIntegral . sizeOf $ (1 :: CUShort)) * fromIntegral leni, idxs, G.StaticDraw)
   return (vbuf, ebuf)
 
 someFunc :: IO ()
@@ -159,7 +159,7 @@ someFunc = do
 
         prog <- compileShaders
         G.polygonMode G.$= (G.Line, G.Line)
-        G.pointSize G.$= 5.0
+        G.pointSize G.$= 500
         G.clearColor G.$= G.Color4 0.5 0 0 0
         G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
