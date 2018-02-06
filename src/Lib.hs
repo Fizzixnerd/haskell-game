@@ -191,7 +191,7 @@ someFunc = do
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
-                                render prog posLocation vertexArrayObject ebuf vbuf locs idxs
+                                render prog posLocation vertexArrayObject vbuf ebuf locs idxs
                                 G.swapBuffers w) <$> eTick
 
                   eEscapeToClose :: B.Event (IO ())
