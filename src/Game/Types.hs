@@ -66,4 +66,4 @@ newNamedEventHandler name = liftIO $ do
   (ah, f) <- B.newAddHandler
   return (ah, NamedHandler name f)
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler]
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState]

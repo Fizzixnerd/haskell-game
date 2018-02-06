@@ -212,6 +212,7 @@ doItandGimmeFireThing = do
                 { _cameraPosition = L.V3 0 0 0
                 , _cameraOrientation = L.Quaternion 0 (L.V3 0 0 (negate 1))
                 , _cameraFOV = 90 } }
+
         eTick <- B.fromAddHandler addHandlerTick
         eShouldClose <- B.fromAddHandler addHandlerShouldClose
         eKey <- B.fromAddHandler addHandlerKey
