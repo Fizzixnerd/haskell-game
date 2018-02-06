@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 462390e80c1101dd1d2f93e55e00bdc64dcaa6b8fe63664776413305cbd825f4
+-- hash: 9e858ee95d431474fdc910089e10f9accc19f45d802b8241210b97f457be2e52
 
 name:           haskell-game
 version:        0.1.0.0
@@ -37,7 +37,9 @@ library
     , bytestring
     , classy-prelude
     , containers
+    , ghc
     , lens
+    , linear
     , reactive-banana
     , text
     , vector
@@ -62,8 +64,10 @@ executable haskell-game-exe
     , bytestring
     , classy-prelude
     , containers
+    , ghc
     , haskell-game
     , lens
+    , linear
     , reactive-banana
     , text
     , vector
@@ -87,8 +91,10 @@ test-suite haskell-game-test
     , bytestring
     , classy-prelude
     , containers
+    , ghc
     , haskell-game
     , lens
+    , linear
     , reactive-banana
     , text
     , vector

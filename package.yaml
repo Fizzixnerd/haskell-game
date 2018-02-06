@@ -33,6 +33,8 @@ dependencies:
 - reactive-banana
 - wavefront
 - vector
+- linear
+- ghc
 
 library:
   source-dirs: src
