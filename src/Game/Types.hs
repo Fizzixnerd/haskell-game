@@ -32,9 +32,19 @@ data GameState = GameState
 
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
-  , _cameraOrientation :: L.Quaternion Float
+  , _cameraOrientation :: L.V3 Float
   , _cameraFOV :: Float
   } deriving (Eq, Show, Ord)
+
+data Movement =
+    MoveLeft
+  | MoveRight
+  | MoveForward
+  | MoveBackward
+  | MoveUp
+  | MoveDown
+  | MoveCameraDir Double Double
+  deriving (Eq, Show, Ord)
 
 data NamedHandler a = NamedHandler
   { _namedHandlerName :: Text

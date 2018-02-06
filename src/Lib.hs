@@ -22,19 +22,41 @@ import Game.Types
 import Data.Maybe
 import GHC.Float (double2Float)
 
----
 rotateCamera :: L.Quaternion Float -> Camera -> Camera
-rotateCamera q cam = cam & cameraOrientation *~ q
+rotateCamera q cam = cam & cameraOrientation %~ L.rotate q
 
 translateCamera :: L.V3 Float -> Camera -> Camera
 translateCamera v cam = cam & cameraPosition +~ v
 
-mousePosToRot :: Double -> Double -> L.Quaternion Float
-mousePosToRot x y = L.slerp xrot yrot 0.5
+mousePosToRot :: Float -> Double -> Double -> L.Quaternion Float
+mousePosToRot mouseSpeed x y = L.slerp xrot yrot 0.5
   where
-    xrot = L.axisAngle (L.V3 1 0 0) (double2Float x)
-    yrot = L.axisAngle (L.V3 0 1 0) (double2Float y)
----
+    xrot = L.axisAngle (L.V3 1 0 0) (mouseSpeed * double2Float (1920/2 - x))
+    yrot = L.axisAngle (L.V3 0 1 0) (mouseSpeed * double2Float (1080/2 - y))
+
+moveCamera :: Float -> Movement -> Camera -> Camera
+moveCamera c MoveLeft            = translateCamera (L.V3 (negate c) 0 0)
+moveCamera c MoveRight           = translateCamera (L.V3 c 0 0)
+moveCamera c MoveForward         = translateCamera (L.V3 0 0 (negate c))
+moveCamera c MoveBackward        = translateCamera (L.V3 0 0 c)
+moveCamera c MoveUp              = translateCamera (L.V3 0 c 0)
+moveCamera c MoveDown            = translateCamera (L.V3 0 (negate c) 0)
+moveCamera c (MoveCameraDir x y) = rotateCamera q
+  where
+    q = mousePosToRot c x y
+
+keyToMovement :: G.Key -> Maybe Movement
+keyToMovement G.Key'W = Just MoveForward
+keyToMovement G.Key'A = Just MoveLeft
+keyToMovement G.Key'S = Just MoveBackward
+keyToMovement G.Key'D = Just MoveRight
+keyToMovement G.Key'LeftShift = Just MoveDown
+keyToMovement G.Key'Space = Just MoveUp
+keyToMovement _ = Nothing
+
+cameraToMovement :: (G.Window, Double, Double) -> Movement
+cameraToMovement (_, x, y) = MoveCameraDir x y
+
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
@@ -207,10 +229,10 @@ doItandGimmeFireThing = do
 
   let network :: B.MomentIO ()
       network = mdo
-        let initGameState = GameState 
+        let initGameState = GameState
               { _gameStateCamera = Camera
                 { _cameraPosition = L.V3 0 0 0
-                , _cameraOrientation = L.Quaternion 0 (L.V3 0 0 (negate 1))
+                , _cameraOrientation = L.V3 0 0 (negate 1)
                 , _cameraFOV = 90 } }
 
         eTick <- B.fromAddHandler addHandlerTick
@@ -234,7 +256,13 @@ doItandGimmeFireThing = do
             ePrintHello :: B.Event (IO ())
             ePrintHello = (\_ -> print "hello") <$> eHello
 
-        bWorld <- B.accumB initGameState (B.unions [])
+            eMovement :: B.Event Movement
+            eMovement = B.unionWith const (B.filterJust ((\(_,k,_,_,_) -> keyToMovement k) <$> eKey)) (cameraToMovement <$> eMousePos)
+
+            eCamMove :: B.Event (GameState -> GameState)
+            eCamMove = (\m gs -> (gameStateCamera %~ moveCamera (0.005/60) m $ gs)) <$> eMovement
+
+        bWorld <- B.accumB initGameState (B.unions [eCamMove])
 
         B.reactimate ePrintHello
         B.reactimate eClose
