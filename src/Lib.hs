@@ -106,7 +106,7 @@ someFunc = do
               eShouldClose <- B.fromAddHandler addHandlerShouldClose
 
               let eClose :: B.Event (IO ())
-                  eClose = (`G.setWindowShouldClose` True) <$> eShouldClose
+                  eClose = flip G.setWindowShouldClose True <$> eShouldClose
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
