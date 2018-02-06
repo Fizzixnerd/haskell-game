@@ -20,12 +20,21 @@ import Control.Lens
 import qualified Linear as L
 import Game.Types
 import Data.Maybe
+import GHC.Float (double2Float)
 
+---
 rotateCamera :: L.Quaternion Float -> Camera -> Camera
 rotateCamera q cam = cam & cameraOrientation *~ q
 
 translateCamera :: L.V3 Float -> Camera -> Camera
 translateCamera v cam = cam & cameraPosition +~ v
+
+mousePosToRot :: Double -> Double -> L.Quaternion Float
+mousePosToRot x y = L.slerp xrot yrot 0.5
+  where
+    xrot = L.axisAngle (L.V3 1 0 0) (double2Float x)
+    yrot = L.axisAngle (L.V3 0 1 0) (double2Float y)
+---
 
 graphicsInit :: IO ()
 graphicsInit = do
@@ -164,6 +173,7 @@ doItandGimmeFireThing = do
   (addHandlerTick, fireTick) <- B.newAddHandler
   (addHandlerKey, fireKey) <- B.newAddHandler
   (addHandlerHello, fireHello :: () -> IO ()) <- B.newAddHandler
+  (addHandlerMousePos, fireMousePos) <- B.newAddHandler
 
   G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
@@ -177,6 +187,7 @@ doItandGimmeFireThing = do
 
   G.setWindowRefreshCallback win (Just fireTick)
   G.setKeyCallback win (Just (\w k sc ks mk -> fireKey (w, k, sc, ks, mk)))
+  G.setCursorPosCallback win (Just (\w x y -> fireMousePos (w, x, y)))
 
   obj <- loadObj "res/simple-cube.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
@@ -198,6 +209,7 @@ doItandGimmeFireThing = do
         eShouldClose <- B.fromAddHandler addHandlerShouldClose
         eKey <- B.fromAddHandler addHandlerKey
         eHello <- B.fromAddHandler addHandlerHello
+        eMousePos <- B.fromAddHandler addHandlerMousePos
 
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
@@ -209,7 +221,7 @@ doItandGimmeFireThing = do
 
             eEscapeToClose :: B.Event (IO ())
             eEscapeToClose = (\(w, _, _, _, _) -> G.setWindowShouldClose w True)
-              <$> (B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey)
+              <$> B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey
 
             ePrintHello :: B.Event (IO ())
             ePrintHello = (\_ -> print "hello") <$> eHello

@@ -9,7 +9,7 @@ data Camera = Camera
   { _cameraPosition :: L.V3 Float
   , _cameraOrientation :: L.Quaternion Float
   , _cameraFOV :: Float
-  }
+  } deriving (Eq, Show, Ord)
 
 
 mconcat <$> mapM makeLenses [''Camera]
