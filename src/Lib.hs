@@ -163,7 +163,7 @@ bufferData vtxLoc (idxs, leni) (vtxs, lenv) = liftIO $ do
                                          , idxs, G.StaticDraw )
   return (vbuf, ebuf)
 
-doItandGimmeFireThing :: Game s (NamedHandler (), IO ())
+doItandGimmeFireThing :: Game (NamedHandler (), IO ())
 doItandGimmeFireThing = do
   graphicsInit
   mWin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
@@ -207,6 +207,11 @@ doItandGimmeFireThing = do
 
   let network :: B.MomentIO ()
       network = mdo
+        let initGameState = GameState 
+              { _gameStateCamera = Camera
+                { _cameraPosition = L.V3 0 0 0
+                , _cameraOrientation = L.Quaternion 0 (L.V3 0 0 (negate 1))
+                , _cameraFOV = 90 } }
         eTick <- B.fromAddHandler addHandlerTick
         eShouldClose <- B.fromAddHandler addHandlerShouldClose
         eKey <- B.fromAddHandler addHandlerKey
@@ -227,6 +232,8 @@ doItandGimmeFireThing = do
 
             ePrintHello :: B.Event (IO ())
             ePrintHello = (\_ -> print "hello") <$> eHello
+
+        bWorld <- B.accumB initGameState (B.unions [])
 
         B.reactimate ePrintHello
         B.reactimate eClose
@@ -249,7 +256,7 @@ doItandGimmeFireThing = do
 
   return (hello, someFunc)
 
-someFunc :: Game s ()
+someFunc :: Game ()
 someFunc = do
   x <- doItandGimmeFireThing
   liftIO $ snd x
