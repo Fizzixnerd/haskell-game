@@ -92,7 +92,7 @@ render
      -> (Ptr CUShort, Int)
      -> IO ()
 render p posLocation vao vbuf ebuf (vtxs, lenv) (idxs, leni) = do
-  G.clear [G.ColorBuffer]
+  G.clear [G.ColorBuffer, G.DepthBuffer]
   G.currentProgram G.$= Just p
   G.bindVertexArrayObject G.$= Just vao
   G.vertexAttribArray posLocation G.$= G.Enabled
