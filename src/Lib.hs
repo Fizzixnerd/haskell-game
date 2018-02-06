@@ -17,7 +17,12 @@ import Foreign
 import Text.Printf
 import Data.Monoid (Sum(..))
 import Control.Lens
+import qualified Linear as L
+import Game.Types
 import Data.Maybe
+
+rotateCamera :: L.Quaternion Float -> Camera -> Camera
+rotateCamera q cam = cam & cameraOrientation *~ q
 
 graphicsInit :: IO ()
 graphicsInit = do
@@ -224,7 +229,7 @@ doItandGimmeFireThing = do
               G.pollEvents
               sc <- G.windowShouldClose w
               unless sc $ loop w
-        
+
   return (fireHello, someFunc)
 
 someFunc :: IO ()
