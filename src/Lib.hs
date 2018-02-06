@@ -3,7 +3,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Lib where
 
@@ -24,6 +23,9 @@ import Data.Maybe
 
 rotateCamera :: L.Quaternion Float -> Camera -> Camera
 rotateCamera q cam = cam & cameraOrientation *~ q
+
+translateCamera :: L.V3 Float -> Camera -> Camera
+translateCamera v cam = cam & cameraPosition +~ v
 
 graphicsInit :: IO ()
 graphicsInit = do

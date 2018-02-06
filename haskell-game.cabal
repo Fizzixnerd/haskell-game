@@ -2,7 +2,6 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9e858ee95d431474fdc910089e10f9accc19f45d802b8241210b97f457be2e52
 
 name:           haskell-game
 version:        0.1.0.0
