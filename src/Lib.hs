@@ -5,8 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Lib
-    ( someFunc
-    ) where
+    ( someFunc ) where
 
 import ClassyPrelude
 import qualified Graphics.UI.GLFW as G
@@ -17,7 +16,7 @@ import qualified Codec.Wavefront as W
 import Foreign.C.Types
 import Foreign
 import Text.Printf
-import Data.Monoid ((<>), Sum(..))
+import Data.Monoid (Sum(..))
 import Control.Lens
 
 graphicsInit :: IO ()
@@ -38,7 +37,6 @@ withWindow f = do
     Just win -> do
       f win
       G.destroyWindow win
-      G.terminate
 
 printContextVersion :: G.Window -> IO ()
 printContextVersion win = do
@@ -82,23 +80,22 @@ compileShaders = do
 
   return program
 
-render
-  :: G.Program
-     -> G.AttribLocation
-     -> G.VertexArrayObject
-     -> G.BufferObject
-     -> G.BufferObject
-     -> (Ptr CFloat, Int)
-     -> (Ptr CUShort, Int)
-     -> IO ()
-render p posLocation vao vbuf ebuf (vtxs, lenv) (idxs, leni) = do
+render :: G.Program
+       -> G.AttribLocation
+       -> G.VertexArrayObject
+       -> G.BufferObject -- ^ Vertex buffer
+       -> G.BufferObject -- ^ Element buffer
+       -> (Ptr CFloat, Int)
+       -> (Ptr CUShort, Int)
+       -> IO ()
+render prog posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = do
   G.clear [G.ColorBuffer]
-  G.currentProgram G.$= Just p
+  G.currentProgram G.$= Just prog
   G.bindVertexArrayObject G.$= Just vao
-  G.vertexAttribArray posLocation G.$= G.Enabled
+  G.vertexAttribArray posLoc G.$= G.Enabled
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
   let vad = G.VertexArrayDescriptor 3 G.Float 0 nullPtr
-  G.vertexAttribPointer posLocation G.$= (G.ToFloat, vad)
+  G.vertexAttribPointer posLoc G.$= (G.ToFloat, vad)
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
   G.drawElements G.Triangles (fromIntegral leni `div` 3) G.UnsignedShort nullPtr
 
@@ -131,14 +128,19 @@ marshallIndices idxs = do
   return (a, n)
     where (shorts, n) = indicesToUShorts $ toList idxs
 
-bufferData :: G.AttribLocation -> (Ptr CUShort, Int) -> (Ptr CFloat, Int) -> IO (G.BufferObject, G.BufferObject)
+bufferData :: G.AttribLocation
+           -> (Ptr CUShort, Int)
+           -> (Ptr CFloat, Int)
+           -> IO (G.BufferObject, G.BufferObject)
 bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  G.bufferData G.ArrayBuffer G.$= (fromIntegral lenv, vtxs, G.StaticDraw)
+  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * (sizeOf (0.0 :: Float)) * 4
+                                  , vtxs, G.StaticDraw )
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= (fromIntegral leni, idxs, G.StaticDraw)
+  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * (sizeOf (0 :: CUShort)) * 3
+                                         , idxs, G.StaticDraw )
   return (vbuf, ebuf)
 
 someFunc :: IO ()
@@ -159,7 +161,7 @@ someFunc = do
 
         prog <- compileShaders
         G.polygonMode G.$= (G.Line, G.Line)
-        G.pointSize G.$= 5.0
+        G.pointSize G.$= 40.0
         G.clearColor G.$= G.Color4 0.5 0 0 0
         G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
@@ -180,8 +182,8 @@ someFunc = do
         let posLocation = G.AttribLocation 0
         (vbuf, ebuf) <- bufferData posLocation idxs locs
 
-        let network :: G.Program -> B.MomentIO ()
-            network prog = mdo
+        let network :: B.MomentIO ()
+            network = mdo
               eTick <- B.fromAddHandler addHandlerTick
               eShouldClose <- B.fromAddHandler addHandlerShouldClose
               eKey <- B.fromAddHandler addHandlerKey
@@ -202,11 +204,12 @@ someFunc = do
               B.reactimate eRender
               B.reactimate eEscapeToClose
 
-        net <- B.compile $ network prog
+        net <- B.compile network
         B.actuate net
         loop win
         G.deleteObjectName vertexArrayObject
         G.deleteObjectName prog)
+  G.terminate
   where
     loop w = do
       G.pollEvents
