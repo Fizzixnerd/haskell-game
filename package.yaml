@@ -36,6 +36,8 @@ dependencies:
 - linear
 - ghc
 - ghc-paths
+- monad-logger
+- mtl
 
 library:
   source-dirs: src

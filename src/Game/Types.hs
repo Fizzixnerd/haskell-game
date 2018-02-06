@@ -5,14 +5,28 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Game.Types where
 
 import ClassyPrelude
 import Control.Lens
 
+import qualified Control.Monad.Logger as ML
+import qualified Control.Monad.State.Strict as MS
 import qualified Reactive.Banana.Frameworks as B
 import qualified Linear as L
+
+newtype Game s a = Game { unGame :: ML.LoggingT (MS.StateT s IO) a }
+  deriving ( Functor
+           , Applicative
+           , Monad
+           , MS.MonadState s
+           , ML.MonadLogger
+           , MonadIO )
+
+runGame :: s -> Game s a -> IO (a, s)
+runGame s g = MS.runStateT (ML.runStderrLoggingT $ unGame g) s
 
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
@@ -45,8 +59,8 @@ instance a ~ b => Firable (NamedHandler a) b where
 instance a ~ b => Firable (B.Handler a) b where
   fire f b = f b
 
-newNamedEventHandler :: Text -> IO (NamedEventHandler a)
-newNamedEventHandler name = do
+newNamedEventHandler :: MonadIO m => Text -> m (NamedEventHandler a)
+newNamedEventHandler name = liftIO $ do
   (ah, f) <- B.newAddHandler
   return (ah, NamedHandler name f)
 
