@@ -33,6 +33,7 @@ dependencies:
 - reactive-banana
 - wavefront
 - vector
+- linear
 
 library:
   source-dirs: src

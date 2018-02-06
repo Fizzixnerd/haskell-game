@@ -18,6 +18,11 @@ import Foreign
 import Text.Printf
 import Data.Monoid (Sum(..))
 import Control.Lens
+import qualified Linear as L
+import Game.Types
+
+rotateCamera :: L.Quaternion Float -> Camera -> Camera
+rotateCamera q cam = cam & cameraOrientation *~ q
 
 graphicsInit :: IO ()
 graphicsInit = do
