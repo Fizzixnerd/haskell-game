@@ -22,7 +22,6 @@ import Game.Types
 import Data.Maybe
 import GHC.Float (double2Float)
 
----
 rotateCamera :: L.Quaternion Float -> Camera -> Camera
 rotateCamera q cam = cam & cameraOrientation *~ q
 
@@ -45,7 +44,21 @@ moveCamera c MoveDown            = translateCamera (L.V3 0 (negate c) 0)
 moveCamera c (MoveCameraDir x y) = rotateCamera q
   where
     q = mousePosToRot c x y
----
+
+keyToMovement :: G.Key -> Maybe Movement
+keyToMovement G.Key'W = Just MoveForward
+keyToMovement G.Key'A = Just MoveLeft
+keyToMovement G.Key'S = Just MoveBackward
+keyToMovement G.Key'D = Just MoveRight
+keyToMovement G.Key'LeftShift = Just MoveDown
+keyToMovement G.Key'Space = Just MoveUp
+keyToMovement _ = Nothing
+
+cameraToMovement :: (G.Window, Double, Double) -> Movement
+cameraToMovement (_, x, y) = MoveCameraDir x y
+
+eMovement :: B.Event Movement
+eMovement = B.unionWith const (B.filterJust (keyToMovement <$> eKey)) (cameraToMovement <$> )
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
