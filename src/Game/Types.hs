@@ -13,20 +13,22 @@ import ClassyPrelude
 import Control.Lens
 
 import qualified Control.Monad.Logger as ML
-import qualified Control.Monad.State.Strict as MS
 import qualified Reactive.Banana.Frameworks as B
 import qualified Linear as L
 
-newtype Game s a = Game { unGame :: ML.LoggingT (MS.StateT s IO) a }
+newtype Game a = Game { unGame :: ML.LoggingT IO a }
   deriving ( Functor
            , Applicative
            , Monad
-           , MS.MonadState s
            , ML.MonadLogger
            , MonadIO )
 
-runGame :: s -> Game s a -> IO (a, s)
-runGame s g = MS.runStateT (ML.runStderrLoggingT $ unGame g) s
+runGame :: Game a -> IO a
+runGame g = ML.runStderrLoggingT $ unGame g
+
+data GameState = GameState
+  { _gameStateCamera :: Camera
+  } deriving (Eq, Ord, Show)
 
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
