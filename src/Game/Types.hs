@@ -18,7 +18,7 @@ data Camera = Camera
   { _cameraPosition :: L.V3 Float
   , _cameraOrientation :: L.Quaternion Float
   , _cameraFOV :: Float
-  }
+  } deriving (Eq, Show, Ord)
 
 data NamedHandler a = NamedHandler
   { _namedHandlerName :: Text
