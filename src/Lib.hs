@@ -34,7 +34,9 @@ withWindow f = do
   mwin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   case mwin of
     Nothing -> error "Could not create window."
-    Just win -> f win
+    Just win -> do
+      f win
+      G.destroyWindow win
 
 printContextVersion :: G.Window -> IO ()
 printContextVersion win = do
@@ -89,11 +91,16 @@ makeArrayBuffer = do
                                         , G.StreamDraw )
         return buf)
 
-render :: G.Program -> IO ()
-render p = do
+render
+  :: G.Program
+     -> G.AttribLocation
+     -> (Ptr Float, Int)
+     -> (Ptr CShort, Int)
+     -> IO ()
+render p offsetLocation locs idxs = do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
-  G.drawArrays G.Patches 0 3
+  drawSimple offsetLocation locs idxs
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -126,9 +133,12 @@ marshallIndices idxs = do
   return (a, n)
     where (shorts, n) = indicesToShorts $ toList idxs
             
-drawSimple :: (Ptr Float, Int) -> (Ptr CShort, Int) -> IO ()
-drawSimple (vtxs, lenv) (idxs, leni) = do
-  G.drawElements G.Triangles (fromIntegral leni) G.Float idxs
+drawSimple :: G.AttribLocation -> (Ptr Float, Int) -> (Ptr CShort, Int) -> IO ()
+drawSimple attrLoc (vtxs, lenv) (idxs, leni) = do
+  let vad = G.VertexArrayDescriptor (fromIntegral lenv) G.Float (fromIntegral $ sizeOf (0.0 :: Float)) vtxs
+  G.vertexAttribPointer attrLoc G.$= (G.ToFloat, vad)
+  G.vertexAttribArray attrLoc G.$= G.Enabled
+  G.drawElements G.Patches (fromIntegral leni) G.Short idxs
   return ()
 
 someFunc :: IO ()
@@ -143,6 +153,36 @@ someFunc = do
         (addHandlerTick, fireTick) <- B.newAddHandler
         (addHandlerKey, fireKey) <- B.newAddHandler
 
+        G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
+        printContextVersion win
+        G.setWindowCloseCallback win (Just fireShouldClose)
+
+        prog <- compileShaders
+        G.polygonMode G.$= (G.Line, G.Line)
+        G.pointSize G.$= 5.0
+        G.clearColor G.$= G.Color4 0.5 0 0 0
+        G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+
+        G.setWindowRefreshCallback win (Just fireTick)
+        G.setKeyCallback win (Just (\w k sc ks mk -> fireKey (w, k, sc, ks, mk)))
+
+        obj <- loadObj "res/simple-cube.obj"
+        let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
+            faceIndices = (\(W.Face a b c xs) -> ( W.faceLocIndex a
+                                                 , W.faceLocIndex b
+                                                 , W.faceLocIndex c )) <$> faces
+            locations = W.objLocations obj
+
+        locs <- marshallLocations locations
+        idxs <- marshallIndices faceIndices 
+
+        vertexArrayObject <- G.genObjectName
+        buf <- makeArrayBuffer
+        let offsetLocation = G.AttribLocation 0
+            colorLocation  = G.AttribLocation 1
+        G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
+        G.bindVertexArrayObject G.$= Just vertexArrayObject
+
         let network :: G.Program -> B.MomentIO ()
             network prog = mdo
               eTick <- B.fromAddHandler addHandlerTick
@@ -154,7 +194,7 @@ someFunc = do
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
-                                render prog
+                                render prog offsetLocation locs idxs
                                 G.swapBuffers w) <$> eTick
 
                   eEscapeToClose :: B.Event (IO ())
@@ -165,35 +205,6 @@ someFunc = do
               B.reactimate eRender
               B.reactimate eEscapeToClose
 
-        G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
-        printContextVersion win
-        G.setWindowCloseCallback win (Just fireShouldClose)
-
-        prog <- compileShaders
-        G.polygonMode G.$= (G.Line, G.Line)
-        G.pointSize G.$= 5.0
-        G.clearColor G.$= G.Color4 0.5 0 0 0
-        G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
-
-        vertexArrayObject :: G.VertexArrayObject <- G.genObjectName
-        buf <- makeArrayBuffer
-        let offsetLocation = G.AttribLocation 0
-            colorLocation  = G.AttribLocation 1
-        G.vertexAttrib4 offsetLocation (0.5 :: Float) 0.5 0.0 0.0
-        G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
-        G.bindVertexArrayObject G.$= Just vertexArrayObject
-        G.setWindowRefreshCallback win (Just fireTick)
-        G.setKeyCallback win (Just (\w k sc ks mk -> fireKey (w, k, sc, ks, mk)))
-
-        obj <- loadObj "res/simple-cube.obj"
-        let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
-            faceIndices = (\(W.Face a b c xs) -> ( W.faceLocIndex a
-                                                 , W.faceLocIndex b
-                                                 , W.faceLocIndex c )) <$> faces
-            locations = W.objLocations obj
-
-            marshalledData = ( marshallLocations locations
-                             , marshallIndices faceIndices )
         
         net <- B.compile $ network prog
         B.actuate net
@@ -201,7 +212,6 @@ someFunc = do
         G.deleteObjectName vertexArrayObject
         G.deleteObjectName prog
         G.deleteObjectName buf
-        G.destroyWindow win
         G.terminate)
   where
     loop w = do
