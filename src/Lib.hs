@@ -3,9 +3,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
-module Lib
-    ( someFunc ) where
+module Lib where
 
 import ClassyPrelude
 import qualified Graphics.UI.GLFW as G
@@ -20,6 +20,7 @@ import Data.Monoid (Sum(..))
 import Control.Lens
 import qualified Linear as L
 import Game.Types
+import Data.Maybe
 
 rotateCamera :: L.Quaternion Float -> Camera -> Camera
 rotateCamera q cam = cam & cameraOrientation *~ q
@@ -34,14 +35,15 @@ graphicsInit = do
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
   G.windowHint $ G.WindowHint'OpenGLDebugContext True
 
-withWindow :: (G.Window -> IO ()) -> IO ()
+withWindow :: (G.Window -> IO a) -> IO a
 withWindow f = do
   mwin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   case mwin of
     Nothing -> error "Could not create window."
     Just win -> do
-      f win
+      x <- f win
       G.destroyWindow win
+      return x
 
 printContextVersion :: G.Window -> IO ()
 printContextVersion win = do
@@ -148,75 +150,90 @@ bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
                                          , idxs, G.StaticDraw )
   return (vbuf, ebuf)
 
-someFunc :: IO ()
-someFunc = do
+doItandGimmeFireThing :: IO (B.Handler (), IO ())
+doItandGimmeFireThing = do
   graphicsInit
-  withWindow
-    (\win -> do
-        G.makeContextCurrent $ Just win
+  mWin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
+  let win = fromJust mWin
+  G.makeContextCurrent $ Just win
 
-        -- get the Handlers we need.
-        (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
-        (addHandlerTick, fireTick) <- B.newAddHandler
-        (addHandlerKey, fireKey) <- B.newAddHandler
+  -- get the Handlers we need.
+  (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
+  (addHandlerTick, fireTick) <- B.newAddHandler
+  (addHandlerKey, fireKey) <- B.newAddHandler
+  (addHandlerHello, fireHello :: () -> IO ()) <- B.newAddHandler
 
-        G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
-        printContextVersion win
-        G.setWindowCloseCallback win (Just fireShouldClose)
+  G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
+  printContextVersion win
+  G.setWindowCloseCallback win (Just fireShouldClose)
 
-        prog <- compileShaders
-        G.polygonMode G.$= (G.Line, G.Line)
-        G.pointSize G.$= 40.0
-        G.clearColor G.$= G.Color4 0.5 0 0 0
-        G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+  prog <- compileShaders
+  G.polygonMode G.$= (G.Line, G.Line)
+  G.pointSize G.$= 40.0
+  G.clearColor G.$= G.Color4 0.5 0 0 0
+  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-        G.setWindowRefreshCallback win (Just fireTick)
-        G.setKeyCallback win (Just (\w k sc ks mk -> fireKey (w, k, sc, ks, mk)))
+  G.setWindowRefreshCallback win (Just fireTick)
+  G.setKeyCallback win (Just (\w k sc ks mk -> fireKey (w, k, sc, ks, mk)))
 
-        obj <- loadObj "res/simple-cube.obj"
-        let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
-            faceIndices = (\(W.Face a b c xs) -> ( W.faceLocIndex a
-                                                 , W.faceLocIndex b
-                                                 , W.faceLocIndex c )) <$> faces
-            locations = W.objLocations obj
+  obj <- loadObj "res/simple-cube.obj"
+  let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
+      faceIndices = (\(W.Face a b c xs) -> ( W.faceLocIndex a
+                                           , W.faceLocIndex b
+                                           , W.faceLocIndex c )) <$> faces
+      locations = W.objLocations obj
 
-        locs <- marshallLocations locations
-        idxs <- marshallIndices faceIndices
+  locs <- marshallLocations locations
+  idxs <- marshallIndices faceIndices
 
-        vertexArrayObject <- G.genObjectName
-        let posLocation = G.AttribLocation 0
-        (vbuf, ebuf) <- bufferData posLocation idxs locs
+  vertexArrayObject <- G.genObjectName
+  let posLocation = G.AttribLocation 0
+  (vbuf, ebuf) <- bufferData posLocation idxs locs
 
-        let network :: B.MomentIO ()
-            network = mdo
-              eTick <- B.fromAddHandler addHandlerTick
-              eShouldClose <- B.fromAddHandler addHandlerShouldClose
-              eKey <- B.fromAddHandler addHandlerKey
+  let network :: B.MomentIO ()
+      network = mdo
+        eTick <- B.fromAddHandler addHandlerTick
+        eShouldClose <- B.fromAddHandler addHandlerShouldClose
+        eKey <- B.fromAddHandler addHandlerKey
+        eHello <- B.fromAddHandler addHandlerHello
 
-              let eClose :: B.Event (IO ())
-                  eClose = flip G.setWindowShouldClose True <$> eShouldClose
+        let eClose :: B.Event (IO ())
+            eClose = flip G.setWindowShouldClose True <$> eShouldClose
 
-                  eRender :: B.Event (IO ())
-                  eRender = (\w -> do
-                                render prog posLocation vertexArrayObject vbuf ebuf locs idxs
-                                G.swapBuffers w) <$> eTick
+            eRender :: B.Event (IO ())
+            eRender = (\w -> do
+                          render prog posLocation vertexArrayObject vbuf ebuf locs idxs
+                          G.swapBuffers w) <$> eTick
 
-                  eEscapeToClose :: B.Event (IO ())
-                  eEscapeToClose = (\(w, _, _, _, _) -> G.setWindowShouldClose w True)
-                    <$> (B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey)
+            eEscapeToClose :: B.Event (IO ())
+            eEscapeToClose = (\(w, _, _, _, _) -> G.setWindowShouldClose w True)
+              <$> (B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey)
 
-              B.reactimate eClose
-              B.reactimate eRender
-              B.reactimate eEscapeToClose
+            ePrintHello :: B.Event (IO ())
+            ePrintHello = (\_ -> print "hello") <$> eHello
 
-        net <- B.compile network
-        B.actuate net
+        B.reactimate ePrintHello
+        B.reactimate eClose
+        B.reactimate eRender
+        B.reactimate eEscapeToClose
+
+  net <- B.compile network
+  B.actuate net
+  let someFunc :: IO ()
+      someFunc = do
         loop win
         G.deleteObjectName vertexArrayObject
-        G.deleteObjectName prog)
-  G.terminate
-  where
-    loop w = do
-      G.pollEvents
-      sc <- G.windowShouldClose w
-      unless sc $ loop w
+        G.deleteObjectName prog
+        G.terminate
+          where
+            loop w = do
+              G.pollEvents
+              sc <- G.windowShouldClose w
+              unless sc $ loop w
+
+  return (fireHello, someFunc)
+
+someFunc :: IO ()
+someFunc = do
+  x <- doItandGimmeFireThing
+  snd x
