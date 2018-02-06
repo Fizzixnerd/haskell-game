@@ -17,6 +17,8 @@ import qualified Codec.Wavefront as W
 import Foreign.C.Types
 import Foreign
 import Text.Printf
+import Data.Monoid ((<>), Sum(..))
+import Control.Lens
 
 graphicsInit :: IO ()
 graphicsInit = do
@@ -101,17 +103,15 @@ loadObj fp = do
     Left e -> error e
     Right obj -> return obj
 
-locationsToFloats :: [W.Location] -> ([Float], Int)
-locationsToFloats xs = locationsToFloats' xs 0
+locationsToFloats :: Integral a => [W.Location] -> ([Float], a)
+locationsToFloats = (_2 %~ getSum) . foldMap go
   where
-    locationsToFloats' [] n = ([], n)
-    locationsToFloats' (x:xs') n = (W.locX x : W.locY x : W.locZ x : W.locW x : fst ( locationsToFloats' xs' (n + 4)), snd $ locationsToFloats' xs' (n + 4))
+    go x = ([W.locX x, W.locY x, W.locZ x, W.locW x], Sum 4)
 
-indicesToShorts :: [(Int, Int, Int)] -> ([CShort], Int)
-indicesToShorts xs = indicesToShorts' xs 0
+indicesToShorts :: (Integral a, Integral b, Integral c) => [(a, a, a)] -> ([b], c)
+indicesToShorts = (_2 %~ getSum) . foldMap go
   where
-    indicesToShorts' [] n = ([], n)
-    indicesToShorts' ((a, b, c):xs') n = (fromIntegral a : fromIntegral b : fromIntegral c : fst ( indicesToShorts' xs' (n + 3)), snd $ indicesToShorts' xs' (n + 3))
+    go (a,b,c) = (fmap fromIntegral [a,b,c], Sum 3)
 
 marshallLocations :: Vector W.Location -> IO (Ptr Float, Int)
 marshallLocations locs = do
