@@ -23,7 +23,7 @@ import Data.Maybe
 import GHC.Float (double2Float)
 
 rotateCamera :: L.Quaternion Float -> Camera -> Camera
-rotateCamera q cam = cam & cameraOrientation *~ q
+rotateCamera q cam = cam & cameraOrientation %~ L.rotate q
 
 translateCamera :: L.V3 Float -> Camera -> Camera
 translateCamera v cam = cam & cameraPosition +~ v
@@ -57,8 +57,6 @@ keyToMovement _ = Nothing
 cameraToMovement :: (G.Window, Double, Double) -> Movement
 cameraToMovement (_, x, y) = MoveCameraDir x y
 
-eMovement :: B.Event Movement
-eMovement = B.unionWith const (B.filterJust (keyToMovement <$> eKey)) (cameraToMovement <$> )
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
@@ -231,10 +229,10 @@ doItandGimmeFireThing = do
 
   let network :: B.MomentIO ()
       network = mdo
-        let initGameState = GameState 
+        let initGameState = GameState
               { _gameStateCamera = Camera
                 { _cameraPosition = L.V3 0 0 0
-                , _cameraOrientation = L.Quaternion 0 (L.V3 0 0 (negate 1))
+                , _cameraOrientation = L.V3 0 0 (negate 1)
                 , _cameraFOV = 90 } }
         eTick <- B.fromAddHandler addHandlerTick
         eShouldClose <- B.fromAddHandler addHandlerShouldClose
@@ -257,7 +255,13 @@ doItandGimmeFireThing = do
             ePrintHello :: B.Event (IO ())
             ePrintHello = (\_ -> print "hello") <$> eHello
 
-        bWorld <- B.accumB initGameState (B.unions [])
+            eMovement :: B.Event Movement
+            eMovement = B.unionWith const (B.filterJust ((\(_,k,_,_,_) -> keyToMovement k) <$> eKey)) (cameraToMovement <$> eMousePos)
+
+            eCamMove :: B.Event (GameState -> GameState)
+            eCamMove = (\m gs -> (gameStateCamera %~ moveCamera (0.005/60) m $ gs)) <$> eMovement
+
+        bWorld <- B.accumB initGameState (B.unions [eCamMove])
 
         B.reactimate ePrintHello
         B.reactimate eClose

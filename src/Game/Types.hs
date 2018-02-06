@@ -32,7 +32,7 @@ data GameState = GameState
 
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
-  , _cameraOrientation :: L.Quaternion Float
+  , _cameraOrientation :: L.V3 Float
   , _cameraFOV :: Float
   } deriving (Eq, Show, Ord)
 
@@ -76,4 +76,4 @@ newNamedEventHandler name = liftIO $ do
   (ah, f) <- B.newAddHandler
   return (ah, NamedHandler name f)
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler]
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState]
