@@ -37,6 +37,7 @@ library
     , classy-prelude
     , containers
     , ghc
+    , ghc-paths
     , lens
     , linear
     , reactive-banana
@@ -64,6 +65,7 @@ executable haskell-game-exe
     , classy-prelude
     , containers
     , ghc
+    , ghc-paths
     , haskell-game
     , lens
     , linear
@@ -91,6 +93,7 @@ test-suite haskell-game-test
     , classy-prelude
     , containers
     , ghc
+    , ghc-paths
     , haskell-game
     , lens
     , linear
