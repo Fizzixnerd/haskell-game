@@ -31,6 +31,8 @@ dependencies:
 - OpenGL
 - ObjectName
 - reactive-banana
+- wavefront
+- vector
 
 library:
   source-dirs: src
