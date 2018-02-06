@@ -47,8 +47,8 @@ moveCamera c (MoveCameraDir x y) = rotateCamera q
     q = mousePosToRot c x y
 ---
 
-graphicsInit :: IO ()
-graphicsInit = do
+graphicsInit :: MonadIO m => m ()
+graphicsInit = liftIO $ do
   _ <- G.init
   G.windowHint $ G.WindowHint'ContextVersionMajor 4
   G.windowHint $ G.WindowHint'ContextVersionMinor 5
@@ -57,25 +57,25 @@ graphicsInit = do
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
   G.windowHint $ G.WindowHint'OpenGLDebugContext True
 
-withWindow :: (G.Window -> IO a) -> IO a
+withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
-  mwin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
+  mwin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   case mwin of
     Nothing -> error "Could not create window."
     Just win -> do
       x <- f win
-      G.destroyWindow win
+      liftIO $ G.destroyWindow win
       return x
 
-printContextVersion :: G.Window -> IO ()
-printContextVersion win = do
+printContextVersion :: MonadIO m => G.Window -> m ()
+printContextVersion win = liftIO $ do
   maj <- G.getWindowContextVersionMajor win
   min_ <- G.getWindowContextVersionMinor win
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min_ rev
 
-makeShader :: FilePath -> G.ShaderType -> IO G.Shader
-makeShader shaderName shaderType = do
+makeShader :: MonadIO m => FilePath -> G.ShaderType -> m G.Shader
+makeShader shaderName shaderType = liftIO $ do
   shaderText <- readFile shaderName
   shader <- G.createShader shaderType
   G.shaderSourceBS shader G.$= shaderText
@@ -83,8 +83,8 @@ makeShader shaderName shaderType = do
   G.shaderInfoLog shader >>= (\x -> if null x then return () else printf "%s\n\n" x)
   return shader
 
-compileShaders :: IO G.Program
-compileShaders = do
+compileShaders :: MonadIO m => m G.Program
+compileShaders = liftIO $ do
   vertexShader <- makeShader "shader.vs" G.VertexShader
   tessellationControlShader <- makeShader "shader.tcs" G.TessControlShader
   tessellationEvaluationShader <- makeShader "shader.tes" G.TessEvaluationShader
@@ -109,15 +109,16 @@ compileShaders = do
 
   return program
 
-render :: G.Program
+render :: MonadIO m =>
+          G.Program
        -> G.AttribLocation
        -> G.VertexArrayObject
        -> G.BufferObject -- ^ Vertex buffer
        -> G.BufferObject -- ^ Element buffer
        -> (Ptr CFloat, Int)
        -> (Ptr CUShort, Int)
-       -> IO ()
-render prog posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = do
+       -> m ()
+render prog posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just prog
   G.bindVertexArrayObject G.$= Just vao
@@ -145,23 +146,24 @@ indicesToUShorts = (_2 %~ getSum) . foldMap go
   where
     go (a,b,c) = (fmap fromIntegral [a,b,c], Sum 3)
 
-marshallLocations :: Vector W.Location -> IO (Ptr CFloat, Int)
-marshallLocations locs = do
+marshallLocations :: MonadIO m => Vector W.Location -> m (Ptr CFloat, Int)
+marshallLocations locs = liftIO $ do
   a <- newArray floats
   return (a, n)
     where (floats, n) = locationsToCFloats $ toList locs
 
-marshallIndices :: Vector (Int, Int, Int) -> IO (Ptr CUShort, Int)
-marshallIndices idxs = do
+marshallIndices :: MonadIO m => Vector (Int, Int, Int) -> m (Ptr CUShort, Int)
+marshallIndices idxs = liftIO $ do
   a <- newArray shorts
   return (a, n)
     where (shorts, n) = indicesToUShorts $ toList idxs
 
-bufferData :: G.AttribLocation
+bufferData :: MonadIO m =>
+              G.AttribLocation
            -> (Ptr CUShort, Int)
            -> (Ptr CFloat, Int)
-           -> IO (G.BufferObject, G.BufferObject)
-bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
+           -> m (G.BufferObject, G.BufferObject)
+bufferData vtxLoc (idxs, leni) (vtxs, lenv) = liftIO $ do
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
   G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * (sizeOf (0.0 :: Float)) * 4
@@ -172,12 +174,12 @@ bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
                                          , idxs, G.StaticDraw )
   return (vbuf, ebuf)
 
-doItandGimmeFireThing :: IO (NamedHandler (), IO ())
+doItandGimmeFireThing :: Game s (NamedHandler (), IO ())
 doItandGimmeFireThing = do
   graphicsInit
-  mWin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
+  mWin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   let win = fromJust mWin
-  G.makeContextCurrent $ Just win
+  liftIO $ G.makeContextCurrent $ Just win
 
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
@@ -188,17 +190,17 @@ doItandGimmeFireThing = do
 
   G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
-  G.setWindowCloseCallback win (Just $ fire shouldClose)
+  liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
 
-  prog <- compileShaders
+  prog <- liftIO $ compileShaders
   G.polygonMode G.$= (G.Line, G.Line)
   G.pointSize G.$= 40.0
   G.clearColor G.$= G.Color4 0.5 0 0 0
   G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-  G.setWindowRefreshCallback win (Just $ fire tick)
-  G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y)))
+  liftIO $ G.setWindowRefreshCallback win (Just $ fire tick)
+  liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
+  liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y)))
 
   obj <- loadObj "res/simple-cube.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
@@ -242,8 +244,8 @@ doItandGimmeFireThing = do
         B.reactimate eRender
         B.reactimate eEscapeToClose
 
-  net <- B.compile network
-  B.actuate net
+  net <- liftIO $ B.compile network
+  liftIO $ B.actuate net
   let someFunc :: IO ()
       someFunc = do
         loop win
@@ -258,7 +260,7 @@ doItandGimmeFireThing = do
 
   return (hello, someFunc)
 
-someFunc :: IO ()
+someFunc :: Game s ()
 someFunc = do
   x <- doItandGimmeFireThing
-  snd x
+  liftIO $ snd x
