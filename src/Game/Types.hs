@@ -25,7 +25,7 @@ data NamedHandler a = NamedHandler
   , _namedHandlerHandler :: B.Handler a
   }
 
-type NamedEventHandler = (B.AddHandler, NamedHandler)
+type NamedEventHandler a = (B.AddHandler a, NamedHandler a)
 
 instance Eq (NamedHandler a) where
   (NamedHandler { _namedHandlerName = l }) == (NamedHandler { _namedHandlerName = r }) = l == r

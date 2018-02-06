@@ -161,7 +161,7 @@ bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
                                          , idxs, G.StaticDraw )
   return (vbuf, ebuf)
 
-doItandGimmeFireThing :: IO (B.Handler (), IO ())
+doItandGimmeFireThing :: IO (NamedHandler (), IO ())
 doItandGimmeFireThing = do
   graphicsInit
   mWin <- G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
@@ -169,15 +169,15 @@ doItandGimmeFireThing = do
   G.makeContextCurrent $ Just win
 
   -- get the Handlers we need.
-  (addHandlerShouldClose, fireShouldClose) <- B.newAddHandler
-  (addHandlerTick, fireTick) <- B.newAddHandler
-  (addHandlerKey, fireKey) <- B.newAddHandler
-  (addHandlerHello, fireHello :: () -> IO ()) <- B.newAddHandler
-  (addHandlerMousePos, fireMousePos) <- B.newAddHandler
+  (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
+  (addHandlerTick, tick) <- newNamedEventHandler "tick"
+  (addHandlerKey, key) <- newNamedEventHandler "key"
+  (addHandlerHello, hello) <- newNamedEventHandler "hello"
+  (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
 
   G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
-  G.setWindowCloseCallback win (Just fireShouldClose)
+  G.setWindowCloseCallback win (Just $ fire shouldClose)
 
   prog <- compileShaders
   G.polygonMode G.$= (G.Line, G.Line)
@@ -185,9 +185,9 @@ doItandGimmeFireThing = do
   G.clearColor G.$= G.Color4 0.5 0 0 0
   G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-  G.setWindowRefreshCallback win (Just fireTick)
-  G.setKeyCallback win (Just (\w k sc ks mk -> fireKey (w, k, sc, ks, mk)))
-  G.setCursorPosCallback win (Just (\w x y -> fireMousePos (w, x, y)))
+  G.setWindowRefreshCallback win (Just $ fire tick)
+  G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
+  G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y)))
 
   obj <- loadObj "res/simple-cube.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
@@ -245,7 +245,7 @@ doItandGimmeFireThing = do
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (fireHello, someFunc)
+  return (hello, someFunc)
 
 someFunc :: IO ()
 someFunc = do
