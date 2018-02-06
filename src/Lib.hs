@@ -36,6 +36,7 @@ withWindow f = do
     Just win -> do
       f win
       G.destroyWindow win
+      G.terminate
 
 printContextVersion :: G.Window -> IO ()
 printContextVersion win = do
@@ -63,8 +64,8 @@ compileShaders = do
 
   program <- G.createProgram
   G.attachShader program vertexShader
-  G.attachShader program tessellationControlShader
-  G.attachShader program tessellationEvaluationShader
+--  G.attachShader program tessellationControlShader
+--  G.attachShader program tessellationEvaluationShader
   G.attachShader program geometryShader
   G.attachShader program fragmentShader
   G.linkProgram program
@@ -79,27 +80,16 @@ compileShaders = do
 
   return program
 
-makeArrayBuffer :: IO G.BufferObject
-makeArrayBuffer = do
-  buf :: G.BufferObject <- G.genObjectName
-  G.bindBuffer G.ArrayBuffer G.$= Just buf
-  with (69420 :: Int)
-    (\ptr -> do
-        G.bufferData G.ArrayBuffer G.$= ( CPtrdiff (fromIntegral $ sizeOf (0 :: Int))
-                                        , ptr
-                                        , G.StreamDraw )
-        return buf)
-
 render
   :: G.Program
      -> G.AttribLocation
-     -> (Ptr Float, Int)
-     -> (Ptr CShort, Int)
+     -> (Ptr CFloat, Int)
+     -> (Ptr CUShort, Int)
      -> IO ()
-render p offsetLocation locs idxs = do
+render p posLocation locs (idxs, leni) = do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
-  drawSimple offsetLocation locs idxs
+  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort idxs
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -108,42 +98,40 @@ loadObj fp = do
     Left e -> error e
     Right obj -> return obj
 
-locationsToFloats :: [W.Location] -> ([Float], Int)
-locationsToFloats xs = locationsToFloats' xs 0
+locationsToCFloats :: [W.Location] -> ([CFloat], Int)
+locationsToCFloats xs = locationsToCFloats' xs 0
   where
-    locationsToFloats' [] n = ([], n)
-    locationsToFloats' (x:xs') n = (W.locX x : W.locY x : W.locZ x : W.locW x : fst ( locationsToFloats' xs' (n + 4)), snd $ locationsToFloats' xs' (n + 4))
+    locationsToCFloats' [] n = ([], n)
+    locationsToCFloats' (x:xs') n = ((CFloat $ W.locX x) : (CFloat $ W.locY x) : (CFloat $ W.locZ x) : (CFloat $ W.locW x) : fst ( locationsToCFloats' xs' (n + 4)), snd $ locationsToCFloats' xs' (n + 4))
 
-indicesToShorts :: [(Int, Int, Int)] -> ([CShort], Int)
-indicesToShorts xs = indicesToShorts' xs 0
+indicesToUShorts :: [(Int, Int, Int)] -> ([CUShort], Int)
+indicesToUShorts xs = indicesToUShorts' xs 0
   where
-    indicesToShorts' [] n = ([], n)
-    indicesToShorts' ((a, b, c):xs') n = (fromIntegral a : fromIntegral b : fromIntegral c : fst ( indicesToShorts' xs' (n + 3)), snd $ indicesToShorts' xs' (n + 3))
+    indicesToUShorts' [] n = ([], n)
+    indicesToUShorts' ((a, b, c):xs') n = (fromIntegral a : fromIntegral b : fromIntegral c : fst ( indicesToUShorts' xs' (n + 3)), snd $ indicesToUShorts' xs' (n + 3))
 
-marshallLocations :: Vector W.Location -> IO (Ptr Float, Int)
+marshallLocations :: Vector W.Location -> IO (Ptr CFloat, Int)
 marshallLocations locs = do
   a <- newArray floats
   return (a, n)
-    where (floats, n) = locationsToFloats $ toList locs
+    where (floats, n) = locationsToCFloats $ toList locs
 
-marshallIndices :: Vector (Int, Int, Int) -> IO (Ptr CShort, Int)
+marshallIndices :: Vector (Int, Int, Int) -> IO (Ptr CUShort, Int)
 marshallIndices idxs = do
   a <- newArray shorts
   return (a, n)
-    where (shorts, n) = indicesToShorts $ toList idxs
+    where (shorts, n) = indicesToUShorts $ toList idxs
 
-drawSimple :: G.AttribLocation -> (Ptr Float, Int) -> (Ptr CShort, Int) -> IO ()
-drawSimple attrLoc (vtxs, lenv) (idxs, leni) = do
-  let vad = G.VertexArrayDescriptor (fromIntegral lenv) G.Float (fromIntegral $ sizeOf (0.0 :: Float)) vtxs
-  G.vertexAttribPointer attrLoc G.$= (G.ToFloat, vad)
-  G.vertexAttribArray attrLoc G.$= G.Enabled
-  G.drawElements G.Patches (fromIntegral leni) G.Short idxs
-  return ()
+bufferData :: G.AttribLocation -> (Ptr CFloat, Int) -> IO ()
+bufferData vtxLoc (vtxs, lenv) = do
+  buf <- G.genObjectName
+  G.bindBuffer G.ArrayBuffer G.$= Just buf
+  G.bufferData G.ArrayBuffer G.$= (fromIntegral lenv, vtxs, G.StaticDraw)
 
 someFunc :: IO ()
 someFunc = do
   graphicsInit
-  withWindow
+  withWindow 
     (\win -> do
         G.makeContextCurrent $ Just win
 
@@ -176,10 +164,7 @@ someFunc = do
         idxs <- marshallIndices faceIndices 
 
         vertexArrayObject <- G.genObjectName
-        buf <- makeArrayBuffer
-        let offsetLocation = G.AttribLocation 0
-            colorLocation  = G.AttribLocation 1
-        G.vertexAttrib4 colorLocation (0.8 :: Float) 1.0 0.0 1.0
+        let posLocation = G.AttribLocation 0
         G.bindVertexArrayObject G.$= Just vertexArrayObject
 
         let network :: G.Program -> B.MomentIO ()
@@ -193,7 +178,7 @@ someFunc = do
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
-                                render prog offsetLocation locs idxs
+                                render prog posLocation locs idxs
                                 G.swapBuffers w) <$> eTick
 
                   eEscapeToClose :: B.Event (IO ())
@@ -208,9 +193,7 @@ someFunc = do
         B.actuate net
         loop win
         G.deleteObjectName vertexArrayObject
-        G.deleteObjectName prog
-        G.deleteObjectName buf
-        G.terminate)
+        G.deleteObjectName prog)
   where
     loop w = do
       G.pollEvents
