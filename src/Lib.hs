@@ -100,7 +100,7 @@ loadObj fp = do
     Left e -> error e
     Right obj -> return obj
 
-locationsToCFloats :: Integral a => [W.Location] -> ([Float], a)
+locationsToCFloats :: Integral a => [W.Location] -> ([CFloat], a)
 locationsToCFloats = (_2 %~ getSum) . foldMap go
   where
     go x = (fmap CFloat [W.locX x, W.locY x, W.locZ x, W.locW x], Sum 4)
@@ -131,7 +131,7 @@ bufferData vtxLoc (vtxs, lenv) = do
 someFunc :: IO ()
 someFunc = do
   graphicsInit
-  withWindow 
+  withWindow
     (\win -> do
         G.makeContextCurrent $ Just win
 
