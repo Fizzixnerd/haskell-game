@@ -17,7 +17,6 @@ import qualified Codec.Wavefront as W
 import Foreign.C.Types
 import Foreign
 import Text.Printf
-import qualified Data.Vector as V
 
 graphicsInit :: IO ()
 graphicsInit = do
@@ -113,26 +112,26 @@ locationsToFloats :: [W.Location] -> ([Float], Int)
 locationsToFloats xs = locationsToFloats' xs 0
   where
     locationsToFloats' [] n = ([], n)
-    locationsToFloats' (x:xs) n = ((W.locX x):(W.locY x):(W.locZ x):(W.locW x):(fst $ locationsToFloats' xs (n + 4)), (snd $ locationsToFloats' xs (n + 4)))
-                
+    locationsToFloats' (x:xs') n = (W.locX x : W.locY x : W.locZ x : W.locW x : fst ( locationsToFloats' xs' (n + 4)), snd $ locationsToFloats' xs' (n + 4))
+
 indicesToShorts :: [(Int, Int, Int)] -> ([CShort], Int)
 indicesToShorts xs = indicesToShorts' xs 0
   where
     indicesToShorts' [] n = ([], n)
-    indicesToShorts' ((a, b, c):xs) n = ((fromIntegral a):(fromIntegral b):(fromIntegral c):(fst $ indicesToShorts' xs (n + 3)), (snd $ indicesToShorts' xs (n + 3)))
+    indicesToShorts' ((a, b, c):xs') n = (fromIntegral a : fromIntegral b : fromIntegral c : fst ( indicesToShorts' xs' (n + 3)), snd $ indicesToShorts' xs' (n + 3))
 
 marshallLocations :: Vector W.Location -> IO (Ptr Float, Int)
 marshallLocations locs = do
   a <- newArray floats
   return (a, n)
     where (floats, n) = locationsToFloats $ toList locs
-  
+
 marshallIndices :: Vector (Int, Int, Int) -> IO (Ptr CShort, Int)
 marshallIndices idxs = do
   a <- newArray shorts
   return (a, n)
     where (shorts, n) = indicesToShorts $ toList idxs
-            
+
 drawSimple :: G.AttribLocation -> (Ptr Float, Int) -> (Ptr CShort, Int) -> IO ()
 drawSimple attrLoc (vtxs, lenv) (idxs, leni) = do
   let vad = G.VertexArrayDescriptor (fromIntegral lenv) G.Float (fromIntegral $ sizeOf (0.0 :: Float)) vtxs
@@ -190,7 +189,7 @@ someFunc = do
               eKey <- B.fromAddHandler addHandlerKey
 
               let eClose :: B.Event (IO ())
-                  eClose = (flip G.setWindowShouldClose True) <$> eShouldClose
+                  eClose = flip G.setWindowShouldClose True <$> eShouldClose
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
@@ -198,14 +197,13 @@ someFunc = do
                                 G.swapBuffers w) <$> eTick
 
                   eEscapeToClose :: B.Event (IO ())
-                  eEscapeToClose = (\(w, _, _, _, _) -> G.setWindowShouldClose w True) 
+                  eEscapeToClose = (\(w, _, _, _, _) -> G.setWindowShouldClose w True)
                     <$> (B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey)
-                                         
+
               B.reactimate eClose
               B.reactimate eRender
               B.reactimate eEscapeToClose
 
-        
         net <- B.compile $ network prog
         B.actuate net
         loop win
