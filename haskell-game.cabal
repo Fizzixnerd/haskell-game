@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 291cb67c946f6ba8a53fdd6cad80a6fae71e2431e28155c18af3a19c1f82d2db
+-- hash: 462390e80c1101dd1d2f93e55e00bdc64dcaa6b8fe63664776413305cbd825f4
 
 name:           haskell-game
 version:        0.1.0.0
@@ -40,6 +40,8 @@ library
     , lens
     , reactive-banana
     , text
+    , vector
+    , wavefront
   exposed-modules:
       Lib
   other-modules:
@@ -64,6 +66,8 @@ executable haskell-game-exe
     , lens
     , reactive-banana
     , text
+    , vector
+    , wavefront
   other-modules:
       Paths_haskell_game
   default-language: Haskell2010
@@ -87,6 +91,8 @@ test-suite haskell-game-test
     , lens
     , reactive-banana
     , text
+    , vector
+    , wavefront
   other-modules:
       Paths_haskell_game
   default-language: Haskell2010
