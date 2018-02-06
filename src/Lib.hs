@@ -173,7 +173,7 @@ someFunc = do
             locations = W.objLocations obj
 
         locs <- marshallLocations locations
-        idxs <- marshallIndices faceIndices 
+        idxs <- marshallIndices faceIndices
 
         vertexArrayObject <- G.genObjectName
         buf <- makeArrayBuffer
