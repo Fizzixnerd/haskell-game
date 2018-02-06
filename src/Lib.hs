@@ -100,12 +100,12 @@ loadObj fp = do
     Left e -> error e
     Right obj -> return obj
 
-locationsToCFloats :: Integral a => [W.Location] -> ([Float], a)
+locationsToCFloats :: [W.Location] -> ([CFloat], Int)
 locationsToCFloats = (_2 %~ getSum) . foldMap go
   where
     go x = (fmap CFloat [W.locX x, W.locY x, W.locZ x, W.locW x], Sum 4)
 
-indicesToUShorts :: (Integral a, Integral b, Integral c) => [(a, a, a)] -> ([b], c)
+indicesToUShorts :: [(Int, Int, Int)] -> ([CUShort], Int)
 indicesToUShorts = (_2 %~ getSum) . foldMap go
   where
     go (a,b,c) = (fmap fromIntegral [a,b,c], Sum 3)
