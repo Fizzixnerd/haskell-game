@@ -85,13 +85,22 @@ compileShaders = do
 render
   :: G.Program
      -> G.AttribLocation
+     -> G.VertexArrayObject
+     -> G.BufferObject
+     -> G.BufferObject
      -> (Ptr CFloat, Int)
      -> (Ptr CUShort, Int)
      -> IO ()
-render p posLocation locs (idxs, leni) = do
+render p posLocation vao vbuf ebuf (vtxs, lenv) (idxs, leni) = do
   G.clear [G.ColorBuffer]
   G.currentProgram G.$= Just p
-  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort idxs
+  G.bindVertexArrayObject G.$= Just vao
+  G.vertexAttribArray posLocation G.$= G.Enabled
+  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
+  let vad = G.VertexArrayDescriptor 3 G.Float 0 nullPtr
+  G.vertexAttribPointer posLocation G.$= (G.ToFloat, vad)
+  G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
+  G.drawElements G.Triangles (fromIntegral leni `div` 3) G.UnsignedShort nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -122,11 +131,15 @@ marshallIndices idxs = do
   return (a, n)
     where (shorts, n) = indicesToUShorts $ toList idxs
 
-bufferData :: G.AttribLocation -> (Ptr CFloat, Int) -> IO ()
-bufferData vtxLoc (vtxs, lenv) = do
-  buf <- G.genObjectName
-  G.bindBuffer G.ArrayBuffer G.$= Just buf
+bufferData :: G.AttribLocation -> (Ptr CUShort, Int) -> (Ptr CFloat, Int) -> IO (G.BufferObject, G.BufferObject)
+bufferData vtxLoc (idxs, leni) (vtxs, lenv) = do
+  vbuf <- G.genObjectName
+  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
   G.bufferData G.ArrayBuffer G.$= (fromIntegral lenv, vtxs, G.StaticDraw)
+  ebuf <- G.genObjectName
+  G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
+  G.bufferData G.ElementArrayBuffer G.$= (fromIntegral leni, idxs, G.StaticDraw)
+  return (vbuf, ebuf)
 
 someFunc :: IO ()
 someFunc = do
@@ -165,7 +178,7 @@ someFunc = do
 
         vertexArrayObject <- G.genObjectName
         let posLocation = G.AttribLocation 0
-        G.bindVertexArrayObject G.$= Just vertexArrayObject
+        (vbuf, ebuf) <- bufferData posLocation idxs locs
 
         let network :: G.Program -> B.MomentIO ()
             network prog = mdo
@@ -178,7 +191,7 @@ someFunc = do
 
                   eRender :: B.Event (IO ())
                   eRender = (\w -> do
-                                render prog posLocation locs idxs
+                                render prog posLocation vertexArrayObject ebuf vbuf locs idxs
                                 G.swapBuffers w) <$> eTick
 
                   eEscapeToClose :: B.Event (IO ())
