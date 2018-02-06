@@ -35,6 +35,7 @@ dependencies:
 - vector
 - linear
 - ghc
+- ghc-paths
 
 library:
   source-dirs: src
