@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3ff9a554765e2bbe28e7a4bd019505c076cbc4f07c86a6d8bed05ae8ec6179c0
+-- hash: b6cb0657c9785a79b654da08b8f59c22ee515ddbd7730601522c44028e67a2b1
 
 name:           haskell-game
 version:        0.1.0.0
@@ -41,6 +41,7 @@ library
     , ghc-paths
     , lens
     , linear
+    , linear-opengl
     , monad-logger
     , mtl
     , reactive-banana
@@ -73,6 +74,7 @@ executable haskell-game-exe
     , haskell-game
     , lens
     , linear
+    , linear-opengl
     , monad-logger
     , mtl
     , reactive-banana
@@ -103,6 +105,7 @@ test-suite haskell-game-test
     , haskell-game
     , lens
     , linear
+    , linear-opengl
     , monad-logger
     , mtl
     , reactive-banana

@@ -18,32 +18,38 @@ import Text.Printf
 import Data.Monoid (Sum(..))
 import Control.Lens
 import qualified Linear as L
+import qualified Linear.OpenGL as L ()
 import Game.Types
 import Data.Maybe
 import GHC.Float (double2Float)
 
-rotateCamera :: L.Quaternion Float -> Camera -> Camera
-rotateCamera q cam = cam & cameraOrientation %~ L.rotate q
-
-translateCamera :: L.V3 Float -> Camera -> Camera
-translateCamera v cam = cam & cameraPosition +~ v
-
-mousePosToRot :: Float -> Double -> Double -> L.Quaternion Float
-mousePosToRot mouseSpeed x y = L.slerp xrot yrot 0.5
+rotateCamera :: (Float, Float) -> Camera -> Camera
+rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
   where
-    xrot = L.axisAngle (L.V3 1 0 0) (mouseSpeed * double2Float (1920/2 - x))
-    yrot = L.axisAngle (L.V3 0 1 0) (mouseSpeed * double2Float (1080/2 - y))
+    go (hor, ver) = (hor + dhor, max (-pi) . min pi $ ver + dver)
 
-moveCamera :: Float -> Movement -> Camera -> Camera
-moveCamera c MoveLeft            = translateCamera (L.V3 (negate c) 0 0)
-moveCamera c MoveRight           = translateCamera (L.V3 c 0 0)
-moveCamera c MoveForward         = translateCamera (L.V3 0 0 (negate c))
-moveCamera c MoveBackward        = translateCamera (L.V3 0 0 c)
-moveCamera c MoveUp              = translateCamera (L.V3 0 c 0)
-moveCamera c MoveDown            = translateCamera (L.V3 0 (negate c) 0)
-moveCamera c (MoveCameraDir x y) = rotateCamera q
+translateCameraRelative :: L.V3 Float -> Camera -> Camera
+translateCameraRelative v cam = cam & cameraPosition +~ vrel
   where
-    q = mousePosToRot c x y
+    vrel = L.rotate (L.axisAngle (L.V3 0 1 0) (fst . _cameraOrientation $ cam)) v
+
+
+mousePosToRot :: Float -> Double -> Double -> (Float, Float)
+mousePosToRot mouseSpeed x y = (xrot, yrot)
+  where
+    xrot = mouseSpeed * double2Float (1920/2 - x)
+    yrot = mouseSpeed * double2Float (1080/2 - y)
+
+moveCamera :: Float -> Float -> Movement -> Camera -> Camera
+moveCamera _ t MoveLeft            = translateCameraRelative (L.V3 (negate t) 0 0)
+moveCamera _ t MoveRight           = translateCameraRelative (L.V3 t 0 0)
+moveCamera _ t MoveForward         = translateCameraRelative (L.V3 0 0 (negate t))
+moveCamera _ t MoveBackward        = translateCameraRelative (L.V3 0 0 t)
+moveCamera _ t MoveUp              = translateCameraRelative (L.V3 0 t 0)
+moveCamera _ t MoveDown            = translateCameraRelative (L.V3 0 (negate t) 0)
+moveCamera o _ (MoveCameraDir x y) = rotateCamera q
+  where
+    q = mousePosToRot o x y
 
 keyToMovement :: G.Key -> Maybe Movement
 keyToMovement G.Key'W = Just MoveForward
@@ -54,8 +60,8 @@ keyToMovement G.Key'LeftShift = Just MoveDown
 keyToMovement G.Key'Space = Just MoveUp
 keyToMovement _ = Nothing
 
-cameraToMovement :: (G.Window, Double, Double) -> Movement
-cameraToMovement (_, x, y) = MoveCameraDir x y
+mouseToMovement :: (G.Window, Double, Double) -> Movement
+mouseToMovement (_, x, y) = MoveCameraDir x y
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
@@ -66,6 +72,8 @@ graphicsInit = liftIO $ do
   G.windowHint $ G.WindowHint'Samples 4
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
   G.windowHint $ G.WindowHint'OpenGLDebugContext True
+  G.cullFace G.$= Just G.Back
+
 
 withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
@@ -105,7 +113,7 @@ compileShaders = liftIO $ do
   G.attachShader program vertexShader
 --  G.attachShader program tessellationControlShader
 --  G.attachShader program tessellationEvaluationShader
-  G.attachShader program geometryShader
+--  G.attachShader program geometryShader
   G.attachShader program fragmentShader
   G.linkProgram program
   G.validateProgram program
@@ -120,7 +128,9 @@ compileShaders = liftIO $ do
   return program
 
 render :: MonadIO m =>
-          G.Program
+          GameState
+       -> G.Program
+       -> G.UniformLocation
        -> G.AttribLocation
        -> G.VertexArrayObject
        -> G.BufferObject -- ^ Vertex buffer
@@ -128,16 +138,14 @@ render :: MonadIO m =>
        -> (Ptr CFloat, Int)
        -> (Ptr CUShort, Int)
        -> m ()
-render prog posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ do
-  G.clear [G.ColorBuffer]
+render gs prog mvpLoc posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ do
+  G.clear [G.ColorBuffer, G.DepthBuffer]
   G.currentProgram G.$= Just prog
+  G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
   G.bindVertexArrayObject G.$= Just vao
-  G.vertexAttribArray posLoc G.$= G.Enabled
-  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  let vad = G.VertexArrayDescriptor 3 G.Float 0 nullPtr
-  G.vertexAttribPointer posLoc G.$= (G.ToFloat, vad)
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.drawElements G.Triangles (fromIntegral leni `div` 3) G.UnsignedShort nullPtr
+  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
+--  G.drawElements G.Triangles 39 G.UnsignedShort nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -170,19 +178,26 @@ marshallIndices idxs = liftIO $ do
 
 bufferData :: MonadIO m =>
               G.AttribLocation
-           -> (Ptr CUShort, Int)
            -> (Ptr CFloat, Int)
-           -> m (G.BufferObject, G.BufferObject)
-bufferData vtxLoc (idxs, leni) (vtxs, lenv) = liftIO $ do
+           -> (Ptr CUShort, Int)
+           -> m (G.VertexArrayObject, G.BufferObject, G.BufferObject)
+bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
+  vao <- G.genObjectName
+  G.bindVertexArrayObject G.$= Just vao
+
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * (sizeOf (0.0 :: Float)) * 4
+  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat)
                                   , vtxs, G.StaticDraw )
+  G.vertexAttribArray vtxLoc G.$= G.Enabled
+  let vad = G.VertexArrayDescriptor 4 G.Float 0 nullPtr
+  G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vad)
+
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * (sizeOf (0 :: CUShort)) * 3
+  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort)
                                          , idxs, G.StaticDraw )
-  return (vbuf, ebuf)
+  return (vao, vbuf, ebuf)
 
 doItandGimmeFireThing :: Game (NamedHandler (), IO ())
 doItandGimmeFireThing = do
@@ -190,6 +205,8 @@ doItandGimmeFireThing = do
   mWin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   let win = fromJust mWin
   liftIO $ G.makeContextCurrent $ Just win
+
+  liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
 
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
@@ -202,15 +219,16 @@ doItandGimmeFireThing = do
   printContextVersion win
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
 
-  prog <- liftIO $ compileShaders
+  prog <- liftIO compileShaders
+  mvpLocation <- liftIO $ G.uniformLocation prog "MVP"
+
   G.polygonMode G.$= (G.Line, G.Line)
   G.pointSize G.$= 40.0
-  G.clearColor G.$= G.Color4 0.5 0 0 0
-  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+  G.clearColor G.$= G.Color4 0 0 0.4 0
+--  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-  liftIO $ G.setWindowRefreshCallback win (Just $ fire tick)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y)))
+  liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> (G.setCursorPos w (1920/2) (1080/2))))
 
   obj <- loadObj "res/simple-cube.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
@@ -222,18 +240,16 @@ doItandGimmeFireThing = do
   locs <- marshallLocations locations
   idxs <- marshallIndices faceIndices
 
-  vertexArrayObject <- G.genObjectName
   let posLocation = G.AttribLocation 0
-  (vbuf, ebuf) <- bufferData posLocation idxs locs
+  (vertexArrayObject, vbuf, ebuf) <- bufferData posLocation locs idxs
 
   let network :: B.MomentIO ()
       network = mdo
         let initGameState = GameState
               { _gameStateCamera = Camera
                 { _cameraPosition = L.V3 0 0 0
-                , _cameraOrientation = L.V3 0 0 (negate 1)
-                , _cameraFOV = 90 } }
-
+                , _cameraOrientation = (0, 0)
+                , _cameraFOV = pi/2 } }
         eTick <- B.fromAddHandler addHandlerTick
         eShouldClose <- B.fromAddHandler addHandlerShouldClose
         eKey <- B.fromAddHandler addHandlerKey
@@ -244,9 +260,9 @@ doItandGimmeFireThing = do
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
 
             eRender :: B.Event (IO ())
-            eRender = (\w -> do
-                          render prog posLocation vertexArrayObject vbuf ebuf locs idxs
-                          G.swapBuffers w) <$> eTick
+            eRender = B.apply ((\gs w -> do
+                                   render gs prog mvpLocation posLocation vertexArrayObject vbuf ebuf locs idxs
+                                   G.swapBuffers w) <$> bWorld) eTick
 
             eEscapeToClose :: B.Event (IO ())
             eEscapeToClose = (\(w, _, _, _, _) -> G.setWindowShouldClose w True)
@@ -256,10 +272,10 @@ doItandGimmeFireThing = do
             ePrintHello = (\_ -> print "hello") <$> eHello
 
             eMovement :: B.Event Movement
-            eMovement = B.unionWith const (B.filterJust ((\(_,k,_,_,_) -> keyToMovement k) <$> eKey)) (cameraToMovement <$> eMousePos)
+            eMovement = B.unionWith const (B.filterJust ((\(_,k,_,_,_) -> keyToMovement k) <$> eKey)) (mouseToMovement <$> eMousePos)
 
             eCamMove :: B.Event (GameState -> GameState)
-            eCamMove = (\m gs -> (gameStateCamera %~ moveCamera (0.005/60) m $ gs)) <$> eMovement
+            eCamMove = (\m gs -> (gameStateCamera %~ moveCamera (0.005/60) (3/60) m $ gs)) <$> eMovement
 
         bWorld <- B.accumB initGameState (B.unions [eCamMove])
 
@@ -278,6 +294,7 @@ doItandGimmeFireThing = do
         G.terminate
           where
             loop w = do
+              fire tick w
               G.pollEvents
               sc <- G.windowShouldClose w
               unless sc $ loop w
