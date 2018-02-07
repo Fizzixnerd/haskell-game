@@ -57,7 +57,6 @@ keyToMovement _ = Nothing
 cameraToMovement :: (G.Window, Double, Double) -> Movement
 cameraToMovement (_, x, y) = MoveCameraDir x y
 
-
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
   _ <- G.init
