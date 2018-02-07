@@ -2,10 +2,10 @@
 
 in VS_OUT {
   vec4 color;
-} tes_color;
+} vs_out;
 
 out vec4 color;
 
 void main(void) {
-  color = tes_color.color;
+  color = vs_out.color;
 }

@@ -1,7 +1,7 @@
 #version 450 core
 
 layout (triangles) in;
-layout (points, max_vertices = 3) out;
+layout (triangle_strip, max_vertices = 3) out;
 
 in VS_OUT {
   vec4 color;

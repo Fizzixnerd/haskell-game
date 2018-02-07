@@ -125,7 +125,7 @@ compileShaders = liftIO $ do
   G.attachShader program vertexShader
 --  G.attachShader program tessellationControlShader
 --  G.attachShader program tessellationEvaluationShader
-  G.attachShader program geometryShader
+--  G.attachShader program geometryShader
   G.attachShader program fragmentShader
   G.linkProgram program
   G.validateProgram program
@@ -156,8 +156,8 @@ render gs prog mvpLoc posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ 
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
   G.bindVertexArrayObject G.$= Just vao
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
---  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
-  G.drawElements G.Triangles 39 G.UnsignedShort nullPtr
+  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
+--  G.drawElements G.Triangles 39 G.UnsignedShort nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
