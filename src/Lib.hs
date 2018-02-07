@@ -13,7 +13,7 @@ import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks as B
 import qualified Codec.Wavefront as W
 import Foreign.C.Types
-import Foreign
+import Foreign hiding (void)
 import Text.Printf
 import Data.Monoid (Sum(..))
 import Control.Lens
@@ -150,14 +150,14 @@ render :: MonadIO m =>
        -> (Ptr CFloat, Int)
        -> (Ptr CUShort, Int)
        -> m ()
-render gs prog mvpLoc posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ do
+render gs prog mvpLoc _ vao vbuf ebuf _ (_, leni) = liftIO $ do
   G.clear [G.ColorBuffer, G.DepthBuffer]
   G.currentProgram G.$= Just prog
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
   G.bindVertexArrayObject G.$= Just vao
+  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
   G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
--- G.drawElements G.Triangles 36 G.UnsignedShort nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -200,7 +200,8 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
   G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat)
-                                  , vtxs, G.StaticDraw )
+                                  , vtxs
+                                  , G.StaticDraw )
   G.vertexAttribArray vtxLoc G.$= G.Enabled
   let vad = G.VertexArrayDescriptor 4 G.Float 0 nullPtr
   G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vad)
@@ -208,7 +209,8 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
   G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort)
-                                         , idxs, G.StaticDraw )
+                                         , idxs
+                                         , G.StaticDraw )
   return (vao, vbuf, ebuf)
 
 doItandGimmeFireThing :: Game (NamedHandler (), IO ())
@@ -245,9 +247,9 @@ doItandGimmeFireThing = do
 
   obj <- loadObj "res/simple-cube.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
-      faceIndices = (\(W.Face a b c xs) -> ( W.faceLocIndex a
-                                           , W.faceLocIndex b
-                                           , W.faceLocIndex c )) <$> faces
+      faceIndices = (\(W.Face a b c _) -> ( W.faceLocIndex a - 1
+                                          , W.faceLocIndex b - 1
+                                          , W.faceLocIndex c - 1)) <$> faces
       locations = W.objLocations obj
 
   locs <- marshallLocations locations
@@ -282,7 +284,7 @@ doItandGimmeFireThing = do
               <$> B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey
 
             ePrintHello :: B.Event (IO ())
-            ePrintHello = const (print "hello") <$> eHello
+            ePrintHello = const (print ("hello" :: String)) <$> eHello
 
             eMovement :: B.Event Movement
             eMovement = B.unionWith const (B.filterJust ((\(_,k,_,_,_) -> keyToMovement k) <$> eKey)) (mouseToMovement <$> eMousePos)
@@ -299,8 +301,8 @@ doItandGimmeFireThing = do
 
   net <- liftIO $ B.compile network
   liftIO $ B.actuate net
-  let someFunc :: IO ()
-      someFunc = do
+  let someFunc' :: IO ()
+      someFunc' = do
         loop win
         G.deleteObjectName vertexArrayObject
         G.deleteObjectName prog
@@ -312,9 +314,12 @@ doItandGimmeFireThing = do
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (hello, someFunc)
+  return (hello, someFunc')
 
-someFunc :: Game ThreadId
-someFunc = do
+game :: Game ThreadId
+game = do
   x <- doItandGimmeFireThing
   liftIO $ forkIO $ snd x
+
+someFunc :: IO ()
+someFunc = void $ runGame game
