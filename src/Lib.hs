@@ -23,6 +23,10 @@ import Game.Types
 import Data.Maybe
 import GHC.Float (double2Float)
 import Control.Concurrent
+import qualified Graphics.Text.TrueType as T
+import qualified Codec.Picture as T
+import qualified Graphics.Rasterific as T
+import qualified Graphics.Rasterific.Texture as T
 
 rotateCamera :: (Float, Float) -> Camera -> Camera
 rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
@@ -211,10 +215,16 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
   G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort)
                                          , idxs
                                          , G.StaticDraw )
+  free vtxs
+  free idxs
   return (vao, vbuf, ebuf)
 
-doItandGimmeFireThing :: Game (NamedHandler (), IO ())
-doItandGimmeFireThing = do
+doItAndGimmeFireThing :: Game ( NamedHandler ()
+                              , NamedHandler ()
+                              , NamedHandler G.Window
+                              , G.Window
+                              , IO () )
+doItAndGimmeFireThing = do
   graphicsInit
   mWin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
   let win = fromJust mWin
@@ -222,12 +232,22 @@ doItandGimmeFireThing = do
 
   liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
 
+  eFont <- liftIO $ T.loadFontFile "fonts/comic-sans.ttf"
+  let font = case eFont of
+        Left e -> error e
+        Right f -> f
+      text = T.renderDrawing 300 70 (T.PixelRGBA8 255 255 255 255)
+             . T.withTexture (T.uniformTexture $ T.PixelRGBA8 0 0 0 255) $
+             T.printTextAt font (T.PointSize 12) (T.V2 20 40)
+             "A simple text test!"
+
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
   (addHandlerTick, tick) <- newNamedEventHandler "tick"
   (addHandlerKey, key) <- newNamedEventHandler "key"
   (addHandlerHello, hello) <- newNamedEventHandler "hello"
   (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
+  (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset" 
 
   G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
@@ -240,7 +260,7 @@ doItandGimmeFireThing = do
   G.polygonMode G.$= (G.Line, G.Line)
   G.pointSize G.$= 40.0
   G.clearColor G.$= G.Color4 0 0 0.4 0
---  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+  -- G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> (G.setCursorPos w (1920 / 2) (1080 / 2))))
@@ -270,6 +290,7 @@ doItandGimmeFireThing = do
         eKey <- B.fromAddHandler addHandlerKey
         eHello <- B.fromAddHandler addHandlerHello
         eMousePos <- B.fromAddHandler addHandlerMousePos
+        eGameReset <- B.fromAddHandler addHandlerGameReset
 
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
@@ -291,8 +312,11 @@ doItandGimmeFireThing = do
 
             eCamMove :: B.Event (GameState -> GameState)
             eCamMove = (\m gs -> (gameStateCamera %~ moveCamera (0.005/60) (3/60) m $ gs)) <$> eMovement
+            
+            eResetGame :: B.Event (GameState -> GameState)
+            eResetGame = const (const initGameState) <$> eGameReset
 
-        bWorld <- B.accumB initGameState (B.unions [eCamMove])
+        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame])
 
         B.reactimate ePrintHello
         B.reactimate eClose
@@ -314,12 +338,16 @@ doItandGimmeFireThing = do
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (hello, someFunc')
+  return (hello, gameReset, shouldClose, win, someFunc')
 
-game :: Game ThreadId
+game :: Game ( NamedHandler ()
+             , NamedHandler ()
+             , IO ()
+             , ThreadId)
 game = do
-  x <- doItandGimmeFireThing
-  liftIO $ forkIO $ snd x
+  (h, r, sc, w, x) <- doItAndGimmeFireThing
+  ti <- liftIO $ forkIO x
+  return (h, r, fire sc w, ti)
 
 someFunc :: IO ()
 someFunc = void $ runGame game

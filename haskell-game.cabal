@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e1c711fce45559357a7d78c3b1f9d037672715e58475e77b64a416e1b504b689
+-- hash: 095b2c413f3e5ff512f6f8ffb834688e253d01d7deac69bb44eeb5f2891f973d
 
 name:           haskell-game
 version:        0.1.0.0
@@ -29,10 +29,12 @@ library
   hs-source-dirs:
       src
   build-depends:
-      GLFW-b
+      FontyFruity
+    , GLFW-b
     , JuicyPixels
     , ObjectName
     , OpenGL
+    , Rasterific
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -61,10 +63,12 @@ executable haskell-game-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:
-      GLFW-b
+      FontyFruity
+    , GLFW-b
     , JuicyPixels
     , ObjectName
     , OpenGL
+    , Rasterific
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -92,10 +96,12 @@ test-suite haskell-game-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      GLFW-b
+      FontyFruity
+    , GLFW-b
     , JuicyPixels
     , ObjectName
     , OpenGL
+    , Rasterific
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
