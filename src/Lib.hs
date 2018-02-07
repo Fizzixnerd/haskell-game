@@ -22,6 +22,7 @@ import qualified Linear.OpenGL as L ()
 import Game.Types
 import Data.Maybe
 import GHC.Float (double2Float)
+import Control.Concurrent
 
 rotateCamera :: (Float, Float) -> Camera -> Camera
 rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
@@ -155,7 +156,7 @@ render gs prog mvpLoc posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ 
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
   G.bindVertexArrayObject G.$= Just vao
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.drawElements G.Triangles (fromIntegral leni * 3) G.UnsignedShort nullPtr
+  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
 -- G.drawElements G.Triangles 36 G.UnsignedShort nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
@@ -198,7 +199,7 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
 
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat) * 4
+  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat)
                                   , vtxs, G.StaticDraw )
   G.vertexAttribArray vtxLoc G.$= G.Enabled
   let vad = G.VertexArrayDescriptor 4 G.Float 0 nullPtr
@@ -206,7 +207,7 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
 
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort) * 3
+  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort)
                                          , idxs, G.StaticDraw )
   return (vao, vbuf, ebuf)
 
@@ -231,6 +232,7 @@ doItandGimmeFireThing = do
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
 
   prog <- liftIO compileShaders
+  -- This is the bad way of doing this.
   mvpLocation <- liftIO $ G.uniformLocation prog "MVP"
 
   G.polygonMode G.$= (G.Line, G.Line)
@@ -239,7 +241,7 @@ doItandGimmeFireThing = do
 --  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> (G.setCursorPos w (1920/2) (1080/2))))
+  liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> (G.setCursorPos w (1920 / 2) (1080 / 2))))
 
   obj <- loadObj "res/simple-cube.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
@@ -280,7 +282,7 @@ doItandGimmeFireThing = do
               <$> B.filterE (\(_, k, _, _, _) -> k == G.Key'Escape) eKey
 
             ePrintHello :: B.Event (IO ())
-            ePrintHello = (\_ -> print "hello") <$> eHello
+            ePrintHello = const (print "hello") <$> eHello
 
             eMovement :: B.Event Movement
             eMovement = B.unionWith const (B.filterJust ((\(_,k,_,_,_) -> keyToMovement k) <$> eKey)) (mouseToMovement <$> eMousePos)
@@ -315,4 +317,4 @@ doItandGimmeFireThing = do
 someFunc :: Game ThreadId
 someFunc = do
   x <- doItandGimmeFireThing
-  liftIO $ forkOS $ snd x
+  liftIO $ forkIO $ snd x
