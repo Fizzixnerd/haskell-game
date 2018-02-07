@@ -27,6 +27,8 @@ dependencies:
 - text
 - bytestring
 - JuicyPixels
+- FontyFruity
+- Rasterific
 - GLFW-b
 - OpenGL
 - ObjectName
