@@ -33,7 +33,6 @@ translateCameraRelative v cam = cam & cameraPosition +~ vrel
   where
     vrel = L.rotate (L.axisAngle (L.V3 0 1 0) (fst . _cameraOrientation $ cam)) v
 
-
 mousePosToRot :: Float -> Double -> Double -> (Float, Float)
 mousePosToRot mouseSpeed x y = (xrot, yrot)
   where
@@ -62,6 +61,18 @@ keyToMovement _ = Nothing
 
 mouseToMovement :: (G.Window, Double, Double) -> Movement
 mouseToMovement (_, x, y) = MoveCameraDir x y
+
+cameraMVP :: Getter Camera (L.M44 Float)
+cameraMVP = to go
+  where
+    go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
+      where
+        vup  = L.V3 0 1 0
+        vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
+        camModel = L.identity
+        camView = L.lookAt vpos (vpos + vdir) vup
+      -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+        camPerspective = L.perspective cfov (16/9) 0.1 100
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
@@ -144,8 +155,8 @@ render gs prog mvpLoc posLoc vao vbuf ebuf (vtxs, lenv) (idxs, leni) = liftIO $ 
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
   G.bindVertexArrayObject G.$= Just vao
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
---  G.drawElements G.Triangles 39 G.UnsignedShort nullPtr
+  G.drawElements G.Triangles (fromIntegral leni * 3) G.UnsignedShort nullPtr
+-- G.drawElements G.Triangles 36 G.UnsignedShort nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -187,7 +198,7 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
 
   vbuf <- G.genObjectName
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat)
+  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat) * 4
                                   , vtxs, G.StaticDraw )
   G.vertexAttribArray vtxLoc G.$= G.Enabled
   let vad = G.VertexArrayDescriptor 4 G.Float 0 nullPtr
@@ -195,7 +206,7 @@ bufferData vtxLoc (vtxs, lenv) (idxs, leni) = liftIO $ do
 
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort)
+  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort) * 3
                                          , idxs, G.StaticDraw )
   return (vao, vbuf, ebuf)
 
@@ -301,7 +312,7 @@ doItandGimmeFireThing = do
 
   return (hello, someFunc)
 
-someFunc :: Game ()
+someFunc :: Game ThreadId
 someFunc = do
   x <- doItandGimmeFireThing
-  liftIO $ snd x
+  liftIO $ forkOS $ snd x
