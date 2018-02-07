@@ -1,11 +1,13 @@
 #version 450 core
 
 in VS_OUT {
-  vec4 color;
+  vec2 UV;
 } vs_out;
 
-out vec4 color;
+uniform sampler2D texSampler;
+
+out vec3 color;
 
 void main(void) {
-  color = vs_out.color;
+	color = texture( texSampler, vs_out.UV ).rgb;
 }
