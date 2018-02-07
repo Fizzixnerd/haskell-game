@@ -38,6 +38,7 @@ dependencies:
 - ghc-paths
 - monad-logger
 - mtl
+- linear-opengl
 
 library:
   source-dirs: src
