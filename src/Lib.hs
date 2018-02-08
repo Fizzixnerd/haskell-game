@@ -283,7 +283,7 @@ bufferData vtxLoc (vtxs, lenv) texLoc (texs, lent) (idxs, leni) = liftIO $ do
 
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUShort)
+  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUInt)
                                          , idxs
                                          , G.StaticDraw )
   free vtxs
@@ -338,7 +338,7 @@ doItAndGimmeFireThing = do
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> G.setCursorPos w (1920 / 2) (1080 / 2)))
 
-  obj <- loadObj "res/coca-cola.obj"
+  obj <- loadObj "res/umbreon.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
       faceIndices = (\(W.Face a b c _) -> ( W.faceLocIndex a - 1
                                           , W.faceLocIndex b - 1
