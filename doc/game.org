@@ -1,0 +1,65 @@
+* Haskell Game
+
+** Types
+
+*** Scripts
+
+    Scripts are run-time loaded fragments of Haskell code, associated
+    with particular objects.
+
+    The interface would consist of an instance of a Script structure.
+
+    #+BEGIN_SRC haskell -n
+      data Script = Script 
+	{ scriptID           :: ObjectID
+	, scriptOwner        :: ObjectID
+	, scriptSuperScripts :: Vector ScriptName
+	, scriptName         :: ScriptName
+	, scriptOnInit       :: GameState -> Game GameState
+	, scriptOnLoad       :: GameState -> Game GameState
+	, scriptOnEvent      :: Vector ( EventName
+				       , forall a . Typeable a => a -> GameState -> Game GameState)
+	, scriptOnUnload     :: GameState -> Game GameState
+	, scriptOnExit       :: GameState -> Game GameState
+	}
+    #+END_SRC
+
+    In reality, one would supply a source file that contained
+    defintions of `name', `superScripts', `onInit', `onEvent', and so
+    on, and the runtime would assign the owner and ID (since they
+    can't be known at script-writing time, obviously).
+
+    `superScripts' are dependencies.  Script names will be structured
+    to help accomodate avoiding name clashes (i.e.
+    "com.fizzixnerd.myScript").  Scripts will not run their `onInit'
+    until all of their superScripts have run theirs.  Something
+    something `onExit' reverse the order for clean-up?
+
+    `onInit' is run if the script's object is loaded when the level
+    begins.  Most scripts will not need this one, but I imagine most
+    scripts will come in "packs" where there is one startup/shutdown
+    script that sets up everything, and a bunch of other scripts
+    choose this script as their `superScript'.  In this case, they can
+    just be associated with a permanent dummy object.  Same idea with
+    `onExit'.
+
+    `onLoad' will run after the game has been initialized, at the
+    point when the associated object is loaded.  Note that `onLoad'
+    runs BEFORE any events are handled -- indeed, event registration
+    happens after `onLoad'.  (For `onInit' scripts, this function is
+    probably superfluous.)  For scripts associated to NPCs etc, this
+    will be their AI.  When the associated object is unloaded,
+    `onUnload' will be called, after which the event handlers will be
+    deregistered (see below).
+
+    `onEvent' is sort of fun.  Scripts will have to have some way of
+    setting up their own events.  After doing so, they can register
+    event handlers to them, or to other events set up in other ways.
+    I guess this would be the recommended way of dealing with events,
+    rather than binding everything to the tick event.  Anyways,
+    `onEvent' is a Vector of EventNames that they want to bind to,
+    along with the associated event handler.  EventNames can appear
+    more than once.  They will be passed the Event's value, but will
+    have to cast it themselves if they want to examine it.  This is
+    the purpose of using Typeable.  If an EventName is not found, I
+    guess it will be logged and nothing else will happen.
