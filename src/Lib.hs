@@ -157,7 +157,7 @@ render :: MonadIO m =>
        -> G.BufferObject -- ^ Texture coordinate buffer
        -> G.BufferObject -- ^ Element buffer
        -> (Ptr CFloat, Int)
-       -> (Ptr CUShort, Int)
+       -> (Ptr CUInt, Int)
        -> G.TextureObject
        -> m ()
 render gs prog mvpLoc texSampleLocation _ vao vbuf tbuf ebuf _ (_, leni) tex = liftIO $ do
@@ -173,7 +173,7 @@ render gs prog mvpLoc texSampleLocation _ vao vbuf tbuf ebuf _ (_, leni) tex = l
 --  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
 --  G.bindBuffer G.TextureBuffer G.$= Just tbuf
 --  G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedShort nullPtr
+  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedInt nullPtr
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
 loadObj fp = do
@@ -194,8 +194,8 @@ locationsToCFloats = (_2 %~ getSum) . foldMap go
   where
     go x = (fmap CFloat [W.locX x, W.locY x, W.locZ x, W.locW x], Sum 4)
 
-indicesToUShorts :: [(Int, Int, Int)] -> ([CUShort], Int)
-indicesToUShorts = (_2 %~ getSum) . foldMap go
+indicesToUInts :: [(Int, Int, Int)] -> ([CUInt], Int)
+indicesToUInts = (_2 %~ getSum) . foldMap go
   where
     go (a,b,c) = (fmap fromIntegral [a,b,c], Sum 3)
 
@@ -210,18 +210,17 @@ marshallLocations locs = liftIO $ do
   return (a, n)
     where (floats, n) = locationsToCFloats $ toList locs
 
-marshallIndices :: MonadIO m => Vector (Int, Int, Int) -> m (Ptr CUShort, Int)
+marshallIndices :: MonadIO m => Vector (Int, Int, Int) -> m (Ptr CUInt, Int)
 marshallIndices idxs = liftIO $ do
   a <- newArray shorts
   return (a, n)
-    where (shorts, n) = indicesToUShorts $ toList idxs
+    where (shorts, n) = indicesToUInts $ toList idxs
 
 marshallTexCoords :: MonadIO m => Vector W.TexCoord -> m (Ptr CFloat, Int)
 marshallTexCoords texcoords = liftIO $ do
   a <- newArray floats
   return (a, n)
     where (floats, n) = texCoordsToCFloats $ toList texcoords
-
 {-
 marshallTextureBMP :: MonadIO m => P.DynamicImage -> m (Ptr Word8, Int, Int)
 marshallTextureBMP img = liftIO $ do
@@ -241,8 +240,8 @@ marshallTextureBMP img = liftIO . return $ (a, w, h)
 loadBMPTexture :: MonadIO m => FilePath -> m G.TextureObject
 loadBMPTexture fp = liftIO $ do
   (ufptr, w, h) <- loadPic fp >>= marshallTextureBMP
-  texbuf <- G.genObjectName
-  G.textureBinding G.Texture2D G.$= Just texbuf
+  tbuf <- G.genObjectName
+  G.textureBinding G.Texture2D G.$= Just tbuf
   withForeignPtr ufptr $ \texptr -> do
     let texSize = G.TextureSize2D (fromIntegral w) (fromIntegral h)
         pixDat  = G.PixelData G.RGB G.UnsignedByte texptr
@@ -250,16 +249,16 @@ loadBMPTexture fp = liftIO $ do
         magFilter = G.Nearest
     G.texImage2D G.Texture2D G.NoProxy 0 G.RGB8 texSize 0 pixDat
     G.textureFilter G.Texture2D G.$= (minFilter, magFilter)
-    return texbuf
+    return tbuf
 
 bufferData :: MonadIO m =>
               G.AttribLocation
            -> (Ptr CFloat, Int)
            -> G.AttribLocation
            -> (Ptr CFloat, Int)
-           -> (Ptr CUShort, Int)
+           -> (Ptr CUInt, Int)
            -> m (G.VertexArrayObject, G.BufferObject, G.BufferObject, G.BufferObject)
-bufferData vtxLoc (vtxs, lenv) texLoc (texs, lentex) (idxs, leni) = liftIO $ do
+bufferData vtxLoc (vtxs, lenv) texLoc (texs, lent) (idxs, leni) = liftIO $ do
   vao <- G.genObjectName
   G.bindVertexArrayObject G.$= Just vao
 
@@ -272,14 +271,15 @@ bufferData vtxLoc (vtxs, lenv) texLoc (texs, lentex) (idxs, leni) = liftIO $ do
   let vad = G.VertexArrayDescriptor 4 G.Float 0 nullPtr
   G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vad)
 
-  texbuf <- G.genObjectName
+
+  tbuf <- G.genObjectName
   G.vertexAttribArray texLoc G.$= G.Enabled
-  G.bindBuffer G.ArrayBuffer G.$= Just texbuf
-  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lentex * sizeOf (0.0 :: CFloat)
+  G.bindBuffer G.ArrayBuffer G.$= Just tbuf
+  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lent * sizeOf (0.0 :: CFloat)
                                   , texs
                                   , G.StaticDraw )
-  let texad = G.VertexArrayDescriptor 2 G.Float 0 nullPtr
-  G.vertexAttribPointer texLoc G.$= (G.ToFloat, texad)
+  let tad = G.VertexArrayDescriptor 2 G.Float 0 nullPtr
+  G.vertexAttribPointer texLoc G.$= (G.ToFloat, tad)
 
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
@@ -288,7 +288,8 @@ bufferData vtxLoc (vtxs, lenv) texLoc (texs, lentex) (idxs, leni) = liftIO $ do
                                          , G.StaticDraw )
   free vtxs
   free idxs
-  return (vao, vbuf, texbuf, ebuf)
+  free texs
+  return (vao, vbuf, tbuf, ebuf)
 
 doItAndGimmeFireThing :: Game ( NamedHandler ()
                               , NamedHandler ()
@@ -337,7 +338,7 @@ doItAndGimmeFireThing = do
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> G.setCursorPos w (1920 / 2) (1080 / 2)))
 
-  obj <- loadObj "res/simple-cube-2.obj"
+  obj <- loadObj "res/coca-cola.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
       faceIndices = (\(W.Face a b c _) -> ( W.faceLocIndex a - 1
                                           , W.faceLocIndex b - 1
