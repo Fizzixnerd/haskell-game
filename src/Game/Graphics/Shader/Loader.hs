@@ -17,11 +17,11 @@ makeShader shaderName shaderType = liftIO $ do
 
 compileShaders :: MonadIO m => m G.Program
 compileShaders = liftIO $ do
-  vertexShader <- makeShader "shader.vs" G.VertexShader
---  tessellationControlShader <- makeShader "shader.tcs" G.TessControlShader
---  tessellationEvaluationShader <- makeShader "shader.tes" G.TessEvaluationShader
---  geometryShader <- makeShader "shader.gs" G.GeometryShader
-  fragmentShader <- makeShader "shader.fs" G.FragmentShader
+  vertexShader <- makeShader "res/shaders/shader.vs" G.VertexShader
+--  tessellationControlShader <- makeShader "res/shaders/shader.tcs" G.TessControlShader
+--  tessellationEvaluationShader <- makeShader "res/shaders/shader.tes" G.TessEvaluationShader
+--  geometryShader <- makeShader "res/shaders/shader.gs" G.GeometryShader
+  fragmentShader <- makeShader "res/shaders/shader.fs" G.FragmentShader
 
   program <- G.createProgram
   G.attachShader program vertexShader
