@@ -17,7 +17,6 @@ import ClassyPrelude
 import Control.Lens
 import Game.StorableTypes
 
-import Data.Data
 import qualified Control.Monad.Logger as ML
 import qualified Reactive.Banana.Frameworks as B
 import qualified Linear as L
@@ -26,7 +25,7 @@ import qualified Data.Map.Strict as MS
 import Foreign.C.Types
 import qualified Codec.Wavefront as W
 
-newtype Game a = Game { unGame :: ML.LoggingT IO a }
+newtype Game a = Game { _unGame :: ML.LoggingT IO a }
   deriving ( Functor
            , Applicative
            , Monad

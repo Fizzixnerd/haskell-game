@@ -5,36 +5,36 @@
 
 module Model.Loader where
 
--- import ClassyPrelude
--- import qualified Codec.Wavefront as W
--- import Foreign.C.Types
--- import Game.Types
--- import qualified Data.Vector.Storable as VS
--- import qualified Data.Map.Strict as MS
--- import qualified Linear as L
--- import Control.Lens
--- import qualified Control.Monad.State.Strict as MS
+import ClassyPrelude
+import Control.Lens
+import Foreign.C.Types
+import Game.Types
+import qualified Codec.Wavefront as W
+import qualified Control.Monad.State.Strict as MS
+import qualified Data.Map.Strict as MS
+import qualified Data.Vector.Storable as VS
+import qualified Linear as L
 
--- type ExpandObjVTNState = MS.State ExpandObjVTN
+type ExpandObjVTNState = MS.State ExpandObjVTN
 
--- loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
--- loadObj fp = do
---   eObj :: Either String W.WavefrontOBJ <- W.fromFile fp
---   case eObj of
---     Left e -> error e
---     Right obj -> return obj
+loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
+loadObj fp = do
+  eObj :: Either String W.WavefrontOBJ <- W.fromFile fp
+  case eObj of
+    Left e -> error e
+    Right obj -> return obj
 
 tupleFaceIndex :: W.FaceIndex -> VTNIndex
 tupleFaceIndex fi = fromMaybe (error "Face not in VTN format") mres
   where
     mres = VTNIndex (W.faceLocIndex fi - 1) <$> (subtract 1 <$> W.faceTexCoordIndex fi) <*> (subtract 1 <$> W.faceNorIndex fi)
 
--- objToVTNPoint :: W.Location -> W.TexCoord -> W.Normal -> VTNPoint
--- objToVTNPoint (W.Location x y z w) (W.TexCoord r s _) (W.Normal nx ny nz) = VTNPoint loc tex nor
---   where
---     loc = L.V4 (CFloat x) (CFloat y) (CFloat z) (CFloat w)
---     tex = L.V2 (CFloat r) (CFloat (1-s))
---     nor = L.V3 (CFloat nx) (CFloat ny) (CFloat nz)
+objToVTNPoint :: W.Location -> W.TexCoord -> W.Normal -> VTNPoint
+objToVTNPoint (W.Location x y z w) (W.TexCoord r s _) (W.Normal nx ny nz) = VTNPoint loc tex nor
+  where
+    loc = L.V4 (CFloat x) (CFloat y) (CFloat z) (CFloat w)
+    tex = L.V2 (CFloat r) (CFloat (1-s))
+    nor = L.V3 (CFloat nx) (CFloat ny) (CFloat nz)
 
 fetchVTNPoint :: VTNIndex -> ExpandObjVTNState VTNPoint
 fetchVTNPoint (VTNIndex v t n) = do
@@ -59,8 +59,8 @@ updateVTNMap fi = do
   where
     vtnIdx = tupleFaceIndex fi
 
--- addVTNFace :: W.Face -> ExpandObjVTNState ()
--- addVTNFace (W.Face a b c _) = updateVTNMap a >> updateVTNMap b >> updateVTNMap c
+addVTNFace :: W.Face -> ExpandObjVTNState ()
+addVTNFace (W.Face a b c _) = updateVTNMap a >> updateVTNMap b >> updateVTNMap c
 
 expandVTNObj :: W.WavefrontOBJ -> (VS.Vector VTNPoint, VS.Vector CUInt)
 expandVTNObj obj = (expandedPoints, expandedIndices)
@@ -70,11 +70,11 @@ expandVTNObj obj = (expandedPoints, expandedIndices)
     objNorms = W.objNormals obj
     faces    = (\W.Element {..} -> elValue) <$> W.objFaces obj
 
---     initState = ExpandObjVTN MS.empty [] [] 0 objVerts objTexs objNorms
+    initState = ExpandObjVTN MS.empty [] [] 0 objVerts objTexs objNorms
 
---     finState = MS.execState (mapM_ addVTNFace faces) initState
---     expandedPoints = finState ^. expandObjVTNPoints . to (VS.fromList . reverse)
---     expandedIndices = finState ^. expandObjVTNIndices . to (VS.fromList . reverse)
+    finState = MS.execState (mapM_ addVTNFace faces) initState
+    expandedPoints = finState ^. expandObjVTNPoints . to (VS.fromList . reverse)
+    expandedIndices = finState ^. expandObjVTNIndices . to (VS.fromList . reverse)
 
 loadObjVTN :: MonadIO m => FilePath -> m (VS.Vector VTNPoint, VS.Vector CUInt)
 loadObjVTN = fmap expandVTNObj . loadObj
