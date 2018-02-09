@@ -20,8 +20,7 @@ resolver: lts-10.4
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
-packages:
-  - plugin
+# packages:
 # - some-directory
 # - https://example.com/foo/bar/baz-0.0.2.tar.gz
 # - location:
@@ -40,17 +39,13 @@ packages:
 - .
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps: 
-- linear-opengl-0.3.0.0
-- derive-storable-0.1.1.1
-- derive-storable-plugin-0.2.0.0
+# extra-deps: []
+
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
 # Extra package databases containing global packages
 # extra-package-dbs: []
-
-allow-newer: true
 
 # Control whether we use the GHC we find on the path
 # system-ghc: true
