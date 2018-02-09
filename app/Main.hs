@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Game.Main
 
 main :: IO ()
 main = someFunc

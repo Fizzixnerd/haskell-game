@@ -3,17 +3,18 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Model.Loader where
+module Game.Graphics.Model.Loader where
 
-import ClassyPrelude
-import qualified Codec.Wavefront as W
-import Foreign.C.Types
-import Game.Types
-import qualified Data.Vector.Storable as VS
-import qualified Data.Map.Strict as MS
-import qualified Linear as L
-import Control.Lens
+import           ClassyPrelude
+import qualified Codec.Wavefront            as W
+import           Control.Lens
 import qualified Control.Monad.State.Strict as MS
+import qualified Data.Vector.Storable       as VS
+import qualified Data.Map.Strict            as MS
+import           Foreign.C.Types
+import           Game.Types
+import qualified Linear                     as L
+
 
 type ExpandObjVTNState = MS.State ExpandObjVTN
 

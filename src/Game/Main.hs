@@ -3,11 +3,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
 
-module Lib where
+module Game.Main where
 
 import ClassyPrelude
 import qualified Graphics.UI.GLFW as G
 import qualified Graphics.Rendering.OpenGL.GL as G
+import qualified Graphics.Rendering.OpenGL.GLU.Errors as G (errors)
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks as B
 import Foreign.C.Types
@@ -16,11 +17,15 @@ import Text.Printf
 import Control.Lens
 import qualified Linear as L
 import qualified Linear.OpenGL as L ()
-import Game.Types
 import Data.Maybe
 import GHC.Float (double2Float)
 import Control.Concurrent
-import qualified Codec.Picture as P
+import qualified Data.Vector.Storable as VS
+import Game.Types
+import Game.Graphics.Model.Loader
+import Game.Graphics.Texture.Loader
+import Game.Graphics.Shader.Loader
+import Game.Graphics.Rendering
 
 {-
 import qualified Graphics.Text.TrueType as T
@@ -29,8 +34,6 @@ import qualified Graphics.Rasterific as T
 import qualified Graphics.Rasterific.Texture as T
 -}
 
-import Model.Loader
-import qualified Data.Vector.Storable as VS
 
 rotateCamera :: (Float, Float) -> Camera -> Camera
 rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
@@ -110,41 +113,8 @@ printContextVersion win = liftIO $ do
   min_ <- G.getWindowContextVersionMinor win
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min_ rev
-
-makeShader :: MonadIO m => FilePath -> G.ShaderType -> m G.Shader
-makeShader shaderName shaderType = liftIO $ do
-  shaderText <- readFile shaderName
-  shader <- G.createShader shaderType
-  G.shaderSourceBS shader G.$= shaderText
-  G.compileShader shader
-  G.shaderInfoLog shader >>= (\x -> if null x then return () else printf "%s\n\n" x)
-  return shader
-
-compileShaders :: MonadIO m => m G.Program
-compileShaders = liftIO $ do
-  vertexShader <- makeShader "shader.vs" G.VertexShader
---  tessellationControlShader <- makeShader "shader.tcs" G.TessControlShader
---  tessellationEvaluationShader <- makeShader "shader.tes" G.TessEvaluationShader
---  geometryShader <- makeShader "shader.gs" G.GeometryShader
-  fragmentShader <- makeShader "shader.fs" G.FragmentShader
-
-  program <- G.createProgram
-  G.attachShader program vertexShader
---  G.attachShader program tessellationControlShader
---  G.attachShader program tessellationEvaluationShader
---  G.attachShader program geometryShader
-  G.attachShader program fragmentShader
-  G.linkProgram program
-  G.validateProgram program
-  G.programInfoLog program >>= (\x -> if null x then return () else printf "%s\n\n" x)
-
-  G.deleteObjectNames [ fragmentShader
---                      , tessellationControlShader
---                      , tessellationEvaluationShader
---                      , geometryShader
-                      , vertexShader ]
-
-  return program
+printGLErrors :: MonadIO m => m ()
+printGLErrors = liftIO G.errors >>= mapM_ print
 
 render :: MonadIO m =>
           GameState
@@ -167,33 +137,7 @@ render gs prog mvpLoc texSampleLoc vao (_, lene) tex = liftIO $ do
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
 
   G.drawElements G.Triangles (fromIntegral lene) G.UnsignedInt nullPtr
-
-loadPic :: MonadIO m => FilePath -> m P.DynamicImage
-loadPic fp = do
-  bmpObj <- liftIO $ P.readImage fp
-  case bmpObj of
-    Left e -> error e
-    Right obj -> return obj
-
-marshallTextureBMP :: MonadIO m => P.DynamicImage -> m (ForeignPtr Word8, Int, Int)
-marshallTextureBMP img = liftIO . return $ (a, w, h)
-    where
-      (P.ImageRGB8 (P.Image w h vimg)) = img
-      (a, _, _) = VS.unsafeToForeignPtr vimg
-
-loadBMPTexture :: MonadIO m => FilePath -> m G.TextureObject
-loadBMPTexture fp = liftIO $ do
-  (ufptr, w, h) <- loadPic fp >>= marshallTextureBMP
-  tbuf <- G.genObjectName
-  G.textureBinding G.Texture2D G.$= Just tbuf
-  withForeignPtr ufptr $ \texptr -> do
-    let texSize = G.TextureSize2D (fromIntegral w) (fromIntegral h)
-        pixDat  = G.PixelData G.RGB G.UnsignedByte texptr
-        minFilter = (G.Nearest, Nothing)
-        magFilter = G.Nearest
-    G.texImage2D G.Texture2D G.NoProxy 0 G.RGB8 texSize 0 pixDat
-    G.textureFilter G.Texture2D G.$= (minFilter, magFilter)
-    return tbuf
+--  printGLErrors -- :(
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
 unsafeWithVecLen vec f = liftIO $ do
@@ -218,13 +162,12 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
                                                   , vtxs
                                                   , G.StaticDraw )
 
-  let stride = fromIntegral $ sizeOf (undefined :: VTNPoint)
-      vadvOffset = intPtrToPtr . IntPtr $ 0
+  let vadvOffset = intPtrToPtr . IntPtr $ 0
       vadtOffset = intPtrToPtr . IntPtr . fromIntegral $ 4 * sizeOf (0 :: CFloat)
       vadnOffset = intPtrToPtr . IntPtr . fromIntegral $ 6 * sizeOf (0 :: CFloat)
-      vadv = G.VertexArrayDescriptor 4 G.Float stride vadvOffset
-      vadt = G.VertexArrayDescriptor 2 G.Float stride vadtOffset
-      vadn = G.VertexArrayDescriptor 3 G.Float stride vadnOffset
+      vadv = G.VertexArrayDescriptor 4 G.Float 0 vadvOffset
+      vadt = G.VertexArrayDescriptor 2 G.Float 0 vadtOffset
+      vadn = G.VertexArrayDescriptor 3 G.Float 0 vadnOffset
   G.vertexAttribArray vtxLoc G.$= G.Enabled
   G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vadv)
   G.vertexAttribArray texLoc G.$= G.Enabled

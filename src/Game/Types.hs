@@ -12,17 +12,15 @@ module Game.Types
   , module Game.StorableTypes
   ) where
 
-import ClassyPrelude
-import Control.Lens
-import Game.StorableTypes
-
-import qualified Control.Monad.Logger as ML
+import           ClassyPrelude
+import qualified Codec.Wavefront            as W
+import           Control.Lens
+import qualified Control.Monad.Logger       as ML
+import qualified Data.Map.Strict            as MS
+import           Foreign.C.Types
+import           Game.StorableTypes
+import qualified Linear                     as L
 import qualified Reactive.Banana.Frameworks as B
-import qualified Linear as L
-
-import qualified Data.Map.Strict as MS
-import Foreign.C.Types
-import qualified Codec.Wavefront as W
 
 newtype Game a = Game { unGame :: ML.LoggingT IO a }
   deriving ( Functor
