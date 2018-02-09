@@ -13,6 +13,7 @@ import Foreign hiding (void)
 import Foreign.C.Types
 import GHC.Float (double2Float)
 import Text.Printf
+import Plugin.Load
 
 import Game.Types
 
@@ -194,6 +195,7 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
 
 doItAndGimmeFireThing :: Game ( NamedHandler ()
                               , NamedHandler ()
+                              , NamedHandler ()
                               , NamedHandler G.Window
                               , G.Window
                               , IO () )
@@ -223,6 +225,7 @@ doItAndGimmeFireThing = do
   (addHandlerHello, hello) <- newNamedEventHandler "hello"
   (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
   (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
+  (addHandlerFuckWithFoV, fuckWithFoV) <- newNamedEventHandler "fuckWithFoV"
 
   G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
@@ -249,6 +252,8 @@ doItAndGimmeFireThing = do
 
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
+  (foreignFriend :: GameState -> GameState) <- liftIO $ loadPlugin "ForeignEvent" "gs"
+  
   let network :: B.MomentIO ()
       network = mdo
         let initGameState = GameState
@@ -262,6 +267,7 @@ doItAndGimmeFireThing = do
         eHello <- B.fromAddHandler addHandlerHello
         eMousePos <- B.fromAddHandler addHandlerMousePos
         eGameReset <- B.fromAddHandler addHandlerGameReset
+        eFuckWithFoV <- B.fromAddHandler addHandlerFuckWithFoV
 
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
@@ -287,12 +293,19 @@ doItAndGimmeFireThing = do
             eResetGame :: B.Event (GameState -> GameState)
             eResetGame = const (const initGameState) <$> eGameReset
 
-        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame])
+            eFoVFuckery :: B.Event (GameState -> GameState)
+            eFoVFuckery = const foreignFriend <$> eFuckWithFoV
+
+            eFoVFuckeryYelling :: B.Event (IO ())
+            eFoVFuckeryYelling = (const $ print "FUCK ME") <$> eFuckWithFoV
+            
+        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame, eFoVFuckery])
 
         B.reactimate ePrintHello
         B.reactimate eClose
         B.reactimate eRender
         B.reactimate eEscapeToClose
+        B.reactimate eFoVFuckeryYelling 
 
   net <- liftIO $ B.compile network
   liftIO $ B.actuate net
@@ -309,16 +322,17 @@ doItAndGimmeFireThing = do
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (hello, gameReset, shouldClose, win, someFunc')
+  return (hello, gameReset, fuckWithFoV, shouldClose, win, someFunc')
 
 game :: Game ( NamedHandler ()
+             , NamedHandler ()
              , NamedHandler ()
              , IO ()
              , ThreadId)
 game = do
-  (h, r, sc, w, x) <- doItAndGimmeFireThing
+  (h, r, fwf, sc, w, x) <- doItAndGimmeFireThing
   ti <- liftIO $ forkIO x
-  return (h, r, fire sc w, ti)
+  return (h, r, fwf, fire sc w, ti)
 
 someFunc :: IO ()
 someFunc = void $ runGame game
