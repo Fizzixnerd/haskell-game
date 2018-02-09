@@ -68,9 +68,9 @@ doItAndGimmeFireThing = do
   -- This is the bad way of doing this.
   mvpLoc <- liftIO $ G.uniformLocation prog "MVP"
   texSampleLoc <- liftIO $ G.uniformLocation prog "texSampler"
-  (objPoints, objIndices) <- loadObjVTN "res/simple-cube-2.obj"
+  (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
 
-  tex <- loadBMPTexture "res/simple-cube-2.bmp"
+  tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
   let posLocation = G.AttribLocation 0
       texLocation = G.AttribLocation 1
