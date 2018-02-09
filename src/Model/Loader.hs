@@ -24,10 +24,10 @@ loadObj fp = do
     Left e -> error e
     Right obj -> return obj
 
-tupleFaceIndex :: W.FaceIndex -> (Int, Int, Int)
+tupleFaceIndex :: W.FaceIndex -> VTNIndex
 tupleFaceIndex fi = fromMaybe (error "Face not in VTN format") mres
   where
-    mres = (,,) (W.faceLocIndex fi - 1) <$> (subtract 1 <$> W.faceTexCoordIndex fi) <*> (subtract 1 <$> W.faceNorIndex fi)
+    mres = VTNIndex (W.faceLocIndex fi - 1) <$> (subtract 1 <$> W.faceTexCoordIndex fi) <*> (subtract 1 <$> W.faceNorIndex fi)
 
 objToVTNPoint :: W.Location -> W.TexCoord -> W.Normal -> VTNPoint
 objToVTNPoint (W.Location x y z w) (W.TexCoord r s _) (W.Normal nx ny nz) = VTNPoint loc tex nor
@@ -36,8 +36,8 @@ objToVTNPoint (W.Location x y z w) (W.TexCoord r s _) (W.Normal nx ny nz) = VTNP
     tex = L.V2 (CFloat r) (CFloat (1-s))
     nor = L.V3 (CFloat nx) (CFloat ny) (CFloat nz)
 
-fetchVTNPoint :: (Int, Int, Int) -> ExpandObjVTNState VTNPoint
-fetchVTNPoint (v, t, n) = do
+fetchVTNPoint :: VTNIndex -> ExpandObjVTNState VTNPoint
+fetchVTNPoint (VTNIndex v t n) = do
   mver <- preuse $ expandObjVTNVerts.ix v
   mtex <- preuse $ expandObjVTNTexs.ix t
   mnor <- preuse $ expandObjVTNNorms.ix n
@@ -53,12 +53,11 @@ fetchVTNIndex vtnPt vtnIdx = join $ do
 
 updateVTNMap :: W.FaceIndex -> ExpandObjVTNState ()
 updateVTNMap fi = do
-  vtnPt <- fetchVTNPoint idx
+  vtnPt <- fetchVTNPoint vtnIdx
   newIdx <- fetchVTNIndex vtnPt vtnIdx
   expandObjVTNIndices %= (newIdx:)
   where
-    idx@(v, t, n) = tupleFaceIndex fi
-    vtnIdx = VTNIndex (fromIntegral v) (fromIntegral t) (fromIntegral n)
+    vtnIdx = tupleFaceIndex fi
 
 addVTNFace :: W.Face -> ExpandObjVTNState ()
 addVTNFace (W.Face a b c _) = updateVTNMap a >> updateVTNMap b >> updateVTNMap c

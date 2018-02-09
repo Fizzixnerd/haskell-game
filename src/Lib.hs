@@ -21,10 +21,13 @@ import Data.Maybe
 import GHC.Float (double2Float)
 import Control.Concurrent
 import qualified Codec.Picture as P
+
+{-
 import qualified Graphics.Text.TrueType as T
 import qualified Codec.Picture as T
 import qualified Graphics.Rasterific as T
 import qualified Graphics.Rasterific.Texture as T
+-}
 
 import Model.Loader
 import qualified Data.Vector.Storable as VS
@@ -156,12 +159,13 @@ render gs prog mvpLoc texSampleLoc vao (_, lene) tex = liftIO $ do
   G.clear [G.ColorBuffer, G.DepthBuffer]
   G.currentProgram G.$= Just prog
 
+  G.bindVertexArrayObject G.$= Just vao
+
   G.activeTexture G.$= G.TextureUnit 0
   G.textureBinding G.Texture2D G.$= Just tex
   G.uniform texSampleLoc G.$= G.TextureUnit 0
-
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
-  G.bindVertexArrayObject G.$= Just vao
+
   G.drawElements G.Triangles (fromIntegral lene) G.UnsignedInt nullPtr
 
 loadPic :: MonadIO m => FilePath -> m P.DynamicImage
@@ -214,12 +218,13 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
                                                   , vtxs
                                                   , G.StaticDraw )
 
-  let vadvOffset = intPtrToPtr . IntPtr $ 0
+  let stride = fromIntegral $ sizeOf (undefined :: VTNPoint)
+      vadvOffset = intPtrToPtr . IntPtr $ 0
       vadtOffset = intPtrToPtr . IntPtr . fromIntegral $ 4 * sizeOf (0 :: CFloat)
       vadnOffset = intPtrToPtr . IntPtr . fromIntegral $ 6 * sizeOf (0 :: CFloat)
-      vadv = G.VertexArrayDescriptor 4 G.Float 0 vadvOffset
-      vadt = G.VertexArrayDescriptor 2 G.Float 0 vadtOffset
-      vadn = G.VertexArrayDescriptor 3 G.Float 0 vadnOffset
+      vadv = G.VertexArrayDescriptor 4 G.Float stride vadvOffset
+      vadt = G.VertexArrayDescriptor 2 G.Float stride vadtOffset
+      vadn = G.VertexArrayDescriptor 3 G.Float stride vadnOffset
   G.vertexAttribArray vtxLoc G.$= G.Enabled
   G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vadv)
   G.vertexAttribArray texLoc G.$= G.Enabled
@@ -252,7 +257,7 @@ doItAndGimmeFireThing = do
   liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
   G.cullFace G.$= Just G.Back
   G.depthFunc G.$= Just G.Less
-
+{-
   eFont <- liftIO $ T.loadFontFile "fonts/comic-sans.ttf"
   let font = case eFont of
         Left e -> error e
@@ -261,7 +266,7 @@ doItAndGimmeFireThing = do
              . T.withTexture (T.uniformTexture $ T.PixelRGBA8 0 0 0 255) $
              T.printTextAt font (T.PointSize 12) (T.V2 20 40)
              "A simple text test!"
-
+-}
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
   (addHandlerTick, tick) <- newNamedEventHandler "tick"
@@ -274,13 +279,13 @@ doItAndGimmeFireThing = do
   printContextVersion win
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
 
-  prog <- liftIO compileShaders
+  prog <- compileShaders
   -- This is the bad way of doing this.
   mvpLoc <- liftIO $ G.uniformLocation prog "MVP"
   texSampleLoc <- liftIO $ G.uniformLocation prog "texSampler"
 
   G.clearColor G.$= G.Color4 0 0 0.4 0
---  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> G.setCursorPos w (1920 / 2) (1080 / 2)))
