@@ -41,6 +41,8 @@ dependencies:
 - monad-logger
 - mtl
 - linear-opengl
+- plugins
+- dynamic-loader
 
 library:
   source-dirs: src

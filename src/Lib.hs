@@ -7,22 +7,24 @@
 module Lib where
 
 import ClassyPrelude
+import Control.Concurrent
+import Control.Lens
+import Data.Maybe
+import Data.Monoid (Sum(..))
+import Foreign hiding (void)
+import Foreign.C.Types
+import GHC.Float (double2Float)
+import Text.Printf
+
+import Game.Types
+
 import qualified Graphics.UI.GLFW as G
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks as B
 import qualified Codec.Wavefront as W
-import Foreign.C.Types
-import Foreign hiding (void)
-import Text.Printf
-import Data.Monoid (Sum(..))
-import Control.Lens
 import qualified Linear as L
 import qualified Linear.OpenGL as L ()
-import Game.Types
-import Data.Maybe
-import GHC.Float (double2Float)
-import Control.Concurrent
 import qualified Codec.Picture as P
 import qualified Data.Vector.Storable as VStor (unsafeToForeignPtr)
 import qualified Graphics.Text.TrueType as T
@@ -221,6 +223,7 @@ marshallTexCoords texcoords = liftIO $ do
   a <- newArray floats
   return (a, n)
     where (floats, n) = texCoordsToCFloats $ toList texcoords
+
 {-
 marshallTextureBMP :: MonadIO m => P.DynamicImage -> m (Ptr Word8, Int, Int)
 marshallTextureBMP img = liftIO $ do
@@ -338,7 +341,7 @@ doItAndGimmeFireThing = do
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> G.setCursorPos w (1920 / 2) (1080 / 2)))
 
-  obj <- loadObj "res/umbreon.obj"
+  obj <- loadObj "res/male.obj"
   let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
       faceIndices = (\(W.Face a b c _) -> ( W.faceLocIndex a - 1
                                           , W.faceLocIndex b - 1

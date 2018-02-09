@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 095b2c413f3e5ff512f6f8ffb834688e253d01d7deac69bb44eeb5f2891f973d
+-- hash: 82c22aeaaccb3f2a59c81942acf71004c6913c57cb133359dc9df8f7f96fa69a
 
 name:           haskell-game
 version:        0.1.0.0
@@ -39,6 +39,7 @@ library
     , bytestring
     , classy-prelude
     , containers
+    , dynamic-loader
     , ghc
     , ghc-paths
     , lens
@@ -46,13 +47,18 @@ library
     , linear-opengl
     , monad-logger
     , mtl
+    , plugins
     , reactive-banana
     , text
     , vector
     , wavefront
   exposed-modules:
+      Game.StorableTypes
       Game.Types
       Lib
+      Mapdef
+      Model.Loader
+      Other
   other-modules:
       Paths_haskell_game
   default-language: Haskell2010
@@ -73,6 +79,7 @@ executable haskell-game-exe
     , bytestring
     , classy-prelude
     , containers
+    , dynamic-loader
     , ghc
     , ghc-paths
     , haskell-game
@@ -81,6 +88,7 @@ executable haskell-game-exe
     , linear-opengl
     , monad-logger
     , mtl
+    , plugins
     , reactive-banana
     , text
     , vector
@@ -106,6 +114,7 @@ test-suite haskell-game-test
     , bytestring
     , classy-prelude
     , containers
+    , dynamic-loader
     , ghc
     , ghc-paths
     , haskell-game
@@ -114,6 +123,7 @@ test-suite haskell-game-test
     , linear-opengl
     , monad-logger
     , mtl
+    , plugins
     , reactive-banana
     , text
     , vector

@@ -6,17 +6,19 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Game.Types where
 
 import ClassyPrelude
 import Control.Lens
 
+import Data.Data
 import qualified Control.Monad.Logger as ML
 import qualified Reactive.Banana.Frameworks as B
 import qualified Linear as L
 
-newtype Game a = Game { unGame :: ML.LoggingT IO a }
+newtype Game a = Game { _unGame :: ML.LoggingT IO a }
   deriving ( Functor
            , Applicative
            , Monad
@@ -24,7 +26,7 @@ newtype Game a = Game { unGame :: ML.LoggingT IO a }
            , MonadIO )
 
 runGame :: Game a -> IO a
-runGame g = ML.runStderrLoggingT $ unGame g
+runGame g = ML.runStderrLoggingT $ _unGame g
 
 data GameState = GameState
   { _gameStateCamera :: Camera
@@ -76,4 +78,13 @@ newNamedEventHandler name = liftIO $ do
   (ah, f) <- B.newAddHandler
   return (ah, NamedHandler name f)
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState]
+mconcat <$> mapM makeLenses [ ''Camera
+                            , ''NamedHandler
+                            , ''Game
+                            , ''GameState ]
+
+-- This is here for a plugin test
+data X = X
+  { _x :: Int
+  } deriving (Eq, Ord, Show, Data, Typeable)
+

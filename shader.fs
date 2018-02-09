@@ -8,6 +8,6 @@ uniform sampler2D texSampler;
 
 out vec3 color;
 
-void main(void) {
-	color = texture( texSampler, vs_out.UV ).rgb;
+void main() {
+  color = texture(texSampler, vs_out.UV).rgb;
 }

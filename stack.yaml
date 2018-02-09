@@ -41,6 +41,8 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps: 
 - linear-opengl-0.3.0.0
+- plugins-1.5.7
+- dynamic-loader-0.0.1
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
