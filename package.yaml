@@ -43,6 +43,7 @@ dependencies:
 - linear-opengl
 - derive-storable
 - derive-storable-plugin
+- plugin
 
 library:
   source-dirs: src
