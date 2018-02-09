@@ -20,10 +20,10 @@ module Game.StorableTypes where
 --   , _vtnPointN :: !(L.V3 CFloat)
 --   } deriving (Eq, Show, Ord, Read, Generic, GStorable)
 
--- data VTNIndex = VTNIndex
---   { _vtnIndexV :: !CUShort
---   , _vtnIndexT :: !CUShort
---   , _vtnIndexN :: !CUShort
---   } deriving (Eq, Show, Ord, Read, Generic, GStorable)
+data VTNIndex = VTNIndex
+  { _vtnIndexV :: !Int
+  , _vtnIndexT :: !Int
+  , _vtnIndexN :: !Int
+  } deriving (Eq, Show, Ord, Read, Generic, GStorable)
 
 -- mconcat <$> mapM makeLenses [''VTNPoint]

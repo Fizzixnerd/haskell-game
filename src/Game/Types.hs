@@ -8,17 +8,25 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Game.Types where
+module Game.Types
+  ( module Game.Types
+  , module Game.StorableTypes
+  ) where
 
 import ClassyPrelude
 import Control.Lens
+import Game.StorableTypes
 
 import Data.Data
 import qualified Control.Monad.Logger as ML
 import qualified Reactive.Banana.Frameworks as B
 import qualified Linear as L
 
-newtype Game a = Game { _unGame :: ML.LoggingT IO a }
+import qualified Data.Map.Strict as MS
+import Foreign.C.Types
+import qualified Codec.Wavefront as W
+
+newtype Game a = Game { unGame :: ML.LoggingT IO a }
   deriving ( Functor
            , Applicative
            , Monad
@@ -78,13 +86,14 @@ newNamedEventHandler name = liftIO $ do
   (ah, f) <- B.newAddHandler
   return (ah, NamedHandler name f)
 
-mconcat <$> mapM makeLenses [ ''Camera
-                            , ''NamedHandler
-                            , ''Game
-                            , ''GameState ]
+data ExpandObjVTN = ExpandObjVTN
+  { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
+  , _expandObjVTNPoints :: [VTNPoint]
+  , _expandObjVTNIndices :: [CUInt]
+  , _expandObjVTNNextInd :: CUInt
+  , _expandObjVTNVerts :: Vector W.Location
+  , _expandObjVTNTexs :: Vector W.TexCoord
+  , _expandObjVTNNorms :: Vector W.Normal
+  }
 
--- This is here for a plugin test
-data X = X
-  { _x :: Int
-  } deriving (Eq, Ord, Show, Data, Typeable)
-
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN]
