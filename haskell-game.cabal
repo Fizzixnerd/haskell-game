@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d97c7a9ab50fcb6a55a828139cf0fab98bca1421fcfd9553b856dcae5b165938
+-- hash: 277614d54a051181828e2746d963606b1b9b040fa1d4383405b82ec56737db2e
 
 name:           haskell-game
 version:        0.1.0.0
@@ -63,8 +63,6 @@ library
       Game.Main
       Game.StorableTypes
       Game.Types
-      Mapdef
-      Other
   other-modules:
       Paths_haskell_game
   default-language: Haskell2010

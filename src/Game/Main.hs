@@ -17,34 +17,6 @@ import qualified Linear.OpenGL                        as L ()
 import qualified Graphics.UI.GLFW                     as G
 import qualified Graphics.Rendering.OpenGL.GL         as G
 import           Text.Printf
-import ClassyPrelude
-import Control.Concurrent
-import Control.Lens
-import Data.Maybe
-import Foreign hiding (void)
-import Foreign.C.Types
-import GHC.Float (double2Float)
-import Text.Printf
-import Plugin.Load
-
-import Game.Types
-
-import qualified Graphics.UI.GLFW as G
-import qualified Graphics.Rendering.OpenGL.GL as G
-import qualified Graphics.Rendering.OpenGL.GLU.Errors as G (errors)
-import qualified Reactive.Banana.Combinators as B
-import qualified Reactive.Banana.Frameworks as B
-import qualified Linear as L
-import qualified Linear.OpenGL as L ()
-import Data.Maybe
-import GHC.Float (double2Float)
-import Control.Concurrent
-import qualified Data.Vector.Storable as VS
-import Game.Types
-import Game.Graphics.Model.Loader
-import Game.Graphics.Texture.Loader
-import Game.Graphics.Shader.Loader
-import Game.Graphics.Rendering
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
@@ -109,7 +81,7 @@ doItAndGimmeFireThing = do
   G.clearColor G.$= G.Color4 0 0 0.4 0
   G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-  (hello, gameReset, shouldClose, key, mousePos, tick) <- compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex
+  (hello, gameReset, shouldClose, key, mousePos, tick, fuckWithFoV) <- compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
