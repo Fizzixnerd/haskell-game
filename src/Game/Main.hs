@@ -17,6 +17,34 @@ import qualified Linear.OpenGL                        as L ()
 import qualified Graphics.UI.GLFW                     as G
 import qualified Graphics.Rendering.OpenGL.GL         as G
 import           Text.Printf
+import ClassyPrelude
+import Control.Concurrent
+import Control.Lens
+import Data.Maybe
+import Foreign hiding (void)
+import Foreign.C.Types
+import GHC.Float (double2Float)
+import Text.Printf
+import Plugin.Load
+
+import Game.Types
+
+import qualified Graphics.UI.GLFW as G
+import qualified Graphics.Rendering.OpenGL.GL as G
+import qualified Graphics.Rendering.OpenGL.GLU.Errors as G (errors)
+import qualified Reactive.Banana.Combinators as B
+import qualified Reactive.Banana.Frameworks as B
+import qualified Linear as L
+import qualified Linear.OpenGL as L ()
+import Data.Maybe
+import GHC.Float (double2Float)
+import Control.Concurrent
+import qualified Data.Vector.Storable as VS
+import Game.Types
+import Game.Graphics.Model.Loader
+import Game.Graphics.Texture.Loader
+import Game.Graphics.Shader.Loader
+import Game.Graphics.Rendering
 
 graphicsInit :: MonadIO m => m ()
 graphicsInit = liftIO $ do
@@ -47,6 +75,7 @@ printContextVersion win = liftIO $ do
   printf "%i.%i.%i\n" maj min_ rev
 
 doItAndGimmeFireThing :: Game ( NamedHandler ()
+                              , NamedHandler ()
                               , NamedHandler ()
                               , NamedHandler G.Window
                               , G.Window
@@ -80,9 +109,7 @@ doItAndGimmeFireThing = do
   G.clearColor G.$= G.Color4 0 0 0.4 0
   G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-
   (hello, gameReset, shouldClose, key, mousePos, tick) <- compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex
-
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
@@ -101,16 +128,17 @@ doItAndGimmeFireThing = do
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (hello, gameReset, shouldClose, win, someFunc')
+  return (hello, gameReset, fuckWithFoV, shouldClose, win, someFunc')
 
 game :: Game ( NamedHandler ()
+             , NamedHandler ()
              , NamedHandler ()
              , IO ()
              , ThreadId)
 game = do
-  (h, r, sc, w, x) <- doItAndGimmeFireThing
+  (h, r, fwf, sc, w, x) <- doItAndGimmeFireThing
   ti <- liftIO $ forkIO x
-  return (h, r, fire sc w, ti)
+  return (h, r, fwf, fire sc w, ti)
 
 someFunc :: IO ()
 someFunc = void $ runGame game

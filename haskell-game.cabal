@@ -2,6 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
+-- hash: d97c7a9ab50fcb6a55a828139cf0fab98bca1421fcfd9553b856dcae5b165938
 
 name:           haskell-game
 version:        0.1.0.0
@@ -47,11 +48,13 @@ library
     , linear-opengl
     , monad-logger
     , mtl
+    , plugin
     , reactive-banana
     , text
     , vector
     , wavefront
   exposed-modules:
+      Game.Events
       Game.Graphics.Model.Loader
       Game.Graphics.OpenGLExtras
       Game.Graphics.Rendering
@@ -60,7 +63,8 @@ library
       Game.Main
       Game.StorableTypes
       Game.Types
-
+      Mapdef
+      Other
   other-modules:
       Paths_haskell_game
   default-language: Haskell2010
@@ -91,6 +95,7 @@ executable haskell-game-exe
     , linear-opengl
     , monad-logger
     , mtl
+    , plugin
     , reactive-banana
     , text
     , vector
@@ -126,6 +131,7 @@ test-suite haskell-game-test
     , linear-opengl
     , monad-logger
     , mtl
+    , plugin
     , reactive-banana
     , text
     , vector
