@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Lib where
 
@@ -11,11 +10,9 @@ import qualified Graphics.UI.GLFW as G
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks as B
-import qualified Codec.Wavefront as W
 import Foreign.C.Types
 import Foreign hiding (void)
 import Text.Printf
-import Data.Monoid (Sum(..))
 import Control.Lens
 import qualified Linear as L
 import qualified Linear.OpenGL as L ()
@@ -24,11 +21,13 @@ import Data.Maybe
 import GHC.Float (double2Float)
 import Control.Concurrent
 import qualified Codec.Picture as P
-import qualified Data.Vector.Storable as VStor (unsafeToForeignPtr)
 import qualified Graphics.Text.TrueType as T
 import qualified Codec.Picture as T
 import qualified Graphics.Rasterific as T
 import qualified Graphics.Rasterific.Texture as T
+
+import Model.Loader
+import qualified Data.Vector.Storable as VS
 
 rotateCamera :: (Float, Float) -> Camera -> Camera
 rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
@@ -91,8 +90,6 @@ graphicsInit = liftIO $ do
   G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
   G.windowHint $ G.WindowHint'OpenGLDebugContext True
   G.windowHint $ G.WindowHint'DepthBits 24
---  G.cullFace G.$= Just G.Front
-  G.depthFunc G.$= Just G.Less
 
 withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
@@ -151,36 +148,21 @@ render :: MonadIO m =>
        -> G.Program
        -> G.UniformLocation
        -> G.UniformLocation
-       -> G.AttribLocation
        -> G.VertexArrayObject
-       -> G.BufferObject -- ^ Vertex buffer
-       -> G.BufferObject -- ^ Texture coordinate buffer
-       -> G.BufferObject -- ^ Element buffer
-       -> (Ptr CFloat, Int)
-       -> (Ptr CUInt, Int)
+       -> (G.BufferObject, Int) -- ^ Element buffer with its length
        -> G.TextureObject
        -> m ()
-render gs prog mvpLoc texSampleLocation _ vao vbuf tbuf ebuf _ (_, leni) tex = liftIO $ do
+render gs prog mvpLoc texSampleLoc vao (_, lene) tex = liftIO $ do
   G.clear [G.ColorBuffer, G.DepthBuffer]
   G.currentProgram G.$= Just prog
 
   G.activeTexture G.$= G.TextureUnit 0
   G.textureBinding G.Texture2D G.$= Just tex
-  G.uniform texSampleLocation G.$= G.TextureUnit 0
+  G.uniform texSampleLoc G.$= G.TextureUnit 0
 
   G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
   G.bindVertexArrayObject G.$= Just vao
---  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
---  G.bindBuffer G.TextureBuffer G.$= Just tbuf
---  G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.drawElements G.Triangles (fromIntegral leni) G.UnsignedInt nullPtr
-
-loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ
-loadObj fp = do
-  eObj :: Either String W.WavefrontOBJ <- W.fromFile fp
-  case eObj of
-    Left e -> error e
-    Right obj -> return obj
+  G.drawElements G.Triangles (fromIntegral lene) G.UnsignedInt nullPtr
 
 loadPic :: MonadIO m => FilePath -> m P.DynamicImage
 loadPic fp = do
@@ -189,53 +171,11 @@ loadPic fp = do
     Left e -> error e
     Right obj -> return obj
 
-locationsToCFloats :: [W.Location] -> ([CFloat], Int)
-locationsToCFloats = (_2 %~ getSum) . foldMap go
-  where
-    go x = (fmap CFloat [W.locX x, W.locY x, W.locZ x, W.locW x], Sum 4)
-
-indicesToUInts :: [(Int, Int, Int)] -> ([CUInt], Int)
-indicesToUInts = (_2 %~ getSum) . foldMap go
-  where
-    go (a,b,c) = (fmap fromIntegral [a,b,c], Sum 3)
-
-texCoordsToCFloats :: [W.TexCoord] -> ([CFloat], Int)
-texCoordsToCFloats = (_2 %~ getSum) . foldMap go
-  where
-    go x = (fmap CFloat [W.texcoordR x, W.texcoordS x], Sum 2)
-
-marshallLocations :: MonadIO m => Vector W.Location -> m (Ptr CFloat, Int)
-marshallLocations locs = liftIO $ do
-  a <- newArray floats
-  return (a, n)
-    where (floats, n) = locationsToCFloats $ toList locs
-
-marshallIndices :: MonadIO m => Vector (Int, Int, Int) -> m (Ptr CUInt, Int)
-marshallIndices idxs = liftIO $ do
-  a <- newArray shorts
-  return (a, n)
-    where (shorts, n) = indicesToUInts $ toList idxs
-
-marshallTexCoords :: MonadIO m => Vector W.TexCoord -> m (Ptr CFloat, Int)
-marshallTexCoords texcoords = liftIO $ do
-  a <- newArray floats
-  return (a, n)
-    where (floats, n) = texCoordsToCFloats $ toList texcoords
-{-
-marshallTextureBMP :: MonadIO m => P.DynamicImage -> m (Ptr Word8, Int, Int)
-marshallTextureBMP img = liftIO $ do
-  a <- newArray floats
-  return (a, w, h)
-    where
-      (P.ImageRGB8 (P.Image w h vimg)) = img
-      floats = toList vimg
--}
-
 marshallTextureBMP :: MonadIO m => P.DynamicImage -> m (ForeignPtr Word8, Int, Int)
 marshallTextureBMP img = liftIO . return $ (a, w, h)
     where
       (P.ImageRGB8 (P.Image w h vimg)) = img
-      (a, _, _) = VStor.unsafeToForeignPtr vimg
+      (a, _, _) = VS.unsafeToForeignPtr vimg
 
 loadBMPTexture :: MonadIO m => FilePath -> m G.TextureObject
 loadBMPTexture fp = liftIO $ do
@@ -251,45 +191,52 @@ loadBMPTexture fp = liftIO $ do
     G.textureFilter G.Texture2D G.$= (minFilter, magFilter)
     return tbuf
 
+unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
+unsafeWithVecLen vec f = liftIO $ do
+  let (fptr, vecLen) = VS.unsafeToForeignPtr0 vec
+  withForeignPtr fptr $ \ptr -> f ptr vecLen
+
 bufferData :: MonadIO m =>
               G.AttribLocation
-           -> (Ptr CFloat, Int)
            -> G.AttribLocation
-           -> (Ptr CFloat, Int)
-           -> (Ptr CUInt, Int)
-           -> m (G.VertexArrayObject, G.BufferObject, G.BufferObject, G.BufferObject)
-bufferData vtxLoc (vtxs, lenv) texLoc (texs, lent) (idxs, leni) = liftIO $ do
+           -> G.AttribLocation
+           -> VS.Vector VTNPoint
+           -> VS.Vector CUInt
+           -> m (G.VertexArrayObject, G.BufferObject, (G.BufferObject, Int))
+bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
   vao <- G.genObjectName
   G.bindVertexArrayObject G.$= Just vao
 
   vbuf <- G.genObjectName
-  G.vertexAttribArray vtxLoc G.$= G.Enabled
   G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0.0 :: CFloat)
-                                  , vtxs
-                                  , G.StaticDraw )
-  let vad = G.VertexArrayDescriptor 4 G.Float 0 nullPtr
-  G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vad)
+  unsafeWithVecLen objPoints $
+    \vtxs lenv -> G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0 :: CFloat)
+                                                  , vtxs
+                                                  , G.StaticDraw )
 
-
-  tbuf <- G.genObjectName
+  let vadvOffset = intPtrToPtr . IntPtr $ 0
+      vadtOffset = intPtrToPtr . IntPtr . fromIntegral $ 4 * sizeOf (0 :: CFloat)
+      vadnOffset = intPtrToPtr . IntPtr . fromIntegral $ 6 * sizeOf (0 :: CFloat)
+      vadv = G.VertexArrayDescriptor 4 G.Float 0 vadvOffset
+      vadt = G.VertexArrayDescriptor 2 G.Float 0 vadtOffset
+      vadn = G.VertexArrayDescriptor 3 G.Float 0 vadnOffset
+  G.vertexAttribArray vtxLoc G.$= G.Enabled
+  G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vadv)
   G.vertexAttribArray texLoc G.$= G.Enabled
-  G.bindBuffer G.ArrayBuffer G.$= Just tbuf
-  G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lent * sizeOf (0.0 :: CFloat)
-                                  , texs
-                                  , G.StaticDraw )
-  let tad = G.VertexArrayDescriptor 2 G.Float 0 nullPtr
-  G.vertexAttribPointer texLoc G.$= (G.ToFloat, tad)
+  G.vertexAttribPointer texLoc G.$= (G.ToFloat, vadt)
+  G.vertexAttribArray nmlLoc G.$= G.Enabled
+  G.vertexAttribPointer nmlLoc G.$= (G.ToFloat, vadn)
 
   ebuf <- G.genObjectName
   G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ leni * sizeOf (0 :: CUInt)
-                                         , idxs
-                                         , G.StaticDraw )
-  free vtxs
-  free idxs
-  free texs
-  return (vao, vbuf, tbuf, ebuf)
+  lene <- unsafeWithVecLen objIndices $
+          \elts lene -> do
+            G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ lene * sizeOf (0 :: CUInt)
+                                                   , elts
+                                                   , G.StaticDraw )
+            return lene
+
+  return (vao, vbuf, (ebuf, lene))
 
 doItAndGimmeFireThing :: Game ( NamedHandler ()
                               , NamedHandler ()
@@ -303,6 +250,8 @@ doItAndGimmeFireThing = do
   liftIO $ G.makeContextCurrent $ Just win
 
   liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
+  G.cullFace G.$= Just G.Back
+  G.depthFunc G.$= Just G.Less
 
   eFont <- liftIO $ T.loadFontFile "fonts/comic-sans.ttf"
   let font = case eFont of
@@ -319,7 +268,7 @@ doItAndGimmeFireThing = do
   (addHandlerKey, key) <- newNamedEventHandler "key"
   (addHandlerHello, hello) <- newNamedEventHandler "hello"
   (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
-  (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset" 
+  (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
 
   G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
@@ -327,39 +276,30 @@ doItAndGimmeFireThing = do
 
   prog <- liftIO compileShaders
   -- This is the bad way of doing this.
-  mvpLocation <- liftIO $ G.uniformLocation prog "MVP"
-  texSampleLocation <- liftIO $ G.uniformLocation prog "texSampler"
+  mvpLoc <- liftIO $ G.uniformLocation prog "MVP"
+  texSampleLoc <- liftIO $ G.uniformLocation prog "texSampler"
 
---  G.polygonMode G.$= (G.Line, G.Line)
---  G.pointSize G.$= 40.0
   G.clearColor G.$= G.Color4 0 0 0.4 0
-  -- G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+--  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> G.setCursorPos w (1920 / 2) (1080 / 2)))
 
-  obj <- loadObj "res/umbreon.obj"
-  let faces = (\W.Element {..} -> elValue) <$> W.objFaces obj
-      faceIndices = (\(W.Face a b c _) -> ( W.faceLocIndex a - 1
-                                          , W.faceLocIndex b - 1
-                                          , W.faceLocIndex c - 1)) <$> faces
-      locations = W.objLocations obj
-      textureCoords = W.objTexCoords obj
-  locs <- marshallLocations locations
-  texs <- marshallTexCoords textureCoords
-  idxs <- marshallIndices faceIndices
+  (objPoints, objIndices) <- loadObjVTN "res/simple-cube-2.obj"
 
   tex <- loadBMPTexture "res/simple-cube-2.bmp"
 
   let posLocation = G.AttribLocation 0
-      texLocation  = G.AttribLocation 1
-  (vertexArrayObject, vbuf, tbuf, ebuf) <- bufferData posLocation locs texLocation texs idxs
+      texLocation = G.AttribLocation 1
+      nmlLocation = G.AttribLocation 2
+
+  (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
   let network :: B.MomentIO ()
       network = mdo
         let initGameState = GameState
               { _gameStateCamera = Camera
-                { _cameraPosition = L.V3 0 0 0
+                { _cameraPosition = L.V3 0 0 2
                 , _cameraOrientation = (0, 0)
                 , _cameraFOV = pi/2 } }
         eTick <- B.fromAddHandler addHandlerTick
@@ -374,7 +314,7 @@ doItAndGimmeFireThing = do
 
             eRender :: B.Event (IO ())
             eRender = B.apply ((\gs w -> do
-                                   render gs prog mvpLocation texSampleLocation posLocation vertexArrayObject vbuf tbuf ebuf locs idxs tex
+                                   render gs prog mvpLoc texSampleLoc vao ebuf tex
                                    G.swapBuffers w) <$> bWorld) eTick
 
             eEscapeToClose :: B.Event (IO ())
@@ -389,7 +329,7 @@ doItAndGimmeFireThing = do
 
             eCamMove :: B.Event (GameState -> GameState)
             eCamMove = (\m gs -> (gameStateCamera %~ moveCamera (0.005/60) (3/60) m $ gs)) <$> eMovement
-            
+
             eResetGame :: B.Event (GameState -> GameState)
             eResetGame = const (const initGameState) <$> eGameReset
 
@@ -405,7 +345,7 @@ doItAndGimmeFireThing = do
   let someFunc' :: IO ()
       someFunc' = do
         loop win
-        G.deleteObjectName vertexArrayObject
+        G.deleteObjectName vao
         G.deleteObjectName prog
         G.terminate
           where

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 095b2c413f3e5ff512f6f8ffb834688e253d01d7deac69bb44eeb5f2891f973d
+-- hash: 4c7440e152a398d2d1ba20eac926cdf879ff7f2496fa482de5bb9c95e8bf34f8
 
 name:           haskell-game
 version:        0.1.0.0
@@ -39,6 +39,8 @@ library
     , bytestring
     , classy-prelude
     , containers
+    , derive-storable
+    , derive-storable-plugin
     , ghc
     , ghc-paths
     , lens
@@ -51,8 +53,10 @@ library
     , vector
     , wavefront
   exposed-modules:
+      Game.StorableTypes
       Game.Types
       Lib
+      Model.Loader
   other-modules:
       Paths_haskell_game
   default-language: Haskell2010
@@ -73,6 +77,8 @@ executable haskell-game-exe
     , bytestring
     , classy-prelude
     , containers
+    , derive-storable
+    , derive-storable-plugin
     , ghc
     , ghc-paths
     , haskell-game
@@ -106,6 +112,8 @@ test-suite haskell-game-test
     , bytestring
     , classy-prelude
     , containers
+    , derive-storable
+    , derive-storable-plugin
     , ghc
     , ghc-paths
     , haskell-game

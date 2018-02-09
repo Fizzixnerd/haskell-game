@@ -43,7 +43,7 @@ fetchVTNPoint (v, t, n) = do
   mnor <- preuse $ expandObjVTNNorms.ix n
   return . fromMaybe (error "Invalid VTN format: could not fetch point.") $ objToVTNPoint <$> mver <*> mtex <*> mnor
 
-fetchVTNIndex :: VTNPoint -> VTNIndex -> ExpandObjVTNState CUShort
+fetchVTNIndex :: VTNPoint -> VTNIndex -> ExpandObjVTNState CUInt
 fetchVTNIndex vtnPt vtnIdx = join $ do
   nextIdx <- use expandObjVTNNextInd
   expandObjVTNIndMap.at vtnIdx %%= updating nextIdx
@@ -63,7 +63,7 @@ updateVTNMap fi = do
 addVTNFace :: W.Face -> ExpandObjVTNState ()
 addVTNFace (W.Face a b c _) = updateVTNMap a >> updateVTNMap b >> updateVTNMap c
 
-expandVTNObj :: W.WavefrontOBJ -> (VS.Vector VTNPoint, VS.Vector CUShort)
+expandVTNObj :: W.WavefrontOBJ -> (VS.Vector VTNPoint, VS.Vector CUInt)
 expandVTNObj obj = (expandedPoints, expandedIndices)
   where
     objVerts = W.objLocations obj
@@ -77,5 +77,5 @@ expandVTNObj obj = (expandedPoints, expandedIndices)
     expandedPoints = finState ^. expandObjVTNPoints . to (VS.fromList . reverse)
     expandedIndices = finState ^. expandObjVTNIndices . to (VS.fromList . reverse)
 
-loadObjVTN :: MonadIO m => FilePath -> m (VS.Vector VTNPoint, VS.Vector CUShort)
+loadObjVTN :: MonadIO m => FilePath -> m (VS.Vector VTNPoint, VS.Vector CUInt)
 loadObjVTN = fmap expandVTNObj . loadObj

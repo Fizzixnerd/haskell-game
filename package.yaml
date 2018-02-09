@@ -41,6 +41,9 @@ dependencies:
 - monad-logger
 - mtl
 - linear-opengl
+- derive-storable
+- derive-storable-plugin
+
 
 library:
   source-dirs: src
