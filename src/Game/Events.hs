@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Game.Events where
 
@@ -12,6 +13,7 @@ import           GHC.Float (double2Float)
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.UI.GLFW             as G
 import qualified Linear as L
+import           Plugin.Load
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
 
@@ -56,7 +58,7 @@ mousePosToRot mouseSpeed x y = (xrot, yrot)
 
 compileGameNetwork ::
   MonadIO m =>
-     G.Program
+  G.Program
   -> G.UniformLocation
   -> G.UniformLocation
   -> G.VertexArrayObject
@@ -64,7 +66,8 @@ compileGameNetwork ::
   -> G.TextureObject
   -> m (NamedHandler b1, NamedHandler b2, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, c, d, e),
-        NamedHandler (G.Window, Double, Double), NamedHandler G.Window)
+        NamedHandler (G.Window, Double, Double), NamedHandler G.Window,
+        NamedHandler b3)
 compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
@@ -73,6 +76,9 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
   (addHandlerHello, hello) <- newNamedEventHandler "hello"
   (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
   (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
+  (addHandlerFuckWithFoV, fuckWithFoV) <- newNamedEventHandler "fuckWithFoV"
+
+  (foreignFriend :: GameState -> GameState) <- liftIO $ loadPlugin "ForeignEvent" "gs"
 
   let network :: B.MomentIO ()
       network = mdo
@@ -82,6 +88,13 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
         eHello <- B.fromAddHandler addHandlerHello
         eMousePos <- B.fromAddHandler addHandlerMousePos
         eGameReset <- B.fromAddHandler addHandlerGameReset
+        eFuckWithFoV <- B.fromAddHandler addHandlerFuckWithFoV
+
+
+        B.reactimate ePrintHello
+        B.reactimate eClose
+        B.reactimate eRender
+        B.reactimate eEscapeToClose
 
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
@@ -107,13 +120,20 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
             eResetGame :: B.Event (GameState -> GameState)
             eResetGame = const (const initGameState) <$> eGameReset
 
-        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame])
+            eFoVFuckery :: B.Event (GameState -> GameState)
+            eFoVFuckery = const foreignFriend <$> eFuckWithFoV
+
+            eFoVFuckeryYelling :: B.Event (IO ())
+            eFoVFuckeryYelling = const (print ("FUCK ME" :: Text)) <$> eFuckWithFoV
+
+        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame, eFoVFuckery])
 
         B.reactimate ePrintHello
         B.reactimate eClose
         B.reactimate eRender
         B.reactimate eEscapeToClose
+        B.reactimate eFoVFuckeryYelling
 
   net <- liftIO $ B.compile network
   liftIO $ B.actuate net
-  return (hello, gameReset, shouldClose, key, mousePos, tick)
+  return (hello, gameReset, shouldClose, key, mousePos, tick, fuckWithFoV)
