@@ -37,11 +37,30 @@ data GameState = GameState
   { _gameStateCamera :: Camera
   } deriving (Eq, Ord, Show)
 
+initGameState :: GameState
+initGameState = GameState
+  { _gameStateCamera = Camera
+    { _cameraPosition = L.V3 0 0 2
+    , _cameraOrientation = (0, 0)
+    , _cameraFOV = pi/2 } }
+
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
   , _cameraOrientation :: (Float, Float)
   , _cameraFOV :: Float
   } deriving (Eq, Show, Ord)
+
+cameraMVP :: Getter Camera (L.M44 Float)
+cameraMVP = to go
+  where
+    go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
+      where
+        vup  = L.V3 0 1 0
+        vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
+        camModel = L.identity
+        camView = L.lookAt vpos (vpos + vdir) vup
+      -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+        camPerspective = L.perspective cfov (16/9) 0.1 100
 
 data Movement =
     MoveLeft
@@ -61,22 +80,22 @@ data NamedHandler a = NamedHandler
 type NamedEventHandler a = (B.AddHandler a, NamedHandler a)
 
 instance Eq (NamedHandler a) where
-  (NamedHandler { _namedHandlerName = l }) == (NamedHandler { _namedHandlerName = r }) = l == r
+  NamedHandler { _namedHandlerName = l } == NamedHandler { _namedHandlerName = r } = l == r
 
 instance Ord (NamedHandler a) where
-  compare (NamedHandler { _namedHandlerName = l }) (NamedHandler { _namedHandlerName = r }) = compare l r
+  compare NamedHandler { _namedHandlerName = l } NamedHandler { _namedHandlerName = r } = compare l r
 
 instance Show (NamedHandler a) where
-  show (NamedHandler {..}) = unpack _namedHandlerName
+  show NamedHandler {..} = unpack _namedHandlerName
 
 class Firable a b where
   fire :: a -> b -> IO ()
 
 instance a ~ b => Firable (NamedHandler a) b where
-  fire (NamedHandler {..}) b = _namedHandlerHandler b
+  fire NamedHandler {..} = _namedHandlerHandler
 
 instance a ~ b => Firable (B.Handler a) b where
-  fire f b = f b
+  fire = id
 
 newNamedEventHandler :: MonadIO m => Text -> m (NamedEventHandler a)
 newNamedEventHandler name = liftIO $ do
