@@ -110,6 +110,23 @@ data ExpandObjVTN = ExpandObjVTN
   , _expandObjVTNVerts :: Vector W.Location
   , _expandObjVTNTexs :: Vector W.TexCoord
   , _expandObjVTNNorms :: Vector W.Normal
-  }
+  } deriving (Eq, Show)
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN]
+type ModuleName = String
+
+data ScriptName = ScriptName
+  { _scriptNamePath :: FilePath
+  , _scriptNameMainModule :: ModuleName
+  } deriving (Eq, Ord, Show)
+
+data Script = Script
+  { _scriptSuperScripts :: Vector ScriptName
+  , _scriptName :: ScriptName
+  , _scriptOnInit :: GameState -> Game GameState
+  , _scriptOnLoad :: GameState -> Game GameState
+  , _scriptOnEvent :: Vector (EventName, GameState -> Game GameState)
+  , _scriptOnUnload :: GameState -> Game GameState
+  , _scriptOnExit :: 
+  } deriving (Eq, Ord, Show)
+
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script]
