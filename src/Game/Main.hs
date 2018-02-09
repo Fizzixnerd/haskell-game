@@ -13,9 +13,9 @@ import           Game.Graphics.Model.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Rendering
-import qualified Linear.OpenGL                        as L ()
-import qualified Graphics.UI.GLFW                     as G
-import qualified Graphics.Rendering.OpenGL.GL         as G
+import qualified Linear.OpenGL                as L ()
+import qualified Graphics.UI.GLFW             as G
+import qualified Graphics.Rendering.OpenGL.GL as G
 import           Text.Printf
 
 graphicsInit :: MonadIO m => m ()
