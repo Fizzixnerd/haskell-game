@@ -15,7 +15,6 @@ import           Foreign.C.Types
 import           Game.Types
 import qualified Linear                     as L
 
-
 type ExpandObjVTNState = MS.State ExpandObjVTN
 
 loadObj :: MonadIO m => FilePath -> m W.WavefrontOBJ

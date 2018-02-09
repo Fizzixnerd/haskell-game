@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Game.Types
   ( module Game.Types
@@ -22,7 +23,7 @@ import           Game.StorableTypes
 import qualified Linear                     as L
 import qualified Reactive.Banana.Frameworks as B
 
-newtype Game a = Game { unGame :: ML.LoggingT IO a }
+newtype Game a = Game { _unGame :: ML.LoggingT IO a }
   deriving ( Functor
            , Applicative
            , Monad
@@ -30,7 +31,7 @@ newtype Game a = Game { unGame :: ML.LoggingT IO a }
            , MonadIO )
 
 runGame :: Game a -> IO a
-runGame g = ML.runStderrLoggingT $ unGame g
+runGame g = ML.runStderrLoggingT $ _unGame g
 
 data GameState = GameState
   { _gameStateCamera :: Camera

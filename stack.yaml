@@ -20,7 +20,8 @@ resolver: lts-10.4
 # User packages to be built.
 # Various formats can be used as shown in the example below.
 #
-# packages:
+packages:
+  - plugin
 # - some-directory
 # - https://example.com/foo/bar/baz-0.0.2.tar.gz
 # - location:
@@ -43,6 +44,7 @@ extra-deps:
 - linear-opengl-0.3.0.0
 - derive-storable-0.1.1.1
 - derive-storable-plugin-0.2.0.0
+- plugin
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

@@ -6,15 +6,21 @@
 module Game.Main where
 
 import ClassyPrelude
+import Control.Concurrent
+import Control.Lens
+import Data.Maybe
+import Foreign hiding (void)
+import Foreign.C.Types
+import GHC.Float (double2Float)
+import Text.Printf
+
+import Game.Types
+
 import qualified Graphics.UI.GLFW as G
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.Rendering.OpenGL.GLU.Errors as G (errors)
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks as B
-import Foreign.C.Types
-import Foreign hiding (void)
-import Text.Printf
-import Control.Lens
 import qualified Linear as L
 import qualified Linear.OpenGL as L ()
 import Data.Maybe
