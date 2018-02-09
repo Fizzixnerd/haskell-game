@@ -78,7 +78,7 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
   (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
   (addHandlerFuckWithFoV, fuckWithFoV) <- newNamedEventHandler "fuckWithFoV"
 
-  --(foreignFriend :: GameState -> GameState) <- liftIO $ loadPlugin "ForeignEvent" "gs"
+  (foreignFriend :: GameState -> GameState) <- liftIO $ loadPlugin "scripts" "ForeignEvent" ("gs" :: String)
 
   let network :: B.MomentIO ()
       network = mdo
@@ -120,13 +120,13 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
             eResetGame :: B.Event (GameState -> GameState)
             eResetGame = const (const initGameState) <$> eGameReset
 
---            eFoVFuckery :: B.Event (GameState -> GameState)
---            eFoVFuckery = const foreignFriend <$> eFuckWithFoV
+            eFoVFuckery :: B.Event (GameState -> GameState)
+            eFoVFuckery = const foreignFriend <$> eFuckWithFoV
 
             eFoVFuckeryYelling :: B.Event (IO ())
             eFoVFuckeryYelling = const (print ("FUCK ME" :: Text)) <$> eFuckWithFoV
 
-        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame]) --, eFoVFuckery])
+        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame, eFoVFuckery])
 
         B.reactimate ePrintHello
         B.reactimate eClose
