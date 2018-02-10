@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 277614d54a051181828e2746d963606b1b9b040fa1d4383405b82ec56737db2e
+-- hash: ebe4c544f9f4abcbd1a3da7cf7ff15cd63b77936910c333286c5fcd6b084bd5a
 
 name:           haskell-game
 version:        0.1.0.0
@@ -61,6 +61,8 @@ library
       Game.Graphics.Shader.Loader
       Game.Graphics.Texture.Loader
       Game.Main
+      Game.Script.Installer
+      Game.Script.Loader
       Game.StorableTypes
       Game.Types
   other-modules:
