@@ -19,7 +19,12 @@ loadPlugin dir modName value = do
     runGhc (Just libdir) $ do
   
     dynFlags <- getSessionDynFlags
-    setSessionDynFlags $ dynamicTooMkDynamicDynFlags $ dynFlags { importPaths = [modName] ++ importPaths dynFlags }
+    setSessionDynFlags $ dynamicTooMkDynamicDynFlags $ dynFlags 
+      { importPaths = [modName] ++ importPaths dynFlags
+      , hscTarget = HscLlvm
+      , ghcLink = LinkInMemory
+      , ghcMode = CompManager
+      }
     sequence [guessTarget modName Nothing] >>= setTargets
     load LoadAllTargets
     setContext [IIDecl $ simpleImportDecl $ mkModuleName modName]

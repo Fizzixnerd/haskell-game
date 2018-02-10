@@ -90,11 +90,6 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
         eMousePos <- B.fromAddHandler addHandlerMousePos
         eGameReset <- B.fromAddHandler addHandlerGameReset
 
-        B.reactimate ePrintHello
-        B.reactimate eClose
-        B.reactimate eRender
-        B.reactimate eEscapeToClose
-
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
 
