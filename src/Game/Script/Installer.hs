@@ -20,7 +20,7 @@ scriptInstall s gs = let
                               endo
                               (gs ^. gameStateEventRegister)
                               endoR)
-                    (gs ^. gameStateEndoRegister)
+                    (gs'' ^. gameStateEndoRegister)
                     (s ^. scriptOnEvent)
   in
   gs'' & gameStateActiveScripts %~ cons s

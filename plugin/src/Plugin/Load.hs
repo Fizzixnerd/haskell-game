@@ -21,7 +21,7 @@ loadPlugin dir modName value = do
     dynFlags <- getSessionDynFlags
     setSessionDynFlags $ dynamicTooMkDynamicDynFlags $ dynFlags 
       { importPaths = [modName] ++ importPaths dynFlags
-      , hscTarget = HscLlvm
+      , hscTarget = HscAsm
       , ghcLink = LinkInMemory
       , ghcMode = CompManager
       }
