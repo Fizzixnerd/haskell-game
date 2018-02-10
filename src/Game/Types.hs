@@ -14,14 +14,16 @@ module Game.Types
   ) where
 
 import           ClassyPrelude
-import qualified Codec.Wavefront            as W
+import qualified Codec.Wavefront             as W
 import           Control.Lens
-import qualified Control.Monad.Logger       as ML
-import qualified Data.Map.Strict            as MS
+import qualified Control.Monad.Logger        as ML
+import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Game.StorableTypes
-import qualified Linear                     as L
-import qualified Reactive.Banana.Frameworks as B
+import qualified Linear                      as L
+import qualified Reactive.Banana.Combinators as B
+import qualified Reactive.Banana.Frameworks  as B
+import           Text.Printf
 
 newtype Game a = Game { _unGame :: ML.LoggingT IO a }
   deriving ( Functor
@@ -33,16 +35,39 @@ newtype Game a = Game { _unGame :: ML.LoggingT IO a }
 runGame :: Game a -> IO a
 runGame g = ML.runStderrLoggingT $ _unGame g
 
+newtype EventRegister = EventRegister { _unEventRegister :: MS.Map EventName RegisteredEvent }
+newtype RegisteredEvent = RegisteredEvent { _unRegisteredEvent :: B.Event () }
+
+lookupEventByName :: EventName -> EventRegister -> Maybe (B.Event ())
+lookupEventByName en (EventRegister er) = _unRegisteredEvent <$> (lookup en er)
+
+deregisterEventByName :: EventName -> EventRegister -> EventRegister
+deregisterEventByName en (EventRegister er) = EventRegister $ MS.delete en er
+
+registerEvent :: NamedEventHandler () -> EventRegister -> B.MomentIO (EventRegister, NamedHandler ())
+registerEvent neh (EventRegister er) = do
+  let name = namedEventHandlerName neh
+  (addHandler, fireHandle) <- liftIO $ newNamedEventHandler name
+  e <- B.fromAddHandler addHandler
+  let er' = EventRegister $ MS.insert name (RegisteredEvent e) er
+  return (er', fireHandle)
+  
+
 data GameState = GameState
   { _gameStateCamera :: Camera
-  } deriving (Eq, Ord, Show)
+  , _gameStateActiveScripts :: Vector Script
+  , _gameStateEventRegister :: EventRegister
+  }
 
 initGameState :: GameState
 initGameState = GameState
   { _gameStateCamera = Camera
     { _cameraPosition = L.V3 0 0 2
     , _cameraOrientation = (0, 0)
-    , _cameraFOV = pi/2 } }
+    , _cameraFOV = pi/2 }
+  , _gameStateActiveScripts = empty
+  , _gameStateEventRegister = EventRegister mempty
+  }
 
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
@@ -73,11 +98,14 @@ data Movement =
   deriving (Eq, Show, Ord)
 
 data NamedHandler a = NamedHandler
-  { _namedHandlerName :: Text
+  { _namedHandlerName :: EventName
   , _namedHandlerHandler :: B.Handler a
   }
 
 type NamedEventHandler a = (B.AddHandler a, NamedHandler a)
+
+namedEventHandlerName :: NamedEventHandler a -> EventName
+namedEventHandlerName neh = _namedHandlerName $ snd neh 
 
 instance Eq (NamedHandler a) where
   NamedHandler { _namedHandlerName = l } == NamedHandler { _namedHandlerName = r } = l == r
@@ -113,6 +141,7 @@ data ExpandObjVTN = ExpandObjVTN
   } deriving (Eq, Show)
 
 type ModuleName = String
+type EventName = Text
 
 data ScriptName = ScriptName
   { _scriptNamePath :: FilePath
@@ -126,7 +155,16 @@ data Script = Script
   , _scriptOnLoad :: GameState -> Game GameState
   , _scriptOnEvent :: Vector (EventName, GameState -> Game GameState)
   , _scriptOnUnload :: GameState -> Game GameState
-  , _scriptOnExit :: 
-  } deriving (Eq, Ord, Show)
+  , _scriptOnExit :: GameState -> Game GameState
+  }
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script]
+instance Eq Script where
+  (Script { _scriptName = sn1 }) == (Script { _scriptName = sn2 }) = sn1 == sn2
+
+instance Ord Script where
+  compare (Script { _scriptName = sn1 }) (Script { _scriptName = sn2 }) = compare sn1 sn2
+
+instance Show Script where
+  show (Script {..}) = printf "<<Script \"%s\">>" (show _scriptName)
+
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script, ''ScriptName, ''EventRegister, ''RegisteredEvent]

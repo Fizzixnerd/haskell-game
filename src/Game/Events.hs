@@ -9,6 +9,7 @@ import           ClassyPrelude
 import           Control.Lens
 import           Game.Graphics.Rendering
 import           Game.Types
+import           Game.Script.Loader
 import           GHC.Float (double2Float)
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.UI.GLFW             as G
@@ -78,7 +79,7 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
   (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
   (addHandlerFuckWithFoV, fuckWithFoV) <- newNamedEventHandler "fuckWithFoV"
 
-  (foreignFriend :: GameState -> GameState) <- liftIO $ loadPlugin "scripts" "ForeignEvent" ("gs" :: String)
+  foreignScript <- liftIO $ loadForeignScript $ ScriptName "scripts" "ForeignScript"
 
   let network :: B.MomentIO ()
       network = mdo
@@ -89,7 +90,6 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
         eMousePos <- B.fromAddHandler addHandlerMousePos
         eGameReset <- B.fromAddHandler addHandlerGameReset
         eFuckWithFoV <- B.fromAddHandler addHandlerFuckWithFoV
-
 
         B.reactimate ePrintHello
         B.reactimate eClose
