@@ -39,11 +39,15 @@ runGame g = ML.runStderrLoggingT $ _unGame g
 newtype EventRegister = EventRegister { _unEventRegister :: MS.Map EventName (B.Event ()) }
 newtype EndoRegister  = EndoRegister { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> GameState)) }
 
+type ScanCode = Int
+
 data GameState = GameState
   { _gameStateCamera :: Camera
   , _gameStateActiveScripts :: Vector Script
   , _gameStateEventRegister :: EventRegister
   , _gameStateEndoRegister  :: EndoRegister
+  , _gameStateMousePosEvent :: B.Event (G.Window, Double, Double)
+  , _gameStateKeyEvent      :: B.Event (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys)
   }
 
 initGameState :: GameState
@@ -55,6 +59,8 @@ initGameState = GameState
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateEndoRegister  = EndoRegister mempty
+  , _gameStateMousePosEvent = error "mousePosEvent not set."
+  , _gameStateKeyEvent      = error "keyEvent not set."
   }
 
 data Camera = Camera
@@ -155,6 +161,17 @@ instance Ord Script where
 
 instance Show Script where
   show Script {..} = printf "<<Script \"%s\">>" (show _scriptName)
+
+defaultScript :: Script
+defaultScript = Script
+  { _scriptSuperScripts = empty
+  , _scriptName = error "Don't change this."
+  , _scriptOnInit = id
+  , _scriptOnLoad = id
+  , _scriptOnEvent = empty
+  , _scriptOnUnload = id
+  , _scriptOnExit = id
+  }
 
 lookupEventByName :: EventName -> EventRegister -> Maybe (B.Event ())
 lookupEventByName en (EventRegister er) = lookup en er
