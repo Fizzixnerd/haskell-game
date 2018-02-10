@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-{-# OPTIONS_GHC -fplugin=Foreign.Storable.Generic.Plugin #-}
 
 module Game.StorableTypes where
 

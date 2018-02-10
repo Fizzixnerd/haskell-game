@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ebe4c544f9f4abcbd1a3da7cf7ff15cd63b77936910c333286c5fcd6b084bd5a
+-- hash: 5fe4df32ffeed9e60e367fb00cae82e6f6aedbc7509ff3303462c0d4997a2be1
 
 name:           haskell-game
 version:        0.1.0.0
@@ -73,7 +73,7 @@ executable haskell-game-exe
   main-is: Main.hs
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fplugin Foreign.Storable.Generic.Plugin
   build-depends:
       FontyFruity
     , GLFW-b

@@ -10,24 +10,14 @@ import           Data.Maybe
 import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
-import           Game.Graphics.Texture.Loader
-import           Game.Graphics.Shader.Loader
+import           Game.Graphics.OpenGLExtras
 import           Game.Graphics.Rendering
+import           Game.Graphics.Shader.Loader
+import           Game.Graphics.Texture.Loader
 import qualified Linear.OpenGL                as L ()
 import qualified Graphics.UI.GLFW             as G
 import qualified Graphics.Rendering.OpenGL.GL as G
 import           Text.Printf
-
-graphicsInit :: MonadIO m => m ()
-graphicsInit = liftIO $ do
-  _ <- G.init
-  G.windowHint $ G.WindowHint'ContextVersionMajor 4
-  G.windowHint $ G.WindowHint'ContextVersionMinor 5
-  G.windowHint $ G.WindowHint'OpenGLForwardCompat True
-  G.windowHint $ G.WindowHint'Samples 4
-  G.windowHint $ G.WindowHint'OpenGLProfile G.OpenGLProfile'Core
-  G.windowHint $ G.WindowHint'OpenGLDebugContext True
-  G.windowHint $ G.WindowHint'DepthBits 24
 
 withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
@@ -52,9 +42,8 @@ doItAndGimmeFireThing :: Game ( NamedHandler a
                               , G.Window
                               , IO () )
 doItAndGimmeFireThing = do
-  graphicsInit
-  mWin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
-  let win = fromJust mWin
+  createGraphicsContext defaultGraphicsContext
+  win <- createWindow defaultWindowConfig
   liftIO $ G.makeContextCurrent $ Just win
 
   liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
