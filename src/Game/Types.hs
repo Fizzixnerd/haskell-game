@@ -51,7 +51,6 @@ registerEvent neh (EventRegister er) = do
   e <- B.fromAddHandler addHandler
   let er' = EventRegister $ MS.insert name (RegisteredEvent e) er
   return (er', fireHandle)
-  
 
 data GameState = GameState
   { _gameStateCamera :: Camera
