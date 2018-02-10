@@ -35,27 +35,14 @@ newtype Game a = Game { _unGame :: ML.LoggingT IO a }
 runGame :: Game a -> IO a
 runGame g = ML.runStderrLoggingT $ _unGame g
 
-newtype EventRegister = EventRegister { _unEventRegister :: MS.Map EventName RegisteredEvent }
-newtype RegisteredEvent = RegisteredEvent { _unRegisteredEvent :: B.Event () }
-
-lookupEventByName :: EventName -> EventRegister -> Maybe (B.Event ())
-lookupEventByName en (EventRegister er) = _unRegisteredEvent <$> (lookup en er)
-
-deregisterEventByName :: EventName -> EventRegister -> EventRegister
-deregisterEventByName en (EventRegister er) = EventRegister $ MS.delete en er
-
-registerEvent :: NamedEventHandler () -> EventRegister -> B.MomentIO (EventRegister, NamedHandler ())
-registerEvent neh (EventRegister er) = do
-  let name = namedEventHandlerName neh
-  (addHandler, fireHandle) <- liftIO $ newNamedEventHandler name
-  e <- B.fromAddHandler addHandler
-  let er' = EventRegister $ MS.insert name (RegisteredEvent e) er
-  return (er', fireHandle)
+newtype EventRegister = EventRegister { _unEventRegister :: MS.Map EventName (B.Event ()) }
+newtype EndoRegister  = EndoRegister { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> GameState)) }
 
 data GameState = GameState
   { _gameStateCamera :: Camera
   , _gameStateActiveScripts :: Vector Script
   , _gameStateEventRegister :: EventRegister
+  , _gameStateEndoRegister  :: EndoRegister
   }
 
 initGameState :: GameState
@@ -66,6 +53,7 @@ initGameState = GameState
     , _cameraFOV = pi/2 }
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
+  , _gameStateEndoRegister  = EndoRegister mempty
   }
 
 data Camera = Camera
@@ -141,6 +129,7 @@ data ExpandObjVTN = ExpandObjVTN
 
 type ModuleName = String
 type EventName = Text
+type EndoName = Text
 
 data ScriptName = ScriptName
   { _scriptNamePath :: FilePath
@@ -150,11 +139,11 @@ data ScriptName = ScriptName
 data Script = Script
   { _scriptSuperScripts :: Vector ScriptName
   , _scriptName :: ScriptName
-  , _scriptOnInit :: GameState -> Game GameState
-  , _scriptOnLoad :: GameState -> Game GameState
-  , _scriptOnEvent :: Vector (EventName, GameState -> Game GameState)
-  , _scriptOnUnload :: GameState -> Game GameState
-  , _scriptOnExit :: GameState -> Game GameState
+  , _scriptOnInit :: GameState -> GameState
+  , _scriptOnLoad :: GameState -> GameState
+  , _scriptOnEvent :: Vector (EventName, EndoName, GameState -> GameState)
+  , _scriptOnUnload :: GameState -> GameState
+  , _scriptOnExit :: GameState -> GameState
   }
 
 instance Eq Script where
@@ -166,4 +155,31 @@ instance Ord Script where
 instance Show Script where
   show (Script {..}) = printf "<<Script \"%s\">>" (show _scriptName)
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script, ''ScriptName, ''EventRegister, ''RegisteredEvent]
+lookupEventByName :: EventName -> EventRegister -> Maybe (B.Event ())
+lookupEventByName en (EventRegister er) = lookup en er
+
+-- You can't really deregister events...
+-- deregisterEventByName :: EventName -> EventRegister -> EventRegister
+-- deregisterEventByName en (EventRegister er) = EventRegister $ MS.delete en er
+
+registerEndoByName :: EventName -> EndoName -> (GameState -> GameState) -> EventRegister -> EndoRegister -> EndoRegister
+registerEndoByName eventName endoName endo eventR endoR =
+  let me = lookupEventByName eventName eventR in
+  case me of
+    Nothing -> endoR
+    Just e -> do
+      let e' = const endo <$> e
+      registerEndo endoName e' endoR
+
+registerEndo :: EndoName -> B.Event (GameState -> GameState) -> EndoRegister -> EndoRegister
+registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
+
+registerEvent :: NamedEventHandler () -> EventRegister -> B.MomentIO (EventRegister, NamedHandler ())
+registerEvent neh (EventRegister er) = do
+  let name = namedEventHandlerName neh
+  (addHandler, fireHandle) <- liftIO $ newNamedEventHandler name
+  e <- B.fromAddHandler addHandler
+  let er' = EventRegister $ MS.insert name e er
+  return (er', fireHandle)
+
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script, ''ScriptName, ''EventRegister, ''EndoRegister]

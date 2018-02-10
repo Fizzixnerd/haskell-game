@@ -10,6 +10,7 @@ import           Control.Lens
 import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
+import           Game.Script.Installer
 import           GHC.Float (double2Float)
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.UI.GLFW             as G
@@ -67,8 +68,7 @@ compileGameNetwork ::
   -> G.TextureObject
   -> m (NamedHandler b1, NamedHandler b2, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, c, d, e),
-        NamedHandler (G.Window, Double, Double), NamedHandler G.Window,
-        NamedHandler b3)
+        NamedHandler (G.Window, Double, Double), NamedHandler G.Window)
 compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
@@ -77,9 +77,9 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
   (addHandlerHello, hello) <- newNamedEventHandler "hello"
   (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
   (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
-  (addHandlerFuckWithFoV, fuckWithFoV) <- newNamedEventHandler "fuckWithFoV"
 
   foreignScript <- liftIO $ loadForeignScript $ ScriptName "scripts" "ForeignScript"
+  let installForeignScript = scriptInstall foreignScript
 
   let network :: B.MomentIO ()
       network = mdo
@@ -89,7 +89,6 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
         eHello <- B.fromAddHandler addHandlerHello
         eMousePos <- B.fromAddHandler addHandlerMousePos
         eGameReset <- B.fromAddHandler addHandlerGameReset
-        eFuckWithFoV <- B.fromAddHandler addHandlerFuckWithFoV
 
         B.reactimate ePrintHello
         B.reactimate eClose
@@ -120,20 +119,17 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
             eResetGame :: B.Event (GameState -> GameState)
             eResetGame = const (const initGameState) <$> eGameReset
 
-            eFoVFuckery :: B.Event (GameState -> GameState)
-            eFoVFuckery = const foreignFriend <$> eFuckWithFoV
+            gameState :: GameState
+            gameState = installCameraMovement $ installForeignScript initGameState
+              where installCameraMovement gs = gs & gameStateEndoRegister %~ registerEndo "camMove" eCamMove
 
-            eFoVFuckeryYelling :: B.Event (IO ())
-            eFoVFuckeryYelling = const (print ("FUCK ME" :: Text)) <$> eFuckWithFoV
-
-        bWorld <- B.accumB initGameState (B.unions [eCamMove, eResetGame, eFoVFuckery])
+        bWorld <- B.accumB gameState (B.unions $ toList $ gameState ^. gameStateEndoRegister . unEndoRegister)
 
         B.reactimate ePrintHello
         B.reactimate eClose
         B.reactimate eRender
         B.reactimate eEscapeToClose
-        B.reactimate eFoVFuckeryYelling
 
   net <- liftIO $ B.compile network
   liftIO $ B.actuate net
-  return (hello, gameReset, shouldClose, key, mousePos, tick, fuckWithFoV)
+  return (hello, gameReset, shouldClose, key, mousePos, tick)
