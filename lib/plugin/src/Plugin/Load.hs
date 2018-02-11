@@ -17,7 +17,7 @@ loadPlugin dir modName value = do
   withCurrentDirectory dir $
     defaultErrorHandler defaultFatalMessager defaultFlushOut $
     runGhc (Just libdir) $ do
-  
+
     dynFlags <- getSessionDynFlags
     setSessionDynFlags $ dynamicTooMkDynamicDynFlags $ dynFlags 
       { importPaths = [modName] ++ importPaths dynFlags

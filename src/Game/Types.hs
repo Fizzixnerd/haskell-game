@@ -20,11 +20,11 @@ import qualified Control.Monad.Logger        as ML
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Game.StorableTypes
+import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks  as B
 import           Text.Printf
-import qualified Graphics.UI.GLFW            as G
 
 newtype Game a = Game { _unGame :: ML.LoggingT IO a }
   deriving ( Functor
@@ -99,7 +99,7 @@ data NamedHandler a = NamedHandler
 type NamedEventHandler a = (B.AddHandler a, NamedHandler a)
 
 namedEventHandlerName :: NamedEventHandler a -> EventName
-namedEventHandlerName neh = _namedHandlerName $ snd neh 
+namedEventHandlerName neh = _namedHandlerName $ snd neh
 
 instance Eq (NamedHandler a) where
   NamedHandler { _namedHandlerName = l } == NamedHandler { _namedHandlerName = r } = l == r
@@ -154,7 +154,7 @@ data Script = Script
   }
 
 instance Eq Script where
-  (Script { _scriptName = sn1 }) == (Script { _scriptName = sn2 }) = sn1 == sn2
+  Script { _scriptName = sn1 } == Script { _scriptName = sn2 } = sn1 == sn2
 
 instance Ord Script where
   compare Script { _scriptName = sn1 } Script { _scriptName = sn2 } = compare sn1 sn2
@@ -200,4 +200,68 @@ registerEvent neh (EventRegister er) = do
   let er' = EventRegister $ MS.insert name e er
   return (er', fireHandle)
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script, ''ScriptName, ''EventRegister, ''EndoRegister]
+data GraphicsContext = GraphicsContext
+  { _graphicsContextClientAPI           :: G.ClientAPI
+  , _graphicsContextContextVersionMajor :: Int
+  , _graphicsContextContextVersionMinor :: Int
+  , _graphicsContextContextRobustness   :: G.ContextRobustness
+  , _graphicsContextOpenGLForwardCompat :: Bool
+  , _graphicsContextOpenGLDebugContext  :: Bool
+  , _graphicsContextOpenGLProfile       :: G.OpenGLProfile
+  , _graphicsContextRefreshRate         :: Maybe Int
+  , _graphicsContextRedBits            :: Int
+  , _graphicsContextGreenBits          :: Int
+  , _graphicsContextBlueBits           :: Int
+  , _graphicsContextAlphaBits          :: Int
+  , _graphicsContextDepthBits          :: Int
+  , _graphicsContextStencilBits        :: Int
+  , _graphicsContextSamples            :: Int
+  , _graphicsContextStereo             :: Bool
+  , _graphicsContextSRGBCapable        :: Bool
+  }
+
+defaultGraphicsContext :: GraphicsContext
+defaultGraphicsContext = GraphicsContext
+  { _graphicsContextClientAPI           = G.ClientAPI'OpenGL
+  , _graphicsContextContextVersionMajor = 4
+  , _graphicsContextContextVersionMinor = 5
+  , _graphicsContextContextRobustness   = G.ContextRobustness'NoRobustness
+  , _graphicsContextOpenGLForwardCompat = True
+  , _graphicsContextOpenGLDebugContext  = True
+  , _graphicsContextOpenGLProfile       = G.OpenGLProfile'Core
+  , _graphicsContextRefreshRate         = Nothing
+  , _graphicsContextRedBits             = 8
+  , _graphicsContextGreenBits           = 8
+  , _graphicsContextBlueBits            = 8
+  , _graphicsContextAlphaBits           = 8
+  , _graphicsContextDepthBits           = 24
+  , _graphicsContextStencilBits         = 8
+  , _graphicsContextSamples             = 4
+  , _graphicsContextStereo              = False
+  , _graphicsContextSRGBCapable         = False
+  }
+
+data WindowConfig = WindowConfig
+  { _windowConfigResizable          :: Bool
+  , _windowConfigVisible            :: Bool
+  , _windowConfigDecorated          :: Bool
+  , _windowConfigWidth              :: Int
+  , _windowConfigHeight             :: Int
+  , _windowConfigTitle              :: String
+  , _windowConfigMonitorFullscreen  :: Maybe G.Monitor
+  , _windowConfigWindowContextShare :: Maybe G.Window
+  }
+
+defaultWindowConfig :: WindowConfig
+defaultWindowConfig = WindowConfig
+  { _windowConfigResizable          = True
+  , _windowConfigVisible            = True
+  , _windowConfigDecorated          = True
+  , _windowConfigWidth              = 1920
+  , _windowConfigHeight             = 1080
+  , _windowConfigTitle              = ""
+  , _windowConfigMonitorFullscreen  = Nothing
+  , _windowConfigWindowContextShare = Nothing
+  }
+
+mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script, ''ScriptName, ''EventRegister, ''EndoRegister, ''WindowConfig]
