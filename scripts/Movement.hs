@@ -10,7 +10,6 @@ import qualified Linear as L
 import qualified Graphics.UI.GLFW as G
 import GHC.Float (double2Float)
 
-
 keyToMovement :: G.Key -> Maybe Movement
 keyToMovement G.Key'W = Just MoveForward
 keyToMovement G.Key'A = Just MoveLeft

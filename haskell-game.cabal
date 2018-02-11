@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ebe4c544f9f4abcbd1a3da7cf7ff15cd63b77936910c333286c5fcd6b084bd5a
+-- hash: 7f70ae97dac8a0888e3ea90d6222629ef681c99b2345829b89c98327c1e3d6ed
 
 name:           haskell-game
 version:        0.1.0.0
@@ -54,6 +54,7 @@ library
     , vector
     , wavefront
   exposed-modules:
+      BulletHelloWorld
       Game.Events
       Game.Graphics.Model.Loader
       Game.Graphics.OpenGLExtras

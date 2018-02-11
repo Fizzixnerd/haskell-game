@@ -11,11 +11,8 @@ import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
-import           GHC.Float (double2Float)
 import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.UI.GLFW             as G
-import qualified Linear as L
-import           Plugin.Load
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
 
