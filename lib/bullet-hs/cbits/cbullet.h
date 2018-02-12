@@ -11,11 +11,12 @@ extern "C" {
   typedef struct collision_dispatcher { char unused; } collision_dispatcher;
   typedef struct sequential_impulse_constraint_solver { char unused; } sequential_impulse_constraint_solver;
   typedef struct discrete_dynamics_world { char unused; } discrete_dynamics_world;
-  typedef struct default_motion_state { char unused; } default_motion_state;
+  typedef struct motion_state { char unused; } motion_state;
   typedef struct static_plane_shape { char unused; } static_plane_shape;
   typedef struct sphere_shape { char unused; } sphere_shape;
   typedef struct collision_shape { char unused; } collision_shape;
   typedef struct rigid_body { char unused; } rigid_body;
+  typedef struct transform { char unused; } transform;
   typedef float scalar;
 
   broadphase_interface* new_broadphase_interface();
@@ -44,27 +45,29 @@ extern "C" {
 		      scalar time_step,
 		      const int* max_sub_steps,
 		      const scalar* fixed_time_step);
-  int default_step_simulation(discrete_dynamics_world* world, scalar time_step);
+  //  int default_step_simulation(discrete_dynamics_world* world, scalar time_step);
   void add_rigid_body(discrete_dynamics_world* world, rigid_body* rigid_body);
 
   // btDefaultMotionState
-  default_motion_state* new_default_motion_state(scalar r, // quaternion
-						 scalar i,
-						 scalar j,
-						 scalar k,
-						 scalar x, // vector
-						 scalar y,
-						 scalar z);
-  void free_default_motion_state(default_motion_state* motion_state);
+  motion_state* new_default_motion_state(scalar r, // quaternion
+					 scalar i,
+					 scalar j,
+					 scalar k,
+					 scalar x, // vector
+					 scalar y,
+					 scalar z);
+  void free_default_motion_state(motion_state* motion_state);
+  transform* get_world_transform(motion_state* motion_state);
 
   // btRigidBody
   rigid_body* new_rigid_body(scalar mass,
-			     default_motion_state* motion_state,
+			     motion_state* motion_state,
 			     collision_shape* shape,
 			     scalar inertia_x,
 			     scalar inertia_y,
 			     scalar inertia_z);
   void free_rigid_body(rigid_body* rigid_body);
+  motion_state* get_motion_state(rigid_body* rigid_body);
 
   // btCollisionShape
   void calculate_local_inertia(collision_shape* collision_shape,
@@ -84,6 +87,9 @@ extern "C" {
   sphere_shape* new_sphere_shape(scalar radius);
   void free_sphere_shape(sphere_shape* sphere_shape);
 
+  // btTransform
+  void get_origin(transform* transform, scalar* x_out, scalar* y_out, scalar* z_out);
+  
 #ifdef __cplusplus
 }
 #endif

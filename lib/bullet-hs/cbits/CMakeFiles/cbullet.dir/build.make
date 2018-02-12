@@ -90,6 +90,22 @@ cbullet_EXTERNAL_OBJECTS =
 
 libcbullet.so.1.0: CMakeFiles/cbullet.dir/cbullet.cpp.o
 libcbullet.so.1.0: CMakeFiles/cbullet.dir/build.make
+libcbullet.so.1.0: /usr/local/lib/libBullet3Common.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Dynamics.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Collision.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Geometry.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Common.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Dynamics.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Collision.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3Geometry.so
+libcbullet.so.1.0: /usr/local/lib/libLinearMath.so
+libcbullet.so.1.0: /usr/local/lib/libBulletFileLoader.so
+libcbullet.so.1.0: /usr/local/lib/libBulletWorldImporter.so
+libcbullet.so.1.0: /usr/local/lib/libBullet3OpenCL_clew.so
+libcbullet.so.1.0: /usr/local/lib/libBulletInverseDynamics.so
+libcbullet.so.1.0: /usr/local/lib/libBulletSoftBody.so
+libcbullet.so.1.0: /usr/local/lib/libConvexDecomposition.so
+libcbullet.so.1.0: /usr/local/lib/libGIMPACTUtils.so
 libcbullet.so.1.0: CMakeFiles/cbullet.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX shared library libcbullet.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/cbullet.dir/link.txt --verbose=$(VERBOSE)

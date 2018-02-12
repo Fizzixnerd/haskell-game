@@ -22,21 +22,24 @@ description:         Please see the README on Github at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 
+extra-libraries:
+  - Bullet3Common
+  - Bullet3Dynamics
+  - Bullet3Collision
+  - LinearMath
+  - cbullet
+
+extra-lib-dirs:
+  - /usr/local/lib/
+
+include-dirs:
+  - cbits/
+
 library:
   source-dirs: src
-
-  extra-libraries:
-    - Bullet3Common
-    - Bullet3Dynamics
-    - Bullet3Collision
-    - LinearMath
-
-  extra-lib-dirs:
-    - /usr/local/lib/
-
-  include-dirs:
-    - cbits/
-
+  ghc-options:
+    - -dynamic
+    - -fPIC
 
 executables:
   bullet-hs-exe:
@@ -46,6 +49,8 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -dynamic
+    - -fPIC
     dependencies:
     - bullet-hs
 
@@ -57,5 +62,7 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -dynamic
+    - -fPIC
     dependencies:
     - bullet-hs

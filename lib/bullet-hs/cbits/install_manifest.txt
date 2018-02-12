@@ -1,0 +1,4 @@
+/usr/local/lib/libcbullet.so.1.0
+/usr/local/lib/libcbullet.so.1
+/usr/local/lib/libcbullet.so
+/usr/local/include/cbullet.h

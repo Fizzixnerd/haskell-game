@@ -14,6 +14,45 @@
 # EXTERNAL cache entries
 ########################
 
+//Path to a library.
+B3COLLISION_LIB:FILEPATH=/usr/local/lib/libBullet3Collision.so
+
+//Path to a library.
+B3COMMON_LIB:FILEPATH=/usr/local/lib/libBullet3Common.so
+
+//Path to a library.
+B3DYNAMICS_LIB:FILEPATH=/usr/local/lib/libBullet3Dynamics.so
+
+//Path to a library.
+B3GEOMETRY_LIB:FILEPATH=/usr/local/lib/libBullet3Geometry.so
+
+//Path to a library.
+BCOLLISION_LIB:FILEPATH=/usr/local/lib/libBullet3Collision.so
+
+//Path to a library.
+BCOMMON_LIB:FILEPATH=/usr/local/lib/libBullet3Common.so
+
+//Path to a library.
+BDYNAMICS_LIB:FILEPATH=/usr/local/lib/libBullet3Dynamics.so
+
+//Path to a library.
+BFILE_LOADER_LIB:FILEPATH=/usr/local/lib/libBulletFileLoader.so
+
+//Path to a library.
+BGEOMETRY_LIB:FILEPATH=/usr/local/lib/libBullet3Geometry.so
+
+//Path to a library.
+BINVERSE_DYN_LIB:FILEPATH=/usr/local/lib/libBulletInverseDynamics.so
+
+//Path to a library.
+BOPENCL_LIB:FILEPATH=/usr/local/lib/libBullet3OpenCL_clew.so
+
+//Path to a library.
+BSOFT_BODY_LIB:FILEPATH=/usr/local/lib/libBulletSoftBody.so
+
+//Path to a library.
+BWORLD_IMPORTER_LIB:FILEPATH=/usr/local/lib/libBulletWorldImporter.so
+
 //Path to a program.
 CMAKE_AR:FILEPATH=/usr/bin/ar
 
@@ -236,11 +275,23 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
+//Path to a library.
+CONVEX_DECOMP_LIB:FILEPATH=/usr/local/lib/libConvexDecomposition.so
+
 //Single output directory for building all executables.
 EXECUTABLE_OUTPUT_PATH:PATH=
 
+//Path to a library.
+GACD_LIB:FILEPATH=/usr/local/lib/libHACD.so
+
+//Path to a library.
+GIMPACT_LIB:FILEPATH=/usr/local/lib/libGIMPACTUtils.so
+
 //Single output directory for building all libraries.
 LIBRARY_OUTPUT_PATH:PATH=
+
+//Path to a library.
+LINEAR_MATH_LIB:FILEPATH=/usr/local/lib/libLinearMath.so
 
 //pkg-config executable
 PKG_CONFIG_EXECUTABLE:FILEPATH=/usr/bin/pkg-config
@@ -248,8 +299,8 @@ PKG_CONFIG_EXECUTABLE:FILEPATH=/usr/bin/pkg-config
 //Value Computed by CMake
 cbullet_BINARY_DIR:STATIC=/home/matt/src/haskell-game/lib/bullet-hs/cbits
 
-//Dependencies for target
-cbullet_LIB_DEPENDS:STATIC=
+//Dependencies for the target
+cbullet_LIB_DEPENDS:STATIC=general;/usr/local/lib/libBullet3Common.so;general;/usr/local/lib/libBullet3Dynamics.so;general;/usr/local/lib/libBullet3Collision.so;general;/usr/local/lib/libBullet3Geometry.so;general;/usr/local/lib/libBullet3Common.so;general;/usr/local/lib/libBullet3Dynamics.so;general;/usr/local/lib/libBullet3Collision.so;general;/usr/local/lib/libBullet3Geometry.so;general;/usr/local/lib/libLinearMath.so;general;/usr/local/lib/libBulletFileLoader.so;general;/usr/local/lib/libBulletWorldImporter.so;general;/usr/local/lib/libBullet3OpenCL_clew.so;general;/usr/local/lib/libBulletInverseDynamics.so;general;/usr/local/lib/libBulletSoftBody.so;general;/usr/local/lib/libConvexDecomposition.so;general;/usr/local/lib/libGIMPACTUtils.so;general;;
 
 //Value Computed by CMake
 cbullet_SOURCE_DIR:STATIC=/home/matt/src/haskell-game/lib/bullet-hs/cbits

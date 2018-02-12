@@ -17,11 +17,12 @@ import Foreign hiding (new)
 {#pointer *collision_dispatcher as ^ newtype#}
 {#pointer *sequential_impulse_constraint_solver as ^ newtype#}
 {#pointer *discrete_dynamics_world as ^ newtype#}
-{#pointer *default_motion_state as ^ newtype#}
+{#pointer *motion_state as ^ newtype#}
 {#pointer *static_plane_shape as ^ newtype#}
 {#pointer *sphere_shape as ^ newtype#}
 {#pointer *collision_shape as ^ newtype#}
 {#pointer *rigid_body as ^ newtype#}
+{#pointer *transform as ^ newtype#}
 
 class New a x | a -> x where
   new :: x -> IO a
@@ -100,6 +101,25 @@ instance New DiscreteDynamicsWorld ( CollisionDispatcher
   new (cd, bi, sics, dcc) = newDiscreteDynamicsWorld cd bi sics dcc
   del x = freeDiscreteDynamicsWorld x
 
+{#fun set_gravity as setGravity
+ { `DiscreteDynamicsWorld',
+   `Float',
+   `Float',
+   `Float' } -> `()'
+#}
+
+{#fun step_simulation as stepSimulation
+ { `DiscreteDynamicsWorld',
+   `Float',
+   `Int',
+   `Float' } -> `Int'
+#}
+
+{#fun add_rigid_body as ^
+ { `DiscreteDynamicsWorld',
+   `RigidBody' } -> `()'
+#}
+
 {#fun new_default_motion_state as ^
  { `Float', -- Quaternion
    `Float',
@@ -107,16 +127,27 @@ instance New DiscreteDynamicsWorld ( CollisionDispatcher
    `Float',
    `Float', -- Vector
    `Float',
-   `Float' } -> `DefaultMotionState'
+   `Float' } -> `MotionState'
 #}
 
 {#fun free_default_motion_state as ^
- { `DefaultMotionState' } -> `()'
+ { `MotionState' } -> `()'
 #}
 
-instance New DefaultMotionState ((Float,Float,Float,Float),(Float,Float,Float)) where
+instance New MotionState ((Float,Float,Float,Float),(Float,Float,Float)) where
   new ((r, i, j, k), (x, y, z)) = newDefaultMotionState r i j k x y z
   del x = freeDefaultMotionState x
+
+{#fun get_world_transform as ^
+ { `MotionState' } -> `Transform'
+#}
+
+{#fun get_origin as ^
+ { `Transform',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
 
 {#fun new_static_plane_shape as ^
  { `Float',
@@ -155,9 +186,33 @@ type Mass = Float
    alloca- `CFloat' peek* } -> `()'
 #}
 
+{#fun new_rigid_body as newRigidBody_
+ { `Float',
+   `MotionState',
+   `CollisionShape',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `RigidBody'
+#}
+
+{#fun free_rigid_body as ^
+ { `RigidBody' } -> `()'
+#}
+
+{#fun get_motion_state as ^
+ { `RigidBody' } -> `MotionState'
+#}
+
 class IsCollisionShape cs where
   calculateLocalInertia :: cs -> Mass -> IO (CFloat, CFloat, CFloat)
   calculateLocalInertia ss m = calculateLocalInertia_ (unsafeCoerce ss :: CollisionShape) m
 
-instance IsCollisionShape SphereShape
+  newRigidBody :: cs
+               -> Mass
+               -> MotionState
+               -> (CFloat, CFloat, CFloat)
+               -> IO RigidBody
+  newRigidBody cs m dms (x, y, z) = newRigidBody_ m dms (unsafeCoerce cs :: CollisionShape) x y z
 
+instance IsCollisionShape SphereShape
+instance IsCollisionShape StaticPlaneShape
