@@ -25,6 +25,19 @@ dependencies:
 library:
   source-dirs: src
 
+  extra-libraries:
+    - Bullet3Common
+    - Bullet3Dynamics
+    - Bullet3Collision
+    - LinearMath
+
+  extra-lib-dirs:
+    - /usr/local/lib/
+
+  include-dirs:
+    - cbits/
+
+
 executables:
   bullet-hs-exe:
     main:                Main.hs
