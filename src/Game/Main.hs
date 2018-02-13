@@ -17,6 +17,7 @@ import qualified Linear.OpenGL                as L ()
 import qualified Graphics.UI.GLFW             as G
 import qualified Graphics.Rendering.OpenGL.GL as G
 import           Text.Printf
+import Game.Graphics.OpenGL.LowBinding
 
 withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
@@ -54,14 +55,14 @@ doItAndGimmeFireThing = do
   prog <- compileShaders
 
   let mvpLoc       = G.UniformLocation 0
-      texSampleLoc = G.TextureUnit 0
+      texSampleLoc = TextureUnit 0
   (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
 
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
-  let posLocation = G.AttribLocation 0
-      texLocation = G.AttribLocation 1
-      nmlLocation = G.AttribLocation 2
+  let posLocation = AttribLocation 0
+      texLocation = AttribLocation 1
+      nmlLocation = AttribLocation 2
 
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
@@ -77,8 +78,8 @@ doItAndGimmeFireThing = do
   let someFunc' :: IO ()
       someFunc' = do
         loop win
-        G.deleteObjectName vao
-        G.deleteObjectName prog
+        deleteObjectName vao
+        deleteObjectName prog
         G.terminate
           where
             loop w = do

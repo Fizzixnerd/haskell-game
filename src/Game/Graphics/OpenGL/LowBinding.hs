@@ -6,63 +6,47 @@ module Game.Graphics.OpenGL.LowBinding
   ( module X
   , genBufferObject
   , initBufferObject
-  , namedBufferSubData
---  , withNamedMappedBuffer
-  , mapNamedBuffer
-  , unmapNamedBuffer
-  , clearNamedBufferSubData
-  , copyNamedBufferSubData
+  , bufferSubData
+  , mapBuffer
+  , unmapBuffer
+  , clearBufferSubData
+  , copyBufferSubData
+  , bindVertexArrayObject
   , vertexArrayAttribBinding
   , vertexArrayVertexBuffer
   , vertexArrayAttribFormat
   , vertexArrayAttribEnable
-  , mapNamedBufferRange
-  , textureSub1D
-  , textureSub2D
-  , textureSub3D
+  , vertexArrayAttribDisable
+  , mapBufferRange
   , bindTextureUnit
   , toBufferObjectOffset
   , toBufferObjectSize
   , toBufferObjectStride
   , vertexArrayElementBuffer
-  , textureBinding
   , textureParameterf
   , textureParameteri
-  , genVAO
+  , compileShader
+  , shaderDeleteStatus
+  , shaderInfoLog
+  , shaderSource
+  , programDeleteStatus
+  , attachShader
+  , linkProgram
+  , validateProgram
+  , useProgram
   ) where
 
 import Graphics.Rendering.OpenGL.GL as X
-  ( VertexArrayObject
-  , BufferObject
-  , AttribLocation(..)
-  , DataType
-  , SettableStateVar
-  , Capability(..)
-  , MappingFailure(..)
+  ( MappingFailure(..)
   , UniformLocation(..)
   , VariableType(..)
   , Uniform(..)
   , uniform
   , uniformv
-  , Shader
-  , ShaderType(..)
-  , createShader
-  , shaderSourceBS
-  , compileShader
-  , shaderInfoLog
-  , Program
-  , createProgram
-  , currentProgram
-  , attachShader
-  , linkProgram
-  , validateProgram
-  , programInfoLog
   , ($=)
   , clear
   , ClearBuffer(..)
-  , TextureUnit(..)
   , drawElements
-  , bindVertexArrayObject
   , PrimitiveMode(..)
   )
 
@@ -111,77 +95,37 @@ import Game.Graphics.OpenGL.LowTypes as X
   , TextureParameter(..)
   , GLDataType(..)
   , TextureObject
+  , VertexShader
+  , TessEvalShader
+  , TessControlShader
+  , FragmentShader
+  , ComputeShader
+  , Shader
+  , Program
+  , GeneratableObjectName(..)
+  , ObjectName(..)
+  , isObjectName
+  , deleteObjectName
+  , genObjectName
+  , genObjectNames
+  , genTextureName
+  , genTextureNames
+  , TextureUnit(..)
+  , VertexArrayObject
+  , AttribLocation(..)
+  , BufferObject
   )
-
-import Data.ObjectName as X
 
 import Linear.OpenGL ()
 import ClassyPrelude
 import Foreign.Ptr
-import Foreign.Marshal.Array
 import Game.Graphics.OpenGL.LowTypes
 import Graphics.GL.Core45
 import Graphics.GL.Types
-import qualified Graphics.Rendering.OpenGL.GL as GL
 import Data.Bits ((.|.))
-import Unsafe.Coerce
-import qualified Control.Exception.Safe as CE
-
---- Be careful!
-bufferObjectToGLuint :: GL.BufferObject -> GLuint
-bufferObjectToGLuint = unsafeCoerce
-
-gluintToBufferObject :: GLuint -> GL.BufferObject
-gluintToBufferObject = unsafeCoerce
-
-vertexArrayObjectToGLuint :: GL.VertexArrayObject -> GLuint
-vertexArrayObjectToGLuint = unsafeCoerce
-
-gluintToVertexArrayObject :: GLuint -> GL.VertexArrayObject
-gluintToVertexArrayObject = unsafeCoerce
----
-
-marshallDataType :: GLDataType -> GLenum
-marshallDataType = \case
-   GLUnsignedByte -> GL_UNSIGNED_BYTE
-   GLByte -> GL_BYTE
-   GLUnsignedShort -> GL_UNSIGNED_SHORT
-   GLShort -> GL_SHORT
-   GLUnsignedInt -> GL_UNSIGNED_INT
-   GLInt -> GL_INT
-   GLHalfFloat -> GL_HALF_FLOAT
-   GLFloat -> GL_FLOAT
-   GLDouble -> GL_DOUBLE
-   GLUnsignedByte332 -> GL_UNSIGNED_BYTE_3_3_2
-   GLUnsignedByte233Rev -> GL_UNSIGNED_BYTE_2_3_3_REV
-   GLUnsignedShort565 -> GL_UNSIGNED_SHORT_5_6_5
-   GLUnsignedShort565Rev -> GL_UNSIGNED_SHORT_5_6_5_REV
-   GLUnsignedShort4444 -> GL_UNSIGNED_SHORT_4_4_4_4
-   GLUnsignedShort4444Rev -> GL_UNSIGNED_SHORT_4_4_4_4_REV
-   GLUnsignedShort5551 -> GL_UNSIGNED_SHORT_5_5_5_1
-   GLUnsignedShort1555Rev -> GL_UNSIGNED_SHORT_1_5_5_5_REV
-   GLUnsignedInt8888 -> GL_UNSIGNED_INT_8_8_8_8
-   GLUnsignedInt8888Rev -> GL_UNSIGNED_INT_8_8_8_8_REV
-   GLUnsignedInt1010102 -> GL_UNSIGNED_INT_10_10_10_2
-   GLUnsignedInt2101010Rev -> GL_UNSIGNED_INT_2_10_10_10_REV
-   GLUnsignedInt248 -> GL_UNSIGNED_INT_24_8
-   GLUnsignedInt10f11f11fRev -> GL_UNSIGNED_INT_10F_11F_11F_REV
-   GLUnsignedInt5999Rev -> GL_UNSIGNED_INT_5_9_9_9_REV
-   GLFloat32UnsignedInt248Rev -> GL_FLOAT_32_UNSIGNED_INT_24_8_REV
-
-{-
-marshallGLboolean :: Bool -> GLboolean
-marshallGLboolean x = if x then GL_TRUE else GL_FALSE
--}
-
-unmarshallGLboolean :: (Eq a, Num a) => a -> Bool
-unmarshallGLboolean = (/= GL_FALSE)
-
-marshallBufferAccess :: GL.BufferAccess -> GLenum
-marshallBufferAccess = \case
-   GL.ReadOnly -> GL_READ_ONLY
-   GL.WriteOnly -> GL_WRITE_ONLY
-   GL.ReadWrite -> GL_READ_WRITE
+import Game.Graphics.OpenGL.Utils
+import Data.StateVar as X
+import Foreign.Marshal.Utils
 
 {-
 {-# INLINE finallyRet #-}
@@ -232,10 +176,10 @@ marshallBufferObjectMapFlags BufferObjectMapFlags {..}
     bmun  = if _bufferObjectMapFlagsMapUnsynchronized then GL_MAP_UNSYNCHRONIZED_BIT else 0
 
 
-genBufferObject :: MonadIO m => BufferObjectSize -> BufferObjectAttribFlags -> m GL.BufferObject
+genBufferObject :: MonadIO m => BufferObjectSize -> BufferObjectAttribFlags -> m BufferObject
 genBufferObject size attrib@BufferObjectAttribFlags {..} = do
-  bufo <- GL.genObjectName
-  glNamedBufferStorage (bufferObjectToGLuint bufo) (_bufferObjectSizeObjectSize size) nullPtr bitF
+  bufo@(BufferObject n) <- genObjectName
+  glNamedBufferStorage n (_bufferObjectSizeObjectSize size) nullPtr bitF
   return bufo
   where
     bitF = marshallBufferObjectAttribFlags attrib
@@ -244,25 +188,19 @@ initBufferObject :: MonadIO m
                  => BufferObjectSize
                  -> BufferObjectAttribFlags
                  -> Ptr ()
-                 -> m GL.BufferObject
+                 -> m BufferObject
 initBufferObject size attrib@BufferObjectAttribFlags {..} ptr = do
-  bufo <- liftIO . allocaArray 1 $ \buff -> do
-    glCreateBuffers 1 buff
-    bufo <- unsafeHead <$> peekArray 1 buff
-    return $ gluintToBufferObject bufo
-
-  glNamedBufferStorage (bufferObjectToGLuint bufo) (_bufferObjectSizeObjectSize size) ptr bitF
-
+  bufo@(BufferObject n) <- genObjectName
+  glNamedBufferStorage n (_bufferObjectSizeObjectSize size) ptr bitF
   return bufo
   where
     bitF = marshallBufferObjectAttribFlags attrib
 
-namedBufferSubData :: GL.BufferObject -> BufferObjectSize -> GL.SettableStateVar (BufferObjectOffset, Ptr ())
-namedBufferSubData bufo bufsize = GL.makeSettableStateVar $
-  \(offset, dat) -> glNamedBufferSubData (bufferObjectToGLuint bufo) (_bufferObjectOffsetObjectOffset offset) (_bufferObjectSizeObjectSize bufsize) dat
+bufferSubData :: MonadIO m => BufferObject -> BufferObjectSize -> BufferObjectOffset -> Ptr () -> m ()
+bufferSubData (BufferObject n) (BufferObjectSize size) (BufferObjectOffset m) = glNamedBufferSubData n m size
 
 {-
-withNamedMappedBuffer :: (MonadIO m, MonadMask m) => GL.BufferObject -> GL.BufferAccess -> (Ptr () -> m b) -> (GL.MappingFailure -> m b) -> m b
+withNamedMappedBuffer :: (MonadIO m, MonadMask m) => BufferObject -> GL.BufferAccess -> (Ptr () -> m b) -> (GL.MappingFailure -> m b) -> m b
 withNamedMappedBuffer t a action err
   = mapNamedBuffer t a
   >>= \case
@@ -273,52 +211,56 @@ withNamedMappedBuffer t a action err
                          else err GL.UnmappingFailed
 -}
 
-mapNamedBuffer :: MonadIO m => GL.BufferObject -> GL.BufferAccess -> m (Maybe (Ptr ()))
-mapNamedBuffer t = fmap (maybeNullPtr Nothing Just) . mapNamedBuffer_ t
+mapBuffer :: MonadIO m => BufferObject -> BufferAccess -> m (Maybe (Ptr ()))
+mapBuffer t = fmap (maybeNullPtr Nothing Just) . mapBuffer_ t
 
-mapNamedBuffer_ :: MonadIO m => GL.BufferObject -> GL.BufferAccess -> m (Ptr ())
-mapNamedBuffer_ t = glMapNamedBuffer (bufferObjectToGLuint t) . marshallBufferAccess
+mapBuffer_ :: MonadIO m => BufferObject -> BufferAccess -> m (Ptr ())
+mapBuffer_ (BufferObject n) = glMapNamedBuffer n . marshallBufferAccess
 
-unmapNamedBuffer :: MonadIO m => GL.BufferObject -> m Bool
-unmapNamedBuffer = fmap unmarshallGLboolean . glUnmapNamedBuffer . bufferObjectToGLuint
+unmapBuffer :: MonadIO m => BufferObject -> m Bool
+unmapBuffer (BufferObject n) = fmap unmarshallGLboolean . glUnmapNamedBuffer $ n
 
-mapNamedBufferRange :: MonadIO m => GL.BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
-mapNamedBufferRange obj offset leng flags
-  = glMapNamedBufferRange (bufferObjectToGLuint obj) (_bufferObjectOffsetObjectOffset offset) (_bufferObjectSizeObjectSize leng) (marshallBufferObjectMapFlags flags)
+mapBufferRange :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
+mapBufferRange (BufferObject obj) offset leng flags
+  = glMapNamedBufferRange obj (_bufferObjectOffsetObjectOffset offset) (_bufferObjectSizeObjectSize leng) (marshallBufferObjectMapFlags flags)
 
-clearNamedBufferSubData :: MonadIO m => GL.BufferObject -> SizedFormat -> BufferObjectOffset -> BufferObjectSize -> SizedFormat -> GLDataType -> Ptr () -> m ()
-clearNamedBufferSubData obj internalForm offset size form typ
-  = glClearNamedBufferSubData (bufferObjectToGLuint obj) (marshallSizedFormat internalForm) (_bufferObjectOffsetObjectOffset offset) (_bufferObjectSizeObjectSize size) (marshallSizedFormat form) (marshallDataType typ)
+clearBufferSubData :: MonadIO m => BufferObject -> SizedFormat -> BufferObjectOffset -> BufferObjectSize -> SizedFormat -> GLDataType -> Ptr () -> m ()
+clearBufferSubData (BufferObject obj) internalForm offset size form typ
+  = glClearNamedBufferSubData obj (marshallSizedFormat internalForm) (_bufferObjectOffsetObjectOffset offset) (_bufferObjectSizeObjectSize size) (marshallSizedFormat form) (marshallGLDataType typ)
 
-copyNamedBufferSubData :: MonadIO m => GL.BufferObject -> GL.BufferObject -> BufferObjectOffset -> BufferObjectOffset -> BufferObjectSize -> m ()
-copyNamedBufferSubData readB writeB readOff writeOff size
-  = glCopyNamedBufferSubData (bufferObjectToGLuint readB) (bufferObjectToGLuint writeB) (_bufferObjectOffsetObjectOffset readOff) (_bufferObjectOffsetObjectOffset writeOff) (_bufferObjectSizeObjectSize size)
+copyBufferSubData :: MonadIO m => BufferObject -> BufferObject -> BufferObjectOffset -> BufferObjectOffset -> BufferObjectSize -> m ()
+copyBufferSubData (BufferObject readB) (BufferObject writeB) readOff writeOff size
+  = glCopyNamedBufferSubData readB writeB (_bufferObjectOffsetObjectOffset readOff) (_bufferObjectOffsetObjectOffset writeOff) (_bufferObjectSizeObjectSize size)
 
-vertexArrayAttribBinding :: MonadIO m => GL.VertexArrayObject -> GL.AttribLocation -> GL.AttribLocation -> m ()
-vertexArrayAttribBinding vaobj (GL.AttribLocation attribindex) (GL.AttribLocation bindindex)
-  = glVertexArrayAttribBinding (vertexArrayObjectToGLuint vaobj) attribindex bindindex
+bindVertexArrayObject :: MonadIO m => VertexArrayObject -> m ()
+bindVertexArrayObject (VertexArrayObject n) = glBindVertexArray n
 
-vertexArrayVertexBuffer :: MonadIO m => GL.VertexArrayObject -> GL.AttribLocation -> GL.BufferObject -> BufferObjectOffset -> BufferObjectStride -> m ()
-vertexArrayVertexBuffer vaobj (GL.AttribLocation bindindx) bufobj offset stride
-  = glVertexArrayVertexBuffer (vertexArrayObjectToGLuint vaobj) bindindx (bufferObjectToGLuint bufobj) (_bufferObjectOffsetObjectOffset offset) (_bufferObjectStrideObjectStride stride)
+vertexArrayAttribBinding :: MonadIO m => VertexArrayObject -> AttribLocation -> AttribLocation -> m ()
+vertexArrayAttribBinding (VertexArrayObject n) (AttribLocation attribindex) (AttribLocation bindindex)
+  = glVertexArrayAttribBinding n attribindex bindindex
 
-vertexArrayAttribFormat :: MonadIO m => GL.VertexArrayObject -> GL.AttribLocation -> BufferObjectComponentSize -> GLDataType -> IntegerHandling -> BufferObjectRelOffset -> m ()
-vertexArrayAttribFormat vaobj (GL.AttribLocation attribindx) size typ integerHandling relOffset
-  = glVertexArrayAttribFormat (vertexArrayObjectToGLuint vaobj ) attribindx (_bufferObjectComponentSizeObjectComponentSize size) (marshallDataType typ) handleFlag (_bufferObjectRelOffsetObjectRelOffset relOffset)
+vertexArrayVertexBuffer :: MonadIO m => VertexArrayObject -> AttribLocation -> BufferObject -> BufferObjectOffset -> BufferObjectStride -> m ()
+vertexArrayVertexBuffer (VertexArrayObject n) (AttribLocation bindindx) (BufferObject bufobj) offset stride
+  = glVertexArrayVertexBuffer n bindindx bufobj (_bufferObjectOffsetObjectOffset offset) (_bufferObjectStrideObjectStride stride)
+
+vertexArrayAttribFormat :: MonadIO m => VertexArrayObject -> AttribLocation -> BufferObjectComponentSize -> GLDataType -> IntegerHandling -> BufferObjectRelOffset -> m ()
+vertexArrayAttribFormat (VertexArrayObject vaobj) (AttribLocation attribindx) size typ integerHandling relOffset
+  = glVertexArrayAttribFormat vaobj attribindx (_bufferObjectComponentSizeObjectComponentSize size) (marshallGLDataType typ) handleFlag (_bufferObjectRelOffsetObjectRelOffset relOffset)
   where
     handleFlag = case integerHandling of
       Normalized -> GL_TRUE
       NotNormalized -> GL_FALSE
 
-vertexArrayAttribEnable :: GL.VertexArrayObject -> GL.AttribLocation -> GL.SettableStateVar GL.Capability
-vertexArrayAttribEnable vaobj (GL.AttribLocation loc) = GL.makeSettableStateVar $
-  \case
-    GL.Enabled -> glEnableVertexArrayAttrib (vertexArrayObjectToGLuint vaobj) loc
-    GL.Disabled -> glDisableVertexArrayAttrib (vertexArrayObjectToGLuint vaobj) loc
+vertexArrayAttribEnable :: MonadIO m => VertexArrayObject -> AttribLocation -> m ()
+vertexArrayAttribEnable (VertexArrayObject n) (AttribLocation loc) = glEnableVertexArrayAttrib n loc
 
-vertexArrayElementBuffer :: GL.VertexArrayObject -> GL.SettableStateVar GL.BufferObject
-vertexArrayElementBuffer vao = GL.makeSettableStateVar $ glVertexArrayElementBuffer (vertexArrayObjectToGLuint vao) . bufferObjectToGLuint
+vertexArrayAttribDisable :: MonadIO m => VertexArrayObject -> AttribLocation -> m ()
+vertexArrayAttribDisable (VertexArrayObject n) (AttribLocation loc) = glDisableVertexArrayAttrib n loc
 
+vertexArrayElementBuffer :: MonadIO m => VertexArrayObject -> BufferObject -> m ()
+vertexArrayElementBuffer (VertexArrayObject n) (BufferObject m) = glVertexArrayElementBuffer n m
+
+{-
 textureSub1D :: TextureObject -> Pixel1DAttrib -> Int -> GL.SettableStateVar (Ptr ())
 textureSub1D (TextureObject tobj) Pixel1DAttrib {..} level = GL.makeSettableStateVar $
   \ptr -> glTextureSubImage1D tobj lev xo width pixForm datType ptr
@@ -357,10 +299,10 @@ textureSub3D (TextureObject tobj) Pixel3DAttrib {..} level = GL.makeSettableStat
 
 textureBinding :: TextureTarget t => t -> GL.SettableStateVar TextureObject
 textureBinding targ = GL.makeSettableStateVar $ \(TextureObject tobj)-> glBindTexture (marshallTextureTarget targ) tobj
+-}
 
-bindTextureUnit :: GL.TextureUnit -> GL.SettableStateVar TextureObject
-bindTextureUnit (GL.TextureUnit n) = GL.makeSettableStateVar $
-  \(TextureObject texObj) -> glBindTextureUnit n texObj
+bindTextureUnit :: MonadIO m => TextureUnit -> (TextureObject t) -> m ()
+bindTextureUnit (TextureUnit n) (TextureObject m) = glBindTextureUnit n m
 
 toBufferObjectOffset :: Integral a => a -> BufferObjectOffset
 toBufferObjectOffset = BufferObjectOffset . fromIntegral
@@ -387,18 +329,67 @@ marshallTextureParameter = \case
   TextureCompareFunc -> GL_TEXTURE_COMPARE_FUNC
   TextureLODBias -> GL_TEXTURE_LOD_BIAS
 
-textureParameterf :: MonadIO m => TextureObject -> TextureParameter -> GLfloat -> m ()
+textureParameterf :: MonadIO m => TextureObject t -> TextureParameter -> GLfloat -> m ()
 textureParameterf (TextureObject tobj) param =
   glTextureParameterf tobj (marshallTextureParameter param)
-textureParameteri :: MonadIO m => TextureObject -> TextureParameter -> GLint -> m ()
+
+textureParameteri :: MonadIO m => TextureObject t -> TextureParameter -> GLint -> m ()
 textureParameteri (TextureObject tobj) param =
   glTextureParameteri tobj (marshallTextureParameter param)
 
-genVAO :: MonadIO m => m GL.VertexArrayObject
-genVAO = liftIO . allocaArray 1 $ \buff -> do
-  glCreateVertexArrays 1 buff
-  vobj <- unsafeHead <$> peekArray 1 buff
-  return $ gluintToVertexArrayObject vobj
+compileShader :: (Shader t, MonadIO m) => t -> m (Maybe ByteString)
+compileShader t = do
+  glCompileShader n
+  status <- unmarshallGLboolean <$> foreignPoke (glGetShaderiv n GL_COMPILE_STATUS)
+  if status
+    then return Nothing
+    else Just <$> withForeignBufferBS (glGetShaderiv n GL_INFO_LOG_LENGTH) (glGetShaderInfoLog n)
+  where
+    n = marshallShaderObject t
+
+shaderDeleteStatus :: (Shader t, MonadIO m) => t -> m Bool
+shaderDeleteStatus shader = unmarshallGLboolean <$> foreignPoke (glGetShaderiv (marshallShaderObject shader) GL_DELETE_STATUS)
+
+shaderInfoLog :: (Shader t, MonadIO m) => t -> m ByteString
+shaderInfoLog shader = withForeignBufferBS (glGetShaderiv n GL_INFO_LOG_LENGTH) (glGetShaderInfoLog n)
+  where
+    n = marshallShaderObject shader
+
+shaderSource :: Shader t => t -> StateVar ByteString
+shaderSource shader = makeStateVar getSource setSource
+    where
+      n = marshallShaderObject shader
+      getSource = withForeignBufferBS (glGetShaderiv n GL_SHADER_SOURCE_LENGTH) (glGetShaderSource n)
+      setSource src =
+        withByteString src $ \srcPtr srcLength ->
+        with srcPtr $ \srcPtrBuf ->
+                        with srcLength $ \srcLengthBuf ->
+                                           glShaderSource n 1 srcPtrBuf srcLengthBuf
+
+programDeleteStatus :: MonadIO m => Program -> m Bool
+programDeleteStatus (Program n) = unmarshallGLboolean <$> foreignPoke (glGetProgramiv n GL_DELETE_STATUS)
+
+attachShader :: (MonadIO m, Shader t) => Program -> t -> m ()
+attachShader (Program n) t = glAttachShader n (marshallShaderObject t)
+
+linkProgram :: MonadIO m => Program -> m (Maybe ByteString)
+linkProgram (Program n) = liftIO $ do
+  glLinkProgram n
+  status <- unmarshallGLboolean <$> foreignPoke (glGetProgramiv n GL_LINK_STATUS)
+  if status
+    then return Nothing
+    else Just <$> withForeignBufferBS (glGetProgramiv n GL_INFO_LOG_LENGTH) (glGetProgramInfoLog n)
+
+validateProgram :: MonadIO m => Program -> m (Maybe ByteString)
+validateProgram (Program n) = liftIO $ do
+  glValidateProgram n
+  status <- unmarshallGLboolean <$> foreignPoke (glGetProgramiv n GL_VALIDATE_STATUS)
+  if status
+    then return Nothing
+    else Just <$> withForeignBufferBS (glGetProgramiv n GL_INFO_LOG_LENGTH) (glGetProgramInfoLog n)
+
+useProgram :: MonadIO m => Program -> m ()
+useProgram (Program n) = glUseProgram n
 
 {- Have to import GLU.Errors
 getGLErrors :: MonadIO m => m ()

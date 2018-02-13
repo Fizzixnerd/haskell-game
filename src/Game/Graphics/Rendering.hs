@@ -11,20 +11,20 @@ import           Game.Types
 import           Game.Graphics.OpenGL.LowBinding
 import qualified Graphics.Rendering.OpenGL.GL    as G (DataType(..))
 
-render :: MonadIO m =>
+render :: (TextureTarget t, MonadIO m) =>
           GameState
        -> Program
        -> UniformLocation
        -> TextureUnit
        -> VertexArrayObject
        -> Int -- ^ How much of the VAO we want to draw
-       -> TextureObject
+       -> TextureObject t
        -> m ()
 render gs prog mvpLoc texSampleLoc vao n tex = liftIO $ do
   clear [ColorBuffer, DepthBuffer]
-  currentProgram $= Just prog
-  bindVertexArrayObject $= Just vao
-  bindTextureUnit texSampleLoc $= tex
+  useProgram prog
+  bindVertexArrayObject vao
+  bindTextureUnit texSampleLoc tex
   uniform mvpLoc $= (gs ^. gameStateCamera . cameraMVP)
   drawElements Triangles (fromIntegral n) G.UnsignedInt nullPtr
 
@@ -41,7 +41,7 @@ bufferData :: MonadIO m
            -> VS.Vector CUInt
            -> m (VertexArrayObject, BufferObject, (BufferObject, Int))
 bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
-  vao <- genVAO
+  vao <- genObjectName
   let flags = defaultBufferAttribFlags & mapType .~ MapReadWrite & mapPersistent .~ True & mapCoherent .~ True
   vbuf <- unsafeWithVecLen objPoints $ \vtxs vecLen ->
     initBufferObject (toBufferObjectSize $ vecLen * fromIntegral (sizeOf (undefined :: VTNPoint))) flags (castPtr vtxs)
@@ -51,17 +51,17 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
       stride    = toBufferObjectStride $ sizeOf (undefined :: VTNPoint)
       relOffset = BufferObjectRelOffset 0
 
-  vertexArrayAttribEnable vao vtxLoc $= Enabled
+  vertexArrayAttribEnable vao vtxLoc
   vertexArrayAttribFormat vao vtxLoc (BufferObjectComponentSize 4) GLFloat NotNormalized relOffset
   vertexArrayVertexBuffer vao vtxLoc vbuf vtxOffset stride
   vertexArrayAttribBinding vao vtxLoc vtxLoc
 
-  vertexArrayAttribEnable vao texLoc $= Enabled
+  vertexArrayAttribEnable vao texLoc
   vertexArrayAttribFormat vao texLoc (BufferObjectComponentSize 2) GLFloat NotNormalized relOffset
   vertexArrayVertexBuffer vao texLoc vbuf texOffset stride
   vertexArrayAttribBinding vao texLoc texLoc
 
-  vertexArrayAttribEnable vao nmlLoc $= Enabled
+  vertexArrayAttribEnable vao nmlLoc
   vertexArrayAttribFormat vao nmlLoc (BufferObjectComponentSize 3) GLFloat NotNormalized relOffset
   vertexArrayVertexBuffer vao nmlLoc vbuf nmlOffset stride
   vertexArrayAttribBinding vao nmlLoc nmlLoc
@@ -71,6 +71,6 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
     ebuf <- initBufferObject (toBufferObjectSize $ vecLen * sizeOf (undefined :: CUInt)) flags (castPtr indxs)
     return (ebuf, vecLen)
 
-  vertexArrayElementBuffer vao $= ebuf
+  vertexArrayElementBuffer vao ebuf
 
   return (vao, vbuf, (ebuf, lene))
