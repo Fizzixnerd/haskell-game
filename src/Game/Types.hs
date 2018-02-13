@@ -209,15 +209,15 @@ data GraphicsContext = GraphicsContext
   , _graphicsContextOpenGLDebugContext  :: Bool
   , _graphicsContextOpenGLProfile       :: G.OpenGLProfile
   , _graphicsContextRefreshRate         :: Maybe Int
-  , _graphicsContextRedBits            :: Int
-  , _graphicsContextGreenBits          :: Int
-  , _graphicsContextBlueBits           :: Int
-  , _graphicsContextAlphaBits          :: Int
-  , _graphicsContextDepthBits          :: Int
-  , _graphicsContextStencilBits        :: Int
-  , _graphicsContextSamples            :: Int
-  , _graphicsContextStereo             :: Bool
-  , _graphicsContextSRGBCapable        :: Bool
+  , _graphicsContextRedBits             :: Int
+  , _graphicsContextGreenBits           :: Int
+  , _graphicsContextBlueBits            :: Int
+  , _graphicsContextAlphaBits           :: Int
+  , _graphicsContextDepthBits           :: Int
+  , _graphicsContextStencilBits         :: Int
+  , _graphicsContextSamples             :: Int
+  , _graphicsContextStereo              :: Bool
+  , _graphicsContextSRGBCapable         :: Bool
   }
 
 defaultGraphicsContext :: GraphicsContext
@@ -264,4 +264,15 @@ defaultWindowConfig = WindowConfig
   , _windowConfigWindowContextShare = Nothing
   }
 
-mconcat <$> mapM makeLenses [''Camera, ''NamedHandler, ''GameState, ''ExpandObjVTN, ''Script, ''ScriptName, ''EventRegister, ''EndoRegister, ''WindowConfig]
+mconcat <$> mapM makeLenses
+  [ ''Camera
+  , ''NamedHandler
+  , ''GameState
+  , ''ExpandObjVTN
+  , ''Script
+  , ''ScriptName
+  , ''EventRegister
+  , ''EndoRegister
+  , ''WindowConfig
+  , ''GraphicsContext
+  ]

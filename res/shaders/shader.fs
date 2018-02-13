@@ -4,7 +4,7 @@ in VS_OUT {
   vec2 UV;
 } vs_out;
 
-uniform sampler2D texSampler;
+layout (binding = 0) uniform sampler2D texSampler;
 
 out vec3 color;
 

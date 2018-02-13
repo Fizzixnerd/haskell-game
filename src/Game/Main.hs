@@ -6,11 +6,10 @@ module Game.Main where
 
 import           ClassyPrelude
 import           Control.Concurrent
-import           Data.Maybe
 import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
-import           Game.Graphics.OpenGLExtras
+import           Game.Graphics.Init
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
@@ -53,9 +52,9 @@ doItAndGimmeFireThing = do
   printContextVersion win
 
   prog <- compileShaders
-  -- This is the bad way of doing this.
-  mvpLoc <- liftIO $ G.uniformLocation prog "MVP"
-  texSampleLoc <- liftIO $ G.uniformLocation prog "texSampler"
+
+  let mvpLoc       = G.UniformLocation 0
+      texSampleLoc = G.TextureUnit 0
   (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
 
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
