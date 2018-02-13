@@ -44,6 +44,10 @@ dependencies:
 - derive-storable
 - derive-storable-plugin
 - plugin
+- gl
+- ObjectName
+- StateVar
+- safe-exceptions
 
 library:
   source-dirs: src

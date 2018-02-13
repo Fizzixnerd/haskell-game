@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Game.Graphics.OpenGLExtras where
+module Game.Graphics.Init where
 
 import ClassyPrelude
 import Game.Types

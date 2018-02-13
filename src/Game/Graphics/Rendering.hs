@@ -4,83 +4,73 @@ module Game.Graphics.Rendering where
 
 import           ClassyPrelude
 import           Control.Lens
-import qualified Data.Vector.Storable                 as VS
+import qualified Data.Vector.Storable            as VS
 import           Foreign
 import           Foreign.C.Types
 import           Game.Types
-import qualified Graphics.Rendering.OpenGL.GL         as G
-import qualified Graphics.Rendering.OpenGL.GLU.Errors as G (errors)
-import qualified Linear.OpenGL                        as L ()
-
-printGLErrors :: MonadIO m => m ()
-printGLErrors = liftIO G.errors >>= mapM_ print
+import           Game.Graphics.OpenGL.LowBinding
+import qualified Graphics.Rendering.OpenGL.GL    as G (DataType(..))
 
 render :: MonadIO m =>
           GameState
-       -> G.Program
-       -> G.UniformLocation
-       -> G.UniformLocation
-       -> G.VertexArrayObject
-       -> (G.BufferObject, Int) -- ^ Element buffer with its length
-       -> G.TextureObject
+       -> Program
+       -> UniformLocation
+       -> TextureUnit
+       -> VertexArrayObject
+       -> Int -- ^ How much of the VAO we want to draw
+       -> TextureObject
        -> m ()
-render gs prog mvpLoc texSampleLoc vao (_, lene) tex = liftIO $ do
-  G.clear [G.ColorBuffer, G.DepthBuffer]
-  G.currentProgram G.$= Just prog
-
-  G.bindVertexArrayObject G.$= Just vao
-
-  G.activeTexture G.$= G.TextureUnit 0
-  G.textureBinding G.Texture2D G.$= Just tex
-  G.uniform texSampleLoc G.$= G.TextureUnit 0
-  G.uniform mvpLoc G.$= (gs ^. gameStateCamera . cameraMVP)
-
-  G.drawElements G.Triangles (fromIntegral lene) G.UnsignedInt nullPtr
---  printGLErrors -- :(
+render gs prog mvpLoc texSampleLoc vao n tex = liftIO $ do
+  clear [ColorBuffer, DepthBuffer]
+  currentProgram $= Just prog
+  bindVertexArrayObject $= Just vao
+  bindTextureUnit texSampleLoc $= tex
+  uniform mvpLoc $= (gs ^. gameStateCamera . cameraMVP)
+  drawElements Triangles (fromIntegral n) G.UnsignedInt nullPtr
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
 unsafeWithVecLen vec f = liftIO $ do
   let (fptr, vecLen) = VS.unsafeToForeignPtr0 vec
   withForeignPtr fptr $ \ptr -> f ptr vecLen
 
-bufferData :: MonadIO m =>
-              G.AttribLocation
-           -> G.AttribLocation
-           -> G.AttribLocation
+bufferData :: MonadIO m
+           => AttribLocation
+           -> AttribLocation
+           -> AttribLocation
            -> VS.Vector VTNPoint
            -> VS.Vector CUInt
-           -> m (G.VertexArrayObject, G.BufferObject, (G.BufferObject, Int))
+           -> m (VertexArrayObject, BufferObject, (BufferObject, Int))
 bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
-  vao <- G.genObjectName
-  G.bindVertexArrayObject G.$= Just vao
+  vao <- genVAO
+  let flags = defaultBufferAttribFlags & mapType .~ MapReadWrite & mapPersistent .~ True & mapCoherent .~ True
+  vbuf <- unsafeWithVecLen objPoints $ \vtxs vecLen ->
+    initBufferObject (toBufferObjectSize $ vecLen * fromIntegral (sizeOf (undefined :: VTNPoint))) flags (castPtr vtxs)
+  let vtxOffset = toBufferObjectOffset (0 :: Int)
+      texOffset = toBufferObjectOffset $ 4 * sizeOf (0 :: CFloat)
+      nmlOffset = toBufferObjectOffset $ 6 * sizeOf (0 :: CFloat)
+      stride    = toBufferObjectStride $ sizeOf (undefined :: VTNPoint)
+      relOffset = BufferObjectRelOffset 0
 
-  vbuf <- G.genObjectName
-  G.bindBuffer G.ArrayBuffer G.$= Just vbuf
-  unsafeWithVecLen objPoints $
-    \vtxs lenv -> G.bufferData G.ArrayBuffer G.$= ( fromIntegral $ lenv * sizeOf (0 :: CFloat)
-                                                  , vtxs
-                                                  , G.StaticDraw )
+  vertexArrayAttribEnable vao vtxLoc $= Enabled
+  vertexArrayAttribFormat vao vtxLoc (BufferObjectComponentSize 4) GLFloat NotNormalized relOffset
+  vertexArrayVertexBuffer vao vtxLoc vbuf vtxOffset stride
+  vertexArrayAttribBinding vao vtxLoc vtxLoc
 
-  let vadvOffset = intPtrToPtr . IntPtr $ 0
-      vadtOffset = intPtrToPtr . IntPtr . fromIntegral $ 4 * sizeOf (0 :: CFloat)
-      vadnOffset = intPtrToPtr . IntPtr . fromIntegral $ 6 * sizeOf (0 :: CFloat)
-      vadv = G.VertexArrayDescriptor 4 G.Float 0 vadvOffset
-      vadt = G.VertexArrayDescriptor 2 G.Float 0 vadtOffset
-      vadn = G.VertexArrayDescriptor 3 G.Float 0 vadnOffset
-  G.vertexAttribArray vtxLoc G.$= G.Enabled
-  G.vertexAttribPointer vtxLoc G.$= (G.ToFloat, vadv)
-  G.vertexAttribArray texLoc G.$= G.Enabled
-  G.vertexAttribPointer texLoc G.$= (G.ToFloat, vadt)
-  G.vertexAttribArray nmlLoc G.$= G.Enabled
-  G.vertexAttribPointer nmlLoc G.$= (G.ToFloat, vadn)
+  vertexArrayAttribEnable vao texLoc $= Enabled
+  vertexArrayAttribFormat vao texLoc (BufferObjectComponentSize 2) GLFloat NotNormalized relOffset
+  vertexArrayVertexBuffer vao texLoc vbuf texOffset stride
+  vertexArrayAttribBinding vao texLoc texLoc
 
-  ebuf <- G.genObjectName
-  G.bindBuffer G.ElementArrayBuffer G.$= Just ebuf
-  lene <- unsafeWithVecLen objIndices $
-          \elts lene -> do
-            G.bufferData G.ElementArrayBuffer G.$= ( fromIntegral $ lene * sizeOf (0 :: CUInt)
-                                                   , elts
-                                                   , G.StaticDraw )
-            return lene
+  vertexArrayAttribEnable vao nmlLoc $= Enabled
+  vertexArrayAttribFormat vao nmlLoc (BufferObjectComponentSize 3) GLFloat NotNormalized relOffset
+  vertexArrayVertexBuffer vao nmlLoc vbuf nmlOffset stride
+  vertexArrayAttribBinding vao nmlLoc nmlLoc
+
+
+  (ebuf, lene) <- unsafeWithVecLen objIndices $ \indxs vecLen -> do
+    ebuf <- initBufferObject (toBufferObjectSize $ vecLen * sizeOf (undefined :: CUInt)) flags (castPtr indxs)
+    return (ebuf, vecLen)
+
+  vertexArrayElementBuffer vao $= ebuf
 
   return (vao, vbuf, (ebuf, lene))

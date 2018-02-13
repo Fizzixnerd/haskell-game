@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5fe4df32ffeed9e60e367fb00cae82e6f6aedbc7509ff3303462c0d4997a2be1
+-- hash: 6b5d1d1ff73b018e7d9f55d71e3bdd6f4695d000eb9632eed58653da04722f61
 
 name:           haskell-game
 version:        0.1.0.0
@@ -35,6 +35,7 @@ library
     , ObjectName
     , OpenGL
     , Rasterific
+    , StateVar
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -43,6 +44,7 @@ library
     , derive-storable-plugin
     , ghc
     , ghc-paths
+    , gl
     , lens
     , linear
     , linear-opengl
@@ -50,13 +52,16 @@ library
     , mtl
     , plugin
     , reactive-banana
+    , safe-exceptions
     , text
     , vector
     , wavefront
   exposed-modules:
       Game.Events
+      Game.Graphics.Init
       Game.Graphics.Model.Loader
-      Game.Graphics.OpenGLExtras
+      Game.Graphics.OpenGL.LowBinding
+      Game.Graphics.OpenGL.LowTypes
       Game.Graphics.Rendering
       Game.Graphics.Shader.Loader
       Game.Graphics.Texture.Loader
@@ -81,6 +86,7 @@ executable haskell-game-exe
     , ObjectName
     , OpenGL
     , Rasterific
+    , StateVar
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -89,6 +95,7 @@ executable haskell-game-exe
     , derive-storable-plugin
     , ghc
     , ghc-paths
+    , gl
     , haskell-game
     , lens
     , linear
@@ -97,6 +104,7 @@ executable haskell-game-exe
     , mtl
     , plugin
     , reactive-banana
+    , safe-exceptions
     , text
     , vector
     , wavefront
@@ -117,6 +125,7 @@ test-suite haskell-game-test
     , ObjectName
     , OpenGL
     , Rasterific
+    , StateVar
     , base >=4.7 && <5
     , bytestring
     , classy-prelude
@@ -125,6 +134,7 @@ test-suite haskell-game-test
     , derive-storable-plugin
     , ghc
     , ghc-paths
+    , gl
     , haskell-game
     , lens
     , linear
@@ -133,6 +143,7 @@ test-suite haskell-game-test
     , mtl
     , plugin
     , reactive-banana
+    , safe-exceptions
     , text
     , vector
     , wavefront

@@ -11,22 +11,20 @@ import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
-import           GHC.Float (double2Float)
-import qualified Graphics.Rendering.OpenGL.GL as G
+import           Game.Graphics.OpenGL.LowBinding
 import qualified Graphics.UI.GLFW             as G
-import qualified Linear as L
 import           Plugin.Load
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
 
 compileGameNetwork ::
   MonadIO m =>
-  G.Program
-  -> G.UniformLocation
-  -> G.UniformLocation
-  -> G.VertexArrayObject
-  -> (G.BufferObject, Int)
-  -> G.TextureObject
+  Program
+  -> UniformLocation
+  -> TextureUnit
+  -> VertexArrayObject
+  -> (BufferObject, Int)
+  -> TextureObject
   -> m (NamedHandler b1, NamedHandler b2, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys),
         NamedHandler (G.Window, Double, Double), NamedHandler G.Window)
@@ -56,7 +54,7 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
 
             eRender :: B.Event (IO ())
             eRender = B.apply ((\gs w -> do
-                                   render gs prog mvpLoc texSampleLoc vao ebuf tex
+                                   render gs prog mvpLoc texSampleLoc vao (snd ebuf) tex
                                    G.swapBuffers w) <$> bWorld) eTick
 
             eEscapeToClose :: B.Event (IO ())
