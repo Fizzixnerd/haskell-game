@@ -23,7 +23,7 @@ compileGameNetwork ::
   -> TextureUnit
   -> VertexArrayObject
   -> (BufferObject, Int)
-  -> TextureObject
+  -> TextureObject TextureTarget2D
   -> m (NamedHandler b1, NamedHandler b2, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys),
         NamedHandler (G.Window, Double, Double), NamedHandler G.Window)

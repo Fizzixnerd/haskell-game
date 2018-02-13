@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude#-}
 
 module Game.Graphics.Shader.Loader where
@@ -6,37 +7,35 @@ import           ClassyPrelude
 import           Game.Graphics.OpenGL.LowBinding
 import           Text.Printf
 
-makeShader :: MonadIO m => FilePath -> ShaderType -> m Shader
-makeShader shaderName shaderType = liftIO $ do
-  shaderText <- readFile shaderName
-  shader <- createShader shaderType
-  shaderSourceBS shader $= shaderText
-  compileShader shader
-  shaderInfoLog shader >>= (\x -> if null x then return () else printf "%s\n\n" x)
-  return shader
+makeShader :: (Shader t, MonadIO m) => FilePath -> m t
+makeShader shaderPath = liftIO $ do
+  shaderText <- readFile shaderPath
+  shader <- genObjectName
+  shaderSource shader $= shaderText
+  mlog <- compileShader shader
+  case mlog of
+    Nothing -> return shader
+    Just log' -> error $ printf "%s\n\n" (show log')
 
 compileShaders :: MonadIO m => m Program
 compileShaders = liftIO $ do
-  vertexShader <- makeShader "res/shaders/shader.vs" VertexShader
+  (vertexShader :: VertexShader) <- makeShader "res/shaders/shader.vs"
 --  tessellationControlShader <- makeShader "res/shaders/shader.tcs" G.TessControlShader
 --  tessellationEvaluationShader <- makeShader "res/shaders/shader.tes" G.TessEvaluationShader
 --  geometryShader <- makeShader "res/shaders/shader.gs" G.GeometryShader
-  fragmentShader <- makeShader "res/shaders/shader.fs" FragmentShader
+  (fragmentShader :: FragmentShader) <- makeShader "res/shaders/shader.fs"
 
-  program <- createProgram
+  program <- genObjectName
   attachShader program vertexShader
 --  G.attachShader program tessellationControlShader
 --  G.attachShader program tessellationEvaluationShader
 --  G.attachShader program geometryShader
   attachShader program fragmentShader
-  linkProgram program
-  validateProgram program
-  programInfoLog program >>= (\x -> if null x then return () else printf "%s\n\n" x)
+  mlogL <- linkProgram program
+  forM_ mlogL $ printf "%s\n\n" . show
+  mlogV <- validateProgram program
+  forM_ mlogV $ printf "%s\n\n" . show
 
-  deleteObjectNames [ fragmentShader
---                      , tessellationControlShader
---                      , tessellationEvaluationShader
---                      , geometryShader
-                      , vertexShader ]
-
+  deleteObjectName fragmentShader
+  deleteObjectName vertexShader
   return program
