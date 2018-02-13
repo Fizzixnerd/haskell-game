@@ -175,7 +175,6 @@ marshallBufferObjectMapFlags BufferObjectMapFlags {..}
     bfle  = if _bufferObjectMapFlagsMapFlushExplicit then GL_MAP_FLUSH_EXPLICIT_BIT else 0
     bmun  = if _bufferObjectMapFlagsMapUnsynchronized then GL_MAP_UNSYNCHRONIZED_BIT else 0
 
-
 genBufferObject :: MonadIO m => BufferObjectSize -> BufferObjectAttribFlags -> m BufferObject
 genBufferObject size attrib@BufferObjectAttribFlags {..} = do
   bufo@(BufferObject n) <- genObjectName

@@ -154,7 +154,7 @@ data SizedFormat
   | SizedRGBA8UI
   | SizedRGBA16UI
   | SizedRGBA32UI
-   deriving ( Eq, Ord, Show )
+   deriving (Eq, Ord, Show)
 
 data GLDataType =
      GLUnsignedByte
@@ -182,7 +182,7 @@ data GLDataType =
    | GLUnsignedInt10f11f11fRev
    | GLUnsignedInt5999Rev
    | GLFloat32UnsignedInt248Rev
-   deriving ( Eq, Ord, Show )
+   deriving (Eq, Ord, Show)
 
 marshallGLDataType :: GLDataType -> GLenum
 marshallGLDataType = \case
@@ -284,7 +284,7 @@ data PixelFormat
    | PixelBGRAInteger
    | PixelBGR
    | PixelBGRA
-   deriving ( Eq, Ord, Show )
+   deriving (Eq, Ord, Show)
 
 data Pixel1DAttrib = Pixel1DAttrib
   { _pixel1DAttribPixelFormat  :: PixelFormat
@@ -397,7 +397,6 @@ data TextureParameter =
    | TextureLODBias
    deriving (Eq, Ord, Show)
 
-
 class TextureTarget t where
   type TextureConfig t
   type PixelConfig t
@@ -500,37 +499,47 @@ data Capability = Enabled | Disabled deriving (Eq, Ord, Show)
 newtype TextureUnit = TextureUnit { getTextureUnitGLuint :: GLuint } deriving (Eq, Ord, Show)
 
 newtype VertexShader = VertexShader { _vertexShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
+
 instance ObjectName VertexShader where
   isObjectName (VertexShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (VertexShader n) = glDeleteShader n
+
 instance GeneratableObjectName VertexShader where
   genObjectName = VertexShader <$> glCreateShader GL_VERTEX_SHADER
 
 newtype FragmentShader = FragmentShader { _fragmentShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
+
 instance ObjectName FragmentShader where
   isObjectName (FragmentShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (FragmentShader n) = glDeleteShader n
+
 instance GeneratableObjectName FragmentShader where
   genObjectName = FragmentShader <$> glCreateShader GL_FRAGMENT_SHADER
 
 newtype TessControlShader = TessControlShader { _tessControlShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
+
 instance ObjectName TessControlShader where
   isObjectName (TessControlShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (TessControlShader n) = glDeleteShader n
+
 instance GeneratableObjectName TessControlShader where
   genObjectName = TessControlShader <$> glCreateShader GL_TESS_CONTROL_SHADER
 
 newtype TessEvalShader = TessEvalShader { _tessEvalShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
+
 instance ObjectName TessEvalShader where
   isObjectName (TessEvalShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (TessEvalShader n) = glDeleteShader n
+
 instance GeneratableObjectName TessEvalShader where
   genObjectName = TessEvalShader <$> glCreateShader GL_TESS_EVALUATION_SHADER
 
 newtype ComputeShader = ComputeShader { _computeShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
+
 instance ObjectName ComputeShader where
   isObjectName (ComputeShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (ComputeShader n) = glDeleteShader n
+
 instance GeneratableObjectName ComputeShader where
   genObjectName = ComputeShader <$> glCreateShader GL_COMPUTE_SHADER
 
@@ -541,20 +550,25 @@ class GeneratableObjectName t => Shader t where
 instance Shader VertexShader where
   marshallShaderType _ = GL_VERTEX_SHADER
   marshallShaderObject = _vertexShaderGLuint
+
 instance Shader TessEvalShader where
   marshallShaderType _ = GL_TESS_EVALUATION_SHADER
   marshallShaderObject = _tessEvalShaderGLuint
+
 instance Shader TessControlShader where
   marshallShaderType _ = GL_TESS_CONTROL_SHADER
   marshallShaderObject = _tessControlShaderGLuint
+
 instance Shader FragmentShader where
   marshallShaderType _ = GL_FRAGMENT_SHADER
   marshallShaderObject = _fragmentShaderGLuint
+
 instance Shader ComputeShader where
   marshallShaderType _ = GL_COMPUTE_SHADER
   marshallShaderObject = _computeShaderGLuint
 
 newtype Program = Program { getProgramGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
+
 instance ObjectName Program where
   isObjectName (Program n) = unmarshallGLboolean <$> glIsProgram n
   deleteObjectName (Program n) = glDeleteProgram n
