@@ -13,10 +13,10 @@ import Foreign hiding (new)
 {#context lib = "libcbullet"#}
 
 {#pointer *broadphase_interface as ^ newtype#}
-{#pointer *default_collision_configuration as ^ newtype#}
+{#pointer *collision_configuration as ^ newtype#}
 {#pointer *collision_dispatcher as ^ newtype#}
-{#pointer *sequential_impulse_constraint_solver as ^ newtype#}
-{#pointer *discrete_dynamics_world as ^ newtype#}
+{#pointer *constraint_solver as ^ newtype#}
+{#pointer *dynamics_world as ^ newtype#}
 {#pointer *motion_state as ^ newtype#}
 {#pointer *static_plane_shape as ^ newtype#}
 {#pointer *sphere_shape as ^ newtype#}
@@ -48,75 +48,75 @@ instance New BroadphaseInterface () where
   del x = freeBroadphaseInterface x
 
 {#fun new_default_collision_configuration as ^
- {} -> `DefaultCollisionConfiguration'
+ {} -> `CollisionConfiguration'
 #}
 
-{#fun free_default_collision_configuration as ^
- { `DefaultCollisionConfiguration' } -> `()'
+{#fun free_collision_configuration as ^
+ { `CollisionConfiguration' } -> `()'
 #}
 
-instance New DefaultCollisionConfiguration () where
+instance New CollisionConfiguration () where
   new _ = newDefaultCollisionConfiguration
-  del x = freeDefaultCollisionConfiguration x
+  del x = freeCollisionConfiguration x
 
 {#fun new_collision_dispatcher as ^
- { `DefaultCollisionConfiguration' } -> `CollisionDispatcher'
+ { `CollisionConfiguration' } -> `CollisionDispatcher'
 #}
 
 {#fun free_collision_dispatcher as ^
  { `CollisionDispatcher' } -> `()'
 #}
 
-instance New CollisionDispatcher DefaultCollisionConfiguration where
+instance New CollisionDispatcher CollisionConfiguration where
   new x = newCollisionDispatcher x
   del x = freeCollisionDispatcher x
 
 {#fun new_sequential_impulse_constraint_solver as ^
- {} -> `SequentialImpulseConstraintSolver'
+ {} -> `ConstraintSolver'
 #}
 
-{#fun free_sequential_impulse_constraint_solver as ^
- { `SequentialImpulseConstraintSolver' } -> `()'
+{#fun free_constraint_solver as ^
+ { `ConstraintSolver' } -> `()'
 #}
 
-instance New SequentialImpulseConstraintSolver () where
+instance New ConstraintSolver () where
   new _ = newSequentialImpulseConstraintSolver
-  del x = freeSequentialImpulseConstraintSolver x
+  del x = freeConstraintSolver x
 
 {#fun new_discrete_dynamics_world as ^
  { `CollisionDispatcher',
    `BroadphaseInterface',
-   `SequentialImpulseConstraintSolver',
-   `DefaultCollisionConfiguration' } -> `DiscreteDynamicsWorld'
+   `ConstraintSolver',
+   `CollisionConfiguration' } -> `DynamicsWorld'
 #}
 
-{#fun free_discrete_dynamics_world as ^
- { `DiscreteDynamicsWorld' } -> `()'
+{#fun free_dynamics_world as ^
+ { `DynamicsWorld' } -> `()'
 #}
 
-instance New DiscreteDynamicsWorld ( CollisionDispatcher
-                                   , BroadphaseInterface
-                                   , SequentialImpulseConstraintSolver
-                                   , DefaultCollisionConfiguration) where
+instance New DynamicsWorld ( CollisionDispatcher
+                           , BroadphaseInterface
+                           , ConstraintSolver
+                           , CollisionConfiguration) where
   new (cd, bi, sics, dcc) = newDiscreteDynamicsWorld cd bi sics dcc
-  del x = freeDiscreteDynamicsWorld x
+  del x = freeDynamicsWorld x
 
 {#fun set_gravity as setGravity
- { `DiscreteDynamicsWorld',
+ { `DynamicsWorld',
    `Float',
    `Float',
    `Float' } -> `()'
 #}
 
 {#fun step_simulation as stepSimulation
- { `DiscreteDynamicsWorld',
+ { `DynamicsWorld',
    `Float',
    `Int',
    `Float' } -> `Int'
 #}
 
 {#fun add_rigid_body as ^
- { `DiscreteDynamicsWorld',
+ { `DynamicsWorld',
    `RigidBody' } -> `()'
 #}
 
@@ -130,13 +130,13 @@ instance New DiscreteDynamicsWorld ( CollisionDispatcher
    `Float' } -> `MotionState'
 #}
 
-{#fun free_default_motion_state as ^
+{#fun free_motion_state as ^
  { `MotionState' } -> `()'
 #}
 
 instance New MotionState ((Float,Float,Float,Float),(Float,Float,Float)) where
   new ((r, i, j, k), (x, y, z)) = newDefaultMotionState r i j k x y z
-  del x = freeDefaultMotionState x
+  del x = freeMotionState x
 
 {#fun get_world_transform as ^
  { `MotionState' } -> `Transform'

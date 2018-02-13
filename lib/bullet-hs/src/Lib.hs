@@ -10,14 +10,14 @@ someFunc :: IO ()
 someFunc = do
   bp :: BroadphaseInterface <- new ()
   traceM "made BroadphaseInterface"
-  cc :: DefaultCollisionConfiguration <- new ()
-  traceM "made DefaultCollisionConfiguration"
+  cc :: CollisionConfiguration <- new ()
+  traceM "made CollisionConfiguration"
   d  :: CollisionDispatcher  <- new cc
   traceM "made CollisionDispatcher"
-  s  :: SequentialImpulseConstraintSolver <- new ()
-  traceM "made SequentialImpulseConstraintSolver"
-  w  :: DiscreteDynamicsWorld <- new (d, bp, s, cc)
-  traceM "made DiscreteDynamicsWorld"
+  s  :: ConstraintSolver <- new ()
+  traceM "made ConstraintSolver"
+  w  :: DynamicsWorld <- new (d, bp, s, cc)
+  traceM "made DynamicsWorld"
 
   sps :: StaticPlaneShape <- new ((0, 1, 0), 1)
   traceM "made StaticPlaneShape"
