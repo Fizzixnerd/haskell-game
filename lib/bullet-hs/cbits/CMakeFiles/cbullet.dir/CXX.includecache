@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/cbullet.cpp
+btBulletDynamicsCommon.h
+-
+btBulletCollisionCommon.h
+-
+cbullet.h
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/cbullet.h
+
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/cbullet.h
+

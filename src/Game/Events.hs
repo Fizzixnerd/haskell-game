@@ -13,7 +13,6 @@ import           Game.Script.Loader
 import           Game.Script.Installer
 import           Game.Graphics.OpenGL.LowBinding
 import qualified Graphics.UI.GLFW             as G
-import           Plugin.Load
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
 

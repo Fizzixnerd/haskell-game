@@ -1,0 +1,7 @@
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/edit_cache.dir
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/install/strip.dir
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/cbullet.dir
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/install.dir
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/rebuild_cache.dir
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/list_install_components.dir
+/home/matt/src/haskell-game/lib/bullet-hs/cbits/CMakeFiles/install/local.dir
