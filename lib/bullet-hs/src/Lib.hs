@@ -21,27 +21,40 @@ someFunc = do
 
   sps :: StaticPlaneShape <- new ((0, 1, 0), 1)
   traceM "made StaticPlaneShape"
-  gms :: MotionState <- new ((0, 0, 0, 1), (0, negate 1, 0))
+  spsxform :: Transform <- new ((0, 0, 0, 1), (0, negate 1, 0))
+  gms :: MotionState <- new spsxform
   traceM "made StaticPlaneShape MotionState"
-  grb <- newRigidBody sps 0 gms (0, 0, 0)
+  grb <- makeRigidBody sps 0 gms (0, 0, 0)
   traceM "made StaticPlaneShape RigidBody"
   addRigidBody w grb
   traceM "added StaticPlaneShape RigidBody"
 
   ss  :: SphereShape <- new 1
-  sms :: MotionState <- new ((0, 0, 0, 1), (0, 50, 0))
+  ssxform :: Transform <- new ((0, 0, 0, 1), (0, 50, 0))
+  sms :: MotionState <- new ssxform
   let mass = 1
   inertia <- calculateLocalInertia ss mass
-  srb <- newRigidBody ss mass sms inertia
+  srb <- makeRigidBody ss mass sms inertia
   addRigidBody w srb
   traceM "added SphereShape RigidBody"
+
+  pcgo :: PairCachingGhostObject <- new ()
+  ssConvex <- sphereShapeToConvexShape ss
+  let stepHeight = 1.0
+
+  kcc :: KinematicCharacterController <- new (pcgo, ssConvex, stepHeight)
+  setUp kcc 0 1 0
+  
+
 
   traceM "starting sim"
   forM [1..300] (const $ do
                     stepSimulation w (1 / 60) 10 (1 / 60)
-                    trans <- getMotionState srb >>= getWorldTransform
-                    getOrigin trans >>= print)
+                    trans <- rbGetMotionState srb >>= msAllocateWorldTransform
+                    getOrigin trans -- >>= print
+                )
   traceM "sim ended"
+
 
   freeRigidBody srb
   del sms

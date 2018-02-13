@@ -62,7 +62,7 @@ extern "C" {
   typed_constraint* get_constraint(dynamics_world* world, int idx);
   void add_constraint(dynamics_world* world, typed_constraint* constriant);
   void remove_constraint(dynamics_world* world, typed_constraint* constraint);
-  void serialize(dynamics_world* world, serializer* serializer);
+  void dw_serialize(dynamics_world* world, serializer* serializer);
 
   //btCollisionObject
   rigid_body* collision_object_to_rigid_body(collision_object* obj);
@@ -90,7 +90,7 @@ extern "C" {
   int is_static_object(rigid_body* rigid_body); // returns bool
   int is_kinematic_object(rigid_body* rigid_body); // returns bool
   void set_activation_state(rigid_body* rigid_body, int new_state);
-  transform* get_center_of_mass_transform(rigid_body* rigid_body);
+  transform* allocate_center_of_mass_transform(rigid_body* rigid_body);
 
   // btCollisionShape
   void calculate_local_inertia(collision_shape* collision_shape,
@@ -110,10 +110,12 @@ extern "C" {
   // btSphereShape
   sphere_shape* new_sphere_shape(scalar radius);
   void free_sphere_shape(sphere_shape* sphere_shape);
+  convex_shape* sphere_shape_to_convex_shape(sphere_shape* sphere_shape);
 
   // btBoxShape
   box_shape* new_box_shape(scalar half_x, scalar half_y, scalar half_z);
   void free_box_shape(box_shape* box_shape);
+  convex_shape* box_shape_to_convex_shape(box_shape* box_shape);
 
   // btTransform
   transform* new_transform(scalar r, // quaternion
@@ -142,6 +144,11 @@ extern "C" {
   void free_serializer(serializer* serializer);
   const unsigned char* get_buffer_pointer(serializer* serializer);
   int get_current_buffer_size(serializer* serializer);
+
+  // btPairCachingGhostObject 
+  // TODO: Finish API
+  pair_caching_ghost_object* new_pair_caching_ghost_object();
+  void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object);
 
   // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller

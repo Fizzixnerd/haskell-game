@@ -11,8 +11,14 @@ btBulletDynamicsCommon.h
 -
 btBulletCollisionCommon.h
 -
+BulletDynamics/Character/btKinematicCharacterController.h
+-
+BulletCollision/CollisionDispatch/btGhostObject.h
+-
 cbullet.h
 /home/matt/src/haskell-game/lib/bullet-hs/cbits/cbullet.h
 
 /home/matt/src/haskell-game/lib/bullet-hs/cbits/cbullet.h
+stddef.h
+-
 

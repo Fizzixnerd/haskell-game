@@ -20,9 +20,19 @@ import Foreign hiding (new)
 {#pointer *motion_state as ^ newtype#}
 {#pointer *static_plane_shape as ^ newtype#}
 {#pointer *sphere_shape as ^ newtype#}
+{#pointer *box_shape as ^ newtype#}
 {#pointer *collision_shape as ^ newtype#}
+{#pointer *rigid_body_construction_info as ^ newtype#}
 {#pointer *rigid_body as ^ newtype#}
 {#pointer *transform as ^ newtype#}
+{#pointer *collision_object as ^ newtype#}
+{#pointer *typed_constraint as ^ newtype#}
+{#pointer *serializer as ^ newtype#}
+{#pointer *kinematic_character_controller as ^ newtype#}
+{#pointer *pair_caching_ghost_object as ^ newtype#}
+{#pointer *convex_shape as ^ newtype#}
+
+type Mass = CFloat
 
 class New a x | a -> x where
   new :: x -> IO a
@@ -83,6 +93,8 @@ instance New ConstraintSolver () where
   new _ = newSequentialImpulseConstraintSolver
   del x = freeConstraintSolver x
 
+
+-- | btDiscreteDynamicsWorld
 {#fun new_discrete_dynamics_world as ^
  { `CollisionDispatcher',
    `BroadphaseInterface',
@@ -101,18 +113,18 @@ instance New DynamicsWorld ( CollisionDispatcher
   new (cd, bi, sics, dcc) = newDiscreteDynamicsWorld cd bi sics dcc
   del x = freeDynamicsWorld x
 
-{#fun set_gravity as setGravity
+{#fun dw_set_gravity as dwSetGravity
  { `DynamicsWorld',
-   `Float',
-   `Float',
-   `Float' } -> `()'
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
 #}
 
 {#fun step_simulation as stepSimulation
  { `DynamicsWorld',
-   `Float',
+   `CFloat',
    `Int',
-   `Float' } -> `Int'
+   `CFloat' } -> `Int'
 #}
 
 {#fun add_rigid_body as ^
@@ -120,27 +132,216 @@ instance New DynamicsWorld ( CollisionDispatcher
    `RigidBody' } -> `()'
 #}
 
+{#fun get_num_collision_objects as ^
+ { `DynamicsWorld' } -> `Int'
+#}
+
+{#fun get_collision_object as ^
+ { `DynamicsWorld',
+   `Int' } -> `CollisionObject'
+#}
+
+{#fun remove_collision_object as ^
+ { `DynamicsWorld',
+   `CollisionObject' } -> `()'
+#}
+
+{#fun get_num_constraints as ^
+ { `DynamicsWorld' } -> `Int'
+#}
+
+{#fun get_constraint as ^
+ { `DynamicsWorld',
+   `Int' } -> `TypedConstraint'
+#}
+
+{#fun add_constraint as ^
+ { `DynamicsWorld',
+   `TypedConstraint' } -> `()'
+#}
+
+{#fun remove_constraint as ^
+ { `DynamicsWorld',
+   `TypedConstraint' } -> `()'
+#}
+
+{#fun dw_serialize as ^
+ { `DynamicsWorld',
+   `Serializer' } -> `()'
+#}
+
+-- | byCollisionObject
+{#fun collision_object_to_rigid_body as ^
+ { `CollisionObject' } -> `RigidBody'
+#}
+
+{#fun co_allocate_world_transform as ^
+ { `CollisionObject' } -> `Transform'
+#}
+
+-- | btDefaultMotionState
 {#fun new_default_motion_state as ^
- { `Float', -- Quaternion
-   `Float',
-   `Float',
-   `Float',
-   `Float', -- Vector
-   `Float',
-   `Float' } -> `MotionState'
+ { `Transform' } -> `MotionState'
 #}
 
 {#fun free_motion_state as ^
  { `MotionState' } -> `()'
 #}
 
-instance New MotionState ((Float,Float,Float,Float),(Float,Float,Float)) where
-  new ((r, i, j, k), (x, y, z)) = newDefaultMotionState r i j k x y z
+instance New MotionState Transform where
+  new t = newDefaultMotionState t
   del x = freeMotionState x
 
-{#fun get_world_transform as ^
+{#fun ms_allocate_world_transform as ^
  { `MotionState' } -> `Transform'
 #}
+
+-- | btRigidBodyConstructionInfo
+{#fun new_rigid_body_construction_info as ^
+ { `CFloat',
+   `MotionState',
+   `CollisionShape',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `RigidBodyConstructionInfo'
+#}
+
+{#fun free_rigid_body_construction_info as ^
+ { `RigidBodyConstructionInfo' } -> `()'
+#}
+
+instance New RigidBodyConstructionInfo (Mass, MotionState, CollisionShape, (CFloat, CFloat, CFloat)) where
+  new (m, ms, cs, (x, y, z)) = newRigidBodyConstructionInfo m ms cs x y z
+  del x = freeRigidBodyConstructionInfo x
+
+-- | btRigidBody
+{#fun new_rigid_body as ^
+ { `RigidBodyConstructionInfo' } -> `RigidBody'
+#}
+
+{#fun free_rigid_body as ^
+ { `RigidBody' } -> `()'
+#}
+
+{#fun rb_get_motion_state as ^
+ { `RigidBody' } -> `MotionState'
+#}
+
+{#fun is_static_object as ^
+ { `RigidBody' } -> `Bool'
+#}
+
+{#fun is_kinematic_object as ^
+ { `RigidBody' } -> `Bool'
+#}
+
+{#fun allocate_center_of_mass_transform as ^
+ { `RigidBody' } -> `Transform'
+#}
+
+-- | btStaticPlaneShape
+
+{#fun new_static_plane_shape as ^
+ { `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `StaticPlaneShape'
+#}
+
+{#fun free_static_plane_shape as ^
+ { `StaticPlaneShape' } -> `()'
+#}
+
+instance New StaticPlaneShape ((CFloat, CFloat, CFloat), CFloat) where
+  new ((x, y, z), pc) = newStaticPlaneShape x y z pc
+  del x = freeStaticPlaneShape x
+
+-- | btSphereShape
+
+{#fun new_sphere_shape as ^
+ { `CFloat' } -> `SphereShape'
+#}
+
+{#fun free_sphere_shape as ^
+ { `SphereShape' } -> `()'
+#}
+
+instance New SphereShape CFloat where
+  new r = newSphereShape r
+  del x = freeSphereShape x
+
+{#fun sphere_shape_to_convex_shape as ^
+ { `SphereShape' } -> `ConvexShape'
+#}
+
+-- | btBoxShape
+
+{#fun new_box_shape as ^
+ { `CFloat',
+   `CFloat',
+   `CFloat' } -> `BoxShape'
+#}
+
+{#fun free_box_shape as ^
+ { `BoxShape' } -> `()'
+#}
+
+instance New BoxShape (CFloat, CFloat, CFloat) where
+  new (x, y, z) = newBoxShape x y z
+  del x = freeBoxShape x
+
+{#fun box_shape_to_convex_shape as ^
+ { `BoxShape' } -> `ConvexShape'
+#}
+
+-- | btCollisionShape
+
+{#fun calculate_local_inertia as calculateLocalInertia_
+ { `CollisionShape',
+   `CFloat',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+class IsCollisionShape cs where
+  calculateLocalInertia :: cs -> Mass -> IO (CFloat, CFloat, CFloat)
+  calculateLocalInertia ss m = calculateLocalInertia_ (unsafeCoerce ss :: CollisionShape) m
+
+  makeRigidBody :: cs
+                -> Mass
+                -> MotionState
+                -> (CFloat, CFloat, CFloat)
+                -> IO RigidBody
+  makeRigidBody cs m dms (x, y, z) = do
+    rbci <- newRigidBodyConstructionInfo m dms (unsafeCoerce cs :: CollisionShape) x y z
+    rb <- newRigidBody rbci
+    del rbci
+    return rb
+
+instance IsCollisionShape SphereShape
+instance IsCollisionShape StaticPlaneShape
+instance IsCollisionShape BoxShape
+
+-- | btTransform
+
+{#fun new_transform as ^
+ { `CFloat', -- quaternion
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat', -- vector
+   `CFloat',
+   `CFloat' } -> `Transform'
+#}
+
+{#fun free_transform as ^
+ { `Transform' } -> `()'
+#}
+
+instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloat)) where
+  new ((r, i, j, k), (x, y, z)) = newTransform r i j k x y z
+  del x = freeTransform x
 
 {#fun get_origin as ^
  { `Transform',
@@ -149,70 +350,231 @@ instance New MotionState ((Float,Float,Float,Float),(Float,Float,Float)) where
    alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun new_static_plane_shape as ^
- { `Float',
-   `Float',
-   `Float',
-   `Float' } -> `StaticPlaneShape'
+{#fun set_origin as ^
+ { `Transform',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
 #}
 
-{#fun free_static_plane_shape as ^
- { `StaticPlaneShape' } -> `()'
+{#fun set_identity as ^
+ { `Transform' } -> `()'
 #}
 
-instance New StaticPlaneShape ((Float, Float, Float), Float) where
-  new ((x, y, z), pc) = newStaticPlaneShape x y z pc
-  del x = freeStaticPlaneShape x
+-- | btTypedConstraint
 
-{#fun new_sphere_shape as ^
- { `Float' } -> `SphereShape'
+{#fun free_typed_constraint
+ { `TypedConstraint' } -> `()'
 #}
 
-{#fun free_sphere_shape as ^
- { `SphereShape' } -> `()'
+-- | btPoint2PointConstraint
+
+{#fun new_point2point_constraint as newPoint2PointConstraint
+ { `RigidBody',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `TypedConstraint'
 #}
 
-instance New SphereShape Float where
-  new r = newSphereShape r
-  del x = freeSphereShape x
+-- | btDefaultSerializer
 
-type Mass = Float
+{#fun new_default_serializer as ^
+ {} -> `Serializer'
+#}
 
-{#fun calculate_local_inertia as calculateLocalInertia_
- { `CollisionShape',
-   `Float',
+{#fun free_serializer as ^
+ { `Serializer' } -> `()'
+#}
+
+instance New Serializer () where
+  new _ = newDefaultSerializer
+  del x = freeSerializer x
+
+-- more stuff can go for Serializers, but I'll leave it for now...
+
+-- | btPairCachingGhostObject
+
+{#fun new_pair_caching_ghost_object as ^
+ {} -> `PairCachingGhostObject'
+#}
+
+{#fun free_pair_caching_ghost_object as ^
+ { `PairCachingGhostObject' } -> `()'
+#}
+
+instance New PairCachingGhostObject () where
+  new _ = newPairCachingGhostObject
+  del x = freePairCachingGhostObject x
+
+-- | btKinematicCharacterController
+
+{#fun new_kinematic_character_controller as ^
+ { `PairCachingGhostObject',
+   `ConvexShape',
+   `CFloat' } -> `KinematicCharacterController'
+#}
+
+{#fun free_kinematic_character_controller as ^
+ { `KinematicCharacterController' } -> `()'
+#}
+
+instance New KinematicCharacterController (PairCachingGhostObject, ConvexShape, CFloat) where
+  new (pcgo, cs, sh) = newKinematicCharacterController pcgo cs sh
+  del x = freeKinematicCharacterController x
+
+{#fun set_up as ^
+ { `KinematicCharacterController',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_up as ^
+ { `KinematicCharacterController',
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun new_rigid_body as newRigidBody_
- { `Float',
-   `MotionState',
-   `CollisionShape',
+{#fun set_angular_velocity as ^
+ { `KinematicCharacterController',
    `CFloat',
    `CFloat',
-   `CFloat' } -> `RigidBody'
+   `CFloat' } -> `()'
 #}
 
-{#fun free_rigid_body as ^
- { `RigidBody' } -> `()'
+{#fun get_angular_velocity as ^
+ { `KinematicCharacterController',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun get_motion_state as ^
- { `RigidBody' } -> `MotionState'
+{#fun set_linear_velocity as ^
+ { `KinematicCharacterController',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
 #}
 
-class IsCollisionShape cs where
-  calculateLocalInertia :: cs -> Mass -> IO (CFloat, CFloat, CFloat)
-  calculateLocalInertia ss m = calculateLocalInertia_ (unsafeCoerce ss :: CollisionShape) m
+{#fun get_linear_velocity as ^
+ { `KinematicCharacterController',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
 
-  newRigidBody :: cs
-               -> Mass
-               -> MotionState
-               -> (CFloat, CFloat, CFloat)
-               -> IO RigidBody
-  newRigidBody cs m dms (x, y, z) = newRigidBody_ m dms (unsafeCoerce cs :: CollisionShape) x y z
+{#fun set_linear_damping as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
 
-instance IsCollisionShape SphereShape
-instance IsCollisionShape StaticPlaneShape
+{#fun get_linear_damping as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun set_angular_damping as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_angular_damping as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun get_step_height as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun set_step_height as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_fall_speed as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun set_fall_speed as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_jump_speed as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun set_jump_speed as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun set_max_jump_height as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun can_jump as ^
+ { `KinematicCharacterController' } -> `Bool'
+#}
+
+{#fun jump as ^
+ { `KinematicCharacterController' } -> `()'
+#}
+
+{#fun apply_impulse as ^
+ { `KinematicCharacterController',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun kcc_set_gravity as ^
+ { `KinematicCharacterController',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_gravity as ^
+ { `KinematicCharacterController',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+{#fun get_max_slope as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun set_max_slope as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_max_penetration_depth as ^
+ { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun set_max_penetration_depth as ^
+ { `KinematicCharacterController',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_ghost_object as ^
+ { `KinematicCharacterController' } -> `PairCachingGhostObject'
+#}
+
+{#fun set_use_ghost_sweep_test as ^
+ { `KinematicCharacterController',
+   `Bool' } -> `()'
+#}
+
+{#fun on_ground as ^
+ { `KinematicCharacterController' } -> `Bool'
+#}
+
+{#fun set_up_interpolate as ^
+ { `KinematicCharacterController',
+   `Bool' } -> `()'
+#}

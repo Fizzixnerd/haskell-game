@@ -1,6 +1,7 @@
 #include <btBulletDynamicsCommon.h>
 #include <btBulletCollisionCommon.h>
 #include <BulletDynamics/Character/btKinematicCharacterController.h>
+#include <BulletCollision/CollisionDispatch/btGhostObject.h>
 
 #include "cbullet.h"
 
@@ -108,7 +109,7 @@ extern "C" {
       removeConstraint(reinterpret_cast<btTypedConstraint*>(constraint));
   }
 
-  void serialize(dynamics_world* world, serializer* serializer) {
+  void dw_serialize(dynamics_world* world, serializer* serializer) {
     reinterpret_cast<btDynamicsWorld*>(world)->
       serialize(reinterpret_cast<btSerializer*>(serializer));
   }
@@ -194,7 +195,7 @@ extern "C" {
     reinterpret_cast<btRigidBody*>(rigid_body)->setActivationState(new_state);
   }
 
-  transform* get_center_of_mass_transform(rigid_body* rigid_body) {
+  transform* allocate_center_of_mass_transform(rigid_body* rigid_body) {
     return reinterpret_cast<transform*>
       (new btTransform
        (reinterpret_cast<btRigidBody*>(rigid_body)->
@@ -243,6 +244,10 @@ extern "C" {
   void free_sphere_shape(sphere_shape* sphere_shape) {
     delete reinterpret_cast<btSphereShape*>(sphere_shape);
   }
+
+  convex_shape* sphere_shape_to_convex_shape(sphere_shape* sphere_shape) {
+    return reinterpret_cast<convex_shape*>(sphere_shape);
+  }
   
   //btBoxShape
   box_shape* new_box_shape(scalar half_x, scalar half_y, scalar half_z) {
@@ -251,6 +256,10 @@ extern "C" {
 
   void free_box_shape(box_shape* box_shape) {
     delete reinterpret_cast<btBoxShape*>(box_shape);
+  }
+
+  convex_shape* box_shape_to_convex_shape(box_shape* box_shape) {
+    return reinterpret_cast<convex_shape*>(box_shape);
   }
   
   // btTransform
@@ -317,6 +326,17 @@ extern "C" {
     return reinterpret_cast<btSerializer*>(serializer)->getCurrentBufferSize();
   }
 
+  // btPairCachingGhostObject
+  pair_caching_ghost_object* new_pair_caching_ghost_object() {
+    return reinterpret_cast<pair_caching_ghost_object*>
+      (new btPairCachingGhostObject());
+  }
+
+  void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object) {
+    delete reinterpret_cast<btPairCachingGhostObject*>(ghost_object);
+  }
+
+  // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller
   (pair_caching_ghost_object* ghost_object,
    convex_shape* convex_shape,
@@ -487,7 +507,7 @@ extern "C" {
     
   void set_max_slope(kinematic_character_controller* kcc, scalar slope_radians) {
     reinterpret_cast<btKinematicCharacterController*>(kcc)->
-      setMaxSlope(slop_radians);
+      setMaxSlope(slope_radians);
   }
 
   scalar get_max_slope(kinematic_character_controller* kcc) {
