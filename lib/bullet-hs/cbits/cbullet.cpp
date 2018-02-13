@@ -1,5 +1,6 @@
 #include <btBulletDynamicsCommon.h>
 #include <btBulletCollisionCommon.h>
+#include <BulletDynamics/Character/btKinematicCharacterController.h>
 
 #include "cbullet.h"
 
@@ -56,7 +57,7 @@ extern "C" {
     delete reinterpret_cast<btDynamicsWorld*>(world);
   }
 
-  void set_gravity(dynamics_world* world, scalar x, scalar y, scalar z) {
+  void dw_set_gravity(dynamics_world* world, scalar x, scalar y, scalar z) {
     reinterpret_cast<btDynamicsWorld*>(world)->setGravity(btVector3(x, y, z));
   }
 
@@ -316,4 +317,213 @@ extern "C" {
     return reinterpret_cast<btSerializer*>(serializer)->getCurrentBufferSize();
   }
 
+  kinematic_character_controller* new_kinematic_character_controller
+  (pair_caching_ghost_object* ghost_object,
+   convex_shape* convex_shape,
+   scalar step_height) {
+    return reinterpret_cast<kinematic_character_controller*>
+      (new btKinematicCharacterController
+       (reinterpret_cast<btPairCachingGhostObject*>(ghost_object),
+	reinterpret_cast<btConvexShape*>(convex_shape),
+	step_height));
+  }
+
+  void free_kinematic_character_controller(kinematic_character_controller* kcc) {
+    delete reinterpret_cast<btKinematicCharacterController*>(kcc);
+  }
+
+  void set_up(kinematic_character_controller* kcc, scalar x, scalar y, scalar z) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setUp(btVector3(x, y, z));
+  }
+
+  void get_up(kinematic_character_controller* kcc, scalar* x, scalar* y, scalar* z) {
+    btVector3 up = reinterpret_cast<btKinematicCharacterController*>(kcc)->getUp();
+    *x = up[0];
+    *y = up[1];
+    *z = up[2];
+  }
+
+  void set_angular_velocity(kinematic_character_controller* kcc,
+			    scalar ang1,
+			    scalar ang2,
+			    scalar ang3) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setAngularVelocity(btVector3(ang1, ang2, ang3));
+  }
+
+  void get_angular_velocity(kinematic_character_controller* kcc,
+			    scalar* ang1,
+			    scalar* ang2,
+			    scalar* ang3) {
+    btVector3 omega = reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getAngularVelocity();
+    *ang1 = omega[0];
+    *ang2 = omega[1];
+    *ang3 = omega[2];
+  }
+
+  void set_linear_velocity(kinematic_character_controller* kcc,
+			   scalar vx,
+			   scalar vy,
+			   scalar vz) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setLinearVelocity(btVector3(vx, vy, vz));
+  }
+
+  void get_linear_velocity(kinematic_character_controller* kcc,
+			   scalar* vx,
+			   scalar* vy,
+			   scalar* vz) {
+    btVector3 v = reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getLinearVelocity();
+    *vx = v[0];
+    *vy = v[1];
+    *vz = v[2];
+  }
+
+  void set_linear_damping(kinematic_character_controller* kcc, scalar d) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setLinearDamping(d);
+  }
+  
+  scalar get_linear_damping(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getLinearDamping();
+  }
+
+  void set_angular_damping(kinematic_character_controller* kcc, scalar d) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setAngularDamping(d);
+  }
+  
+  scalar get_angular_damping(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getAngularDamping();
+  }
+
+  void reset(kinematic_character_controller* kcc, collision_world* collision_world) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      reset(reinterpret_cast<btCollisionWorld*>(collision_world));
+  }
+
+  void warp(kinematic_character_controller* kcc, scalar x, scalar y, scalar z) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      warp(btVector3(x, y, z));
+  }
+  
+  void set_step_height(kinematic_character_controller* kcc, scalar step_height) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setStepHeight(step_height);
+  }
+
+  scalar get_step_height(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getStepHeight();
+  }
+
+  void set_fall_speed(kinematic_character_controller* kcc, scalar fall_speed) {
+  reinterpret_cast<btKinematicCharacterController*>(kcc)->
+    setFallSpeed(fall_speed);
+  }
+
+  scalar get_fall_speed(kinematic_character_controller* kcc) {
+  return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+    getFallSpeed();
+  }
+
+  void set_jump_speed(kinematic_character_controller* kcc, scalar jump_speed) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setJumpSpeed(jump_speed);
+  }
+
+  scalar get_jump_speed(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getJumpSpeed();
+  }
+
+  void set_max_jump_height(kinematic_character_controller* kcc,
+			   scalar max_jump_height) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setMaxJumpHeight(max_jump_height);
+  }
+
+  int can_jump(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      canJump();
+  }
+
+  void jump(kinematic_character_controller* kcc) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      jump();
+  }
+
+  void apply_impulse(kinematic_character_controller* kcc,
+		     scalar ix,
+		     scalar iy,
+		     scalar iz) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      applyImpulse(btVector3(ix, iy, iz));
+  }
+
+  void kcc_set_gravity(kinematic_character_controller* kcc,
+		       scalar gx,
+		       scalar gy,
+		       scalar gz) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setGravity(btVector3(gx, gy, gz));
+  }
+
+  void get_gravity(kinematic_character_controller* kcc,
+		   scalar* gx,
+		   scalar* gy,
+		   scalar* gz) {
+    btVector3 g = reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getGravity();
+    *gx = g[0];
+    *gy = g[1];
+    *gz = g[2];
+  }
+    
+  void set_max_slope(kinematic_character_controller* kcc, scalar slope_radians) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setMaxSlope(slop_radians);
+  }
+
+  scalar get_max_slope(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getMaxSlope();
+  }
+
+  void set_max_penetration_depth(kinematic_character_controller* kcc, scalar d) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setMaxPenetrationDepth(d);
+  }
+
+  scalar get_max_penetration_depth(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      getMaxPenetrationDepth();
+  }
+
+  pair_caching_ghost_object* get_ghost_object(kinematic_character_controller* kcc) {
+    return reinterpret_cast<pair_caching_ghost_object*>
+      (reinterpret_cast<btKinematicCharacterController*>(kcc)->
+       getGhostObject());
+  }
+
+  void set_use_ghost_sweep_test(kinematic_character_controller* kcc,
+				int bool_use_ghost_object_sweep_test) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setUseGhostSweepTest(bool_use_ghost_object_sweep_test);
+  }
+
+  int on_ground(kinematic_character_controller* kcc) {
+    return reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      onGround();
+  }
+
+  void set_up_interpolate(kinematic_character_controller* kcc, int bool_value) {
+    reinterpret_cast<btKinematicCharacterController*>(kcc)->
+      setUpInterpolate(bool_value);
+  }
 }
