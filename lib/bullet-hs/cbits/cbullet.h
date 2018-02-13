@@ -129,6 +129,7 @@ extern "C" {
   void get_origin(transform* transform, scalar* x_out, scalar* y_out, scalar* z_out);
   void set_origin(transform* transform, scalar x, scalar y, scalar z);
   void set_identity(transform* transform);
+  void get_opengl_matrix(transform* transform, scalar* out /* size 16 */);
 
   // btTypedConstraint
   void free_typed_constraint(typed_constraint* constraint);
@@ -149,6 +150,8 @@ extern "C" {
   // TODO: Finish API
   pair_caching_ghost_object* new_pair_caching_ghost_object();
   void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object);
+  collision_object* pair_caching_ghost_object_to_collision_object
+  (pair_caching_ghost_object* ghost_object);
 
   // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller
@@ -198,7 +201,6 @@ extern "C" {
 		       scalar gx,
 		       scalar gy, 
 		       scalar gz);
-
   void get_gravity(kinematic_character_controller* kcc,
 		   scalar* gx,
 		   scalar* gy,

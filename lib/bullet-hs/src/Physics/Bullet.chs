@@ -4,9 +4,11 @@
 
 module Physics.Bullet where
 
+import Data.Functor (void)
 import Unsafe.Coerce
 import Foreign.C.Types
-import Foreign hiding (new)
+import Foreign hiding (new, void)
+import qualified Graphics.Rendering.OpenGL.GL.CoordTrans as GL
 
 #include "cbullet.h"
 
@@ -361,6 +363,14 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
  { `Transform' } -> `()'
 #}
 
+withOpenGLMatrix :: (Ptr CFloat -> IO b) -> IO (GL.GLmatrix Float)
+withOpenGLMatrix f = GL.withNewMatrix GL.RowMajor (void . f . unsafeCoerce)
+
+{#fun get_opengl_matrix as getOpenGLMatrix
+ { `Transform',
+   withOpenGLMatrix- `GL.GLmatrix Float' return*} -> `()'
+#}
+
 -- | btTypedConstraint
 
 {#fun free_typed_constraint
@@ -405,6 +415,10 @@ instance New Serializer () where
 instance New PairCachingGhostObject () where
   new _ = newPairCachingGhostObject
   del x = freePairCachingGhostObject x
+
+{#fun pair_caching_ghost_object_to_collision_object as ^
+ { `PairCachingGhostObject' } -> `CollisionObject'
+#}
 
 -- | btKinematicCharacterController
 

@@ -293,6 +293,10 @@ extern "C" {
     reinterpret_cast<btTransform*>(transform)->setIdentity();
   }
 
+  void get_opengl_matrix(transform* transform, scalar* out) {
+    reinterpret_cast<btTransform*>(transform)->getOpenGLMatrix(out);
+  }
+
   // btTypedConstraint
   void free_typed_constraint(typed_constraint* constraint) {
     delete reinterpret_cast<btTypedConstraint*>(constraint);
@@ -334,6 +338,11 @@ extern "C" {
 
   void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object) {
     delete reinterpret_cast<btPairCachingGhostObject*>(ghost_object);
+  }
+
+  collision_object* pair_caching_ghost_object_to_collision_object
+  (pair_caching_ghost_object* ghost_object) {
+    return reinterpret_cast<collision_object*>(ghost_object);
   }
 
   // btKinematicCharacterController
