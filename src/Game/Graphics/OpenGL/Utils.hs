@@ -1,13 +1,38 @@
-{-# LANGUAGE NoImplicitPrelude #-}
+module Game.Graphics.OpenGL.Utils
+  ( module X
+  , withForeignBufferVec
+  , withForeignBufferBS
+  , withByteString
+  , BitAnd(..)
+  , BitOr(..)
+  , maybeNullPtr
+  , foreignPoke
+  , unsafeWithVecLen
+  ) where
 
-module Game.Graphics.OpenGL.Utils where
+import Foreign as X
+  ( Ptr
+  , Storable
+  , sizeOf
+  , mallocForeignPtrArray
+  , castPtr
+  , nullPtr
+  , with
+  )
 
-import ClassyPrelude
-import Foreign hiding (void)
 import qualified Data.Vector.Storable as VS
 import Graphics.GL.Types
 import qualified Data.ByteString.Internal as BI (create)
 import qualified Data.ByteString.Unsafe as BU (unsafeUseAsCStringLen)
+import Data.ByteString
+import Control.Monad.IO.Class as X
+import Data.Bits
+import Control.Monad (void)
+import Foreign
+  ( allocaArray
+  , withForeignPtr
+  , peekElemOff
+  )
 
 withForeignBufferVec :: (Storable a, MonadIO m) => Int -> (Ptr a -> IO ()) -> m (VS.Vector a)
 withForeignBufferVec n f = liftIO $ do
@@ -33,3 +58,23 @@ withByteString bs act =
    BU.unsafeUseAsCStringLen bs $ \(ptr, size) ->
       act (castPtr ptr) (fromIntegral size)
 
+newtype BitAnd a = BitAnd { getBitAnd :: a } deriving (Eq, Ord, Show)
+newtype BitOr a = BitOr { getBitOr :: a } deriving (Eq, Ord, Show)
+
+instance (Bits a) => Monoid (BitAnd a) where
+  mempty = BitAnd zeroBits
+  mappend x y = BitAnd $ getBitAnd x .&. getBitAnd y
+
+instance (Bits a) => Monoid (BitOr a) where
+  mempty = BitOr zeroBits
+  mappend x y = BitOr $ getBitOr x .&. getBitOr y
+
+maybeNullPtr :: b -> (Ptr a -> b) -> Ptr a -> b
+maybeNullPtr n f ptr | ptr == nullPtr = n
+                     | otherwise      = f ptr
+
+unsafeWithVecLen :: (Storable a, MonadIO m, Integral n) => VS.Vector a -> (n -> Ptr a -> IO b) -> m b
+unsafeWithVecLen vec act = liftIO $
+  VS.unsafeWith vec $ \ptr -> act (fromIntegral n) ptr
+  where
+    n = VS.length vec

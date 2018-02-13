@@ -17,7 +17,7 @@ import qualified Linear.OpenGL                as L ()
 import qualified Graphics.UI.GLFW             as G
 import qualified Graphics.Rendering.OpenGL.GL as G
 import           Text.Printf
-import Game.Graphics.OpenGL.LowBinding
+import           Game.Graphics.OpenGL.Binding
 
 withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
@@ -54,8 +54,7 @@ doItAndGimmeFireThing = do
 
   prog <- compileShaders
 
-  let mvpLoc       = G.UniformLocation 0
-      texSampleLoc = TextureUnit 0
+  let texSampleLoc = TextureUnit 0
   (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
 
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
@@ -63,13 +62,12 @@ doItAndGimmeFireThing = do
   let posLocation = AttribLocation 0
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
-
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
   G.clearColor G.$= G.Color4 0 0 0.4 0
   G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-  (hello, gameReset, shouldClose, key, mousePos, tick) <- compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex
+  (hello, gameReset, shouldClose, key, mousePos, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
