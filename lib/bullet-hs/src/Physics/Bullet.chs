@@ -364,7 +364,7 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
 #}
 
 withOpenGLMatrix :: (Ptr CFloat -> IO b) -> IO (GL.GLmatrix Float)
-withOpenGLMatrix f = GL.withNewMatrix GL.RowMajor (void . f . unsafeCoerce)
+withOpenGLMatrix f = GL.withNewMatrix GL.RowMajor (void . f . castPtr)
 
 {#fun get_opengl_matrix as getOpenGLMatrix
  { `Transform',
