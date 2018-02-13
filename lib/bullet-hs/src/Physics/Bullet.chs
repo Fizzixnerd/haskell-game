@@ -14,25 +14,28 @@ import qualified Graphics.Rendering.OpenGL.GL.CoordTrans as GL
 
 {#context lib = "libcbullet"#}
 
+{#pointer *action_interface as ^ newtype#}
+{#pointer *box_shape as ^ newtype#}
 {#pointer *broadphase_interface as ^ newtype#}
 {#pointer *collision_configuration as ^ newtype#}
 {#pointer *collision_dispatcher as ^ newtype#}
-{#pointer *constraint_solver as ^ newtype#}
-{#pointer *dynamics_world as ^ newtype#}
-{#pointer *motion_state as ^ newtype#}
-{#pointer *static_plane_shape as ^ newtype#}
-{#pointer *sphere_shape as ^ newtype#}
-{#pointer *box_shape as ^ newtype#}
-{#pointer *collision_shape as ^ newtype#}
-{#pointer *rigid_body_construction_info as ^ newtype#}
-{#pointer *rigid_body as ^ newtype#}
-{#pointer *transform as ^ newtype#}
 {#pointer *collision_object as ^ newtype#}
-{#pointer *typed_constraint as ^ newtype#}
-{#pointer *serializer as ^ newtype#}
-{#pointer *kinematic_character_controller as ^ newtype#}
-{#pointer *pair_caching_ghost_object as ^ newtype#}
+{#pointer *collision_shape as ^ newtype#}
+{#pointer *constraint_solver as ^ newtype#}
 {#pointer *convex_shape as ^ newtype#}
+{#pointer *dynamics_world as ^ newtype#}
+{#pointer *kinematic_character_controller as ^ newtype#}
+{#pointer *motion_state as ^ newtype#}
+{#pointer *pair_caching_ghost_object as ^ newtype#}
+{#pointer *rigid_body as ^ newtype#}
+{#pointer *rigid_body_construction_info as ^ newtype#}
+{#pointer *serializer as ^ newtype#}
+{#pointer *sphere_shape as ^ newtype#}
+{#pointer *static_plane_shape as ^ newtype#}
+{#pointer *transform as ^ newtype#}
+{#pointer *typed_constraint as ^ newtype#}
+{#pointer *overlapping_pair_cache as ^ newtype#}
+{#pointer *ghost_pair_callback as ^ newtype#}
 
 type Mass = CFloat
 
@@ -47,6 +50,7 @@ withNew x f = do
   del a
   return b
 
+-- | btDbvtBroadphase
 {#fun new_broadphase_interface as ^
   {} -> `BroadphaseInterface'
 #}
@@ -59,6 +63,30 @@ instance New BroadphaseInterface () where
   new _ = newBroadphaseInterface
   del x = freeBroadphaseInterface x
 
+{#fun get_overlapping_pair_cache as ^
+ { `BroadphaseInterface' } -> `OverlappingPairCache'
+#}
+
+-- | btOverlappingPairCache
+{#fun set_internal_ghost_pair_callback as ^
+ { `OverlappingPairCache',
+   `GhostPairCallback' } -> `()'
+#}
+
+-- | btGhostPairCallback
+{#fun new_ghost_pair_callback as ^
+ {} -> `GhostPairCallback'
+#}
+
+{#fun free_ghost_pair_callback as ^
+ { `GhostPairCallback' } -> `()'
+#}
+
+instance New GhostPairCallback () where
+  new _ = newGhostPairCallback
+  del x = freeGhostPairCallback x
+
+-- | btDefaultCollisionConfiguration
 {#fun new_default_collision_configuration as ^
  {} -> `CollisionConfiguration'
 #}
@@ -143,9 +171,24 @@ instance New DynamicsWorld ( CollisionDispatcher
    `Int' } -> `CollisionObject'
 #}
 
+{#fun add_collision_object as ^
+ { `DynamicsWorld',
+   `CollisionObject' } -> `()'
+#}
+
 {#fun remove_collision_object as ^
  { `DynamicsWorld',
    `CollisionObject' } -> `()'
+#}
+
+{#fun add_action as ^
+ { `DynamicsWorld',
+   `ActionInterface' } -> `()'
+#}
+
+{#fun remove_action as ^
+ { `DynamicsWorld',
+   `ActionInterface' } -> `()'
 #}
 
 {#fun get_num_constraints as ^
@@ -420,6 +463,16 @@ instance New PairCachingGhostObject () where
  { `PairCachingGhostObject' } -> `CollisionObject'
 #}
 
+{#fun pcgo_set_world_transform as ^
+ { `PairCachingGhostObject',
+   `Transform' } -> `()'
+#}
+
+{#fun pcgo_set_collision_shape as ^
+ { `PairCachingGhostObject',
+   `CollisionShape' } -> `()'
+#}
+
 -- | btKinematicCharacterController
 
 {#fun new_kinematic_character_controller as ^
@@ -494,6 +547,13 @@ instance New KinematicCharacterController (PairCachingGhostObject, ConvexShape, 
 
 {#fun get_angular_damping as ^
  { `KinematicCharacterController' } -> `CFloat'
+#}
+
+{#fun warp as ^
+ { `KinematicCharacterController',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
 #}
 
 {#fun get_step_height as ^
@@ -591,4 +651,8 @@ instance New KinematicCharacterController (PairCachingGhostObject, ConvexShape, 
 {#fun set_up_interpolate as ^
  { `KinematicCharacterController',
    `Bool' } -> `()'
+#}
+
+{#fun kinematic_character_controller_to_action_interface as ^
+ { `KinematicCharacterController' } -> `ActionInterface'
 #}

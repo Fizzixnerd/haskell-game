@@ -14,9 +14,31 @@ extern "C" {
   void free_broadphase_interface(broadphase_interface* broadphase) {
     delete reinterpret_cast<btDbvtBroadphase*>(broadphase);
   }
+  
+  overlapping_pair_cache* get_overlapping_pair_cache
+  (broadphase_interface* broadphase) {
+    return reinterpret_cast<overlapping_pair_cache*>
+      (reinterpret_cast<btBroadphaseInterface*>(broadphase)->
+       getOverlappingPairCache());
+  }
+
+  void set_internal_ghost_pair_callback(overlapping_pair_cache* cache,
+					ghost_pair_callback* callback) {
+    reinterpret_cast<btOverlappingPairCache*>(cache)->
+      setInternalGhostPairCallback(reinterpret_cast<btGhostPairCallback*>(callback));
+  }
+
+  ghost_pair_callback* new_ghost_pair_callback() {
+    return reinterpret_cast<ghost_pair_callback*>(new btGhostPairCallback());
+  }
+
+  void free_ghost_pair_callback(ghost_pair_callback* callback) {
+    delete reinterpret_cast<btGhostPairCallback*>(callback);
+  }
 
   collision_configuration* new_default_collision_configuration() {
-    return reinterpret_cast<collision_configuration*>(new btDefaultCollisionConfiguration());
+    return reinterpret_cast<collision_configuration*>
+      (new btDefaultCollisionConfiguration());
   }
 
   void free_collision_configuration(collision_configuration* collision_configuration) {
@@ -84,10 +106,24 @@ extern "C" {
        getCollisionObjectArray()[idx]);
   }
 
+  void add_collision_object(dynamics_world* world, collision_object* obj) {
+    reinterpret_cast<btDynamicsWorld*>(world)->
+      addCollisionObject(reinterpret_cast<btCollisionObject*>(obj));
+  }
+
   void remove_collision_object(dynamics_world* world, collision_object* obj) {
     reinterpret_cast<btDynamicsWorld*>(world)->
       removeCollisionObject(reinterpret_cast<btCollisionObject*>(obj));
-      
+  }
+
+  void add_action(dynamics_world* world, action_interface* action) {
+    reinterpret_cast<btDynamicsWorld*>(world)->
+      addAction(reinterpret_cast<btActionInterface*>(action));
+  }
+
+  void remove_action(dynamics_world* world, action_interface* action) {
+    reinterpret_cast<btDynamicsWorld*>(world)->
+      removeAction(reinterpret_cast<btActionInterface*>(action));
   }
 
   int get_num_constraints(dynamics_world* world) {
@@ -345,6 +381,21 @@ extern "C" {
     return reinterpret_cast<collision_object*>(ghost_object);
   }
 
+  void pcgo_set_world_transform(pair_caching_ghost_object* ghost_object,
+				transform* transform) {
+    btPairCachingGhostObject* go = reinterpret_cast<btPairCachingGhostObject*>
+      (ghost_object);
+    btTransform xform = *reinterpret_cast<btTransform*>(transform);
+    go->setWorldTransform(xform);
+  }
+
+  void pcgo_set_collision_shape(pair_caching_ghost_object* ghost_object,
+			   collision_shape* shape) {
+    btPairCachingGhostObject* go = reinterpret_cast<btPairCachingGhostObject*>
+      (ghost_object);
+    go->setCollisionShape(reinterpret_cast<btCollisionShape*>(shape));
+  }
+
   // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller
   (pair_caching_ghost_object* ghost_object,
@@ -554,5 +605,10 @@ extern "C" {
   void set_up_interpolate(kinematic_character_controller* kcc, int bool_value) {
     reinterpret_cast<btKinematicCharacterController*>(kcc)->
       setUpInterpolate(bool_value);
+  }
+
+  action_interface* kinematic_character_controller_to_action_interface
+  (kinematic_character_controller* kcc) {
+    return reinterpret_cast<action_interface*>(kcc);
   }
 }

@@ -1,6 +1,9 @@
 dist
 dist-*
 cabal-dev
+*.cabal
+*.so
+*.so.*
 *.o
 *.hi
 *.chi

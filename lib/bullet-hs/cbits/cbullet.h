@@ -8,31 +8,46 @@ extern "C" {
 #endif
 
   // poor man's newtype.  Dear God.
+  typedef struct action_interface { char unused; } action_interface;
+  typedef struct box_shape { char unused; } box_shape;
   typedef struct broadphase_interface { char unused; } broadphase_interface;
   typedef struct collision_configuration { char unused; } collision_configuration;
   typedef struct collision_dispatcher { char unused; } collision_dispatcher;
-  typedef struct constraint_solver { char unused; } constraint_solver;
-  typedef struct dynamics_world { char unused; } dynamics_world;
-  typedef struct motion_state { char unused; } motion_state;
-  typedef struct static_plane_shape { char unused; } static_plane_shape;
-  typedef struct sphere_shape { char unused; } sphere_shape;
-  typedef struct box_shape { char unused; } box_shape;
-  typedef struct collision_shape { char unused; } collision_shape;
-  typedef struct rigid_body_construction_info { char unused; } rigid_body_construction_info;
-  typedef struct rigid_body { char unused; } rigid_body;
-  typedef struct transform { char unused; } transform;
   typedef struct collision_object { char unused; } collision_object;
-  typedef struct typed_constraint { char unused; } typed_constraint;
-  typedef struct serializer { char unused; } serializer;
-  typedef struct kinematic_character_controller { char unused; } kinematic_character_controller;
-  typedef struct pair_caching_ghost_object { char unused; } pair_caching_ghost_object;
+  typedef struct collision_shape { char unused; } collision_shape;
+  typedef struct constraint_solver { char unused; } constraint_solver;
   typedef struct convex_shape { char unused; } convex_shape;
+  typedef struct dynamics_world { char unused; } dynamics_world;
+  typedef struct kinematic_character_controller { char unused; } kinematic_character_controller;
+  typedef struct motion_state { char unused; } motion_state;
+  typedef struct pair_caching_ghost_object { char unused; } pair_caching_ghost_object;
+  typedef struct rigid_body { char unused; } rigid_body;
+  typedef struct rigid_body_construction_info { char unused; } rigid_body_construction_info;
+  typedef struct serializer { char unused; } serializer;
+  typedef struct sphere_shape { char unused; } sphere_shape;
+  typedef struct static_plane_shape { char unused; } static_plane_shape;
+  typedef struct transform { char unused; } transform;
+  typedef struct typed_constraint { char unused; } typed_constraint;
+  typedef struct overlapping_pair_cache { char unused; } overlapping_pair_cache;
+  typedef struct ghost_pair_callback { char unused; } ghost_pair_callback;
   typedef float scalar;
   typedef dynamics_world collision_world;
 
+  // btDbvtBroadphase
   broadphase_interface* new_broadphase_interface();
   void free_broadphase_interface(broadphase_interface* broadphase);
+  overlapping_pair_cache* get_overlapping_pair_cache
+  (broadphase_interface* broadphase);
 
+  // btOverlappingPairCache
+  void set_internal_ghost_pair_callback(overlapping_pair_cache* cache,
+					ghost_pair_callback* callback);
+
+  // btGhostPairCallback
+  ghost_pair_callback* new_ghost_pair_callback();
+  void free_ghost_pair_callback(ghost_pair_callback* callback);
+
+  // btDefaultCollisionConfiguration
   collision_configuration* new_default_collision_configuration();
   void free_collision_configuration(collision_configuration* collision_configuration);
 
@@ -57,7 +72,10 @@ extern "C" {
   void add_rigid_body(dynamics_world* world, rigid_body* rigid_body);
   int get_num_collision_objects(dynamics_world* world);
   collision_object* get_collision_object(dynamics_world* world, int idx);
+  void add_collision_object(dynamics_world* world, collision_object* obj);
   void remove_collision_object(dynamics_world* world, collision_object* obj);
+  void add_action(dynamics_world* world, action_interface* action);
+  void remove_action(dynamics_world* world, action_interface* action);
   int get_num_constraints(dynamics_world* world);
   typed_constraint* get_constraint(dynamics_world* world, int idx);
   void add_constraint(dynamics_world* world, typed_constraint* constriant);
@@ -152,6 +170,10 @@ extern "C" {
   void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object);
   collision_object* pair_caching_ghost_object_to_collision_object
   (pair_caching_ghost_object* ghost_object);
+  void pcgo_set_world_transform(pair_caching_ghost_object* ghost_object,
+				transform* transform);
+  void pcgo_set_collision_shape(pair_caching_ghost_object* ghost_object,
+				collision_shape* shape);
 
   // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller
@@ -214,6 +236,8 @@ extern "C" {
 				int bool_use_ghost_object_sweep_test);
   int on_ground(kinematic_character_controller* kcc); // returns bool
   void set_up_interpolate(kinematic_character_controller* kcc, int bool_value); // ?
+  action_interface* kinematic_character_controller_to_action_interface
+  (kinematic_character_controller* kcc);
 
 #ifdef __cplusplus
 }
