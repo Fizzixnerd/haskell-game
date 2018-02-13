@@ -93,7 +93,7 @@ doItAndGimmeFireThing = do
 game :: Game ( NamedHandler ()
              , NamedHandler ()
              , IO ()
-             , ThreadId)
+             , ThreadId )
 game = do
   (h, r, sc, w, x) <- doItAndGimmeFireThing
   ti <- liftIO $ forkIO x
