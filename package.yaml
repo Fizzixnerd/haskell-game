@@ -20,34 +20,35 @@ extra-source-files:
 description:         Please see the README on Github at <https://github.com/githubuser/haskell-game#readme>
 
 dependencies:
+- FontyFruity
+- GLFW-b
+- JuicyPixels
+- ObjectName
+- ObjectName
+- OpenGL
+- Rasterific
+- StateVar
 - base >= 4.7 && < 5
-- lens
+- bullet-hs
+- bytestring
 - classy-prelude
 - containers
-- text
-- bytestring
-- JuicyPixels
-- FontyFruity
-- Rasterific
-- GLFW-b
-- OpenGL
-- ObjectName
-- reactive-banana
-- wavefront
-- vector
-- linear
-- ghc
-- ghc-paths
-- monad-logger
-- mtl
-- linear-opengl
 - derive-storable
 - derive-storable-plugin
-- plugin
+- ghc
+- ghc-paths
 - gl
-- ObjectName
-- StateVar
+- lens
+- linear
+- linear-opengl
+- monad-logger
+- mtl
+- plugin
+- reactive-banana
 - safe-exceptions
+- text
+- vector
+- wavefront
 
 library:
   source-dirs: src

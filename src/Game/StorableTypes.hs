@@ -25,4 +25,4 @@ data VTNIndex = VTNIndex
   , _vtnIndexN :: !Int
   } deriving (Eq, Show, Ord, Read, Generic, GStorable)
 
-mconcat <$> mapM makeLenses [''VTNPoint]
+mconcat <$> mapM makeLenses [''VTNPoint, ''VTNIndex]

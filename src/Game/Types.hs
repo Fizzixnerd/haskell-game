@@ -218,7 +218,7 @@ data GraphicsContext = GraphicsContext
   , _graphicsContextSamples             :: Int
   , _graphicsContextStereo              :: Bool
   , _graphicsContextSRGBCapable         :: Bool
-  }
+  } deriving (Eq, Ord, Show)
 
 defaultGraphicsContext :: GraphicsContext
 defaultGraphicsContext = GraphicsContext
@@ -250,7 +250,7 @@ data WindowConfig = WindowConfig
   , _windowConfigTitle              :: String
   , _windowConfigMonitorFullscreen  :: Maybe G.Monitor
   , _windowConfigWindowContextShare :: Maybe G.Window
-  }
+  } deriving (Eq, Ord, Show)
 
 defaultWindowConfig :: WindowConfig
 defaultWindowConfig = WindowConfig
