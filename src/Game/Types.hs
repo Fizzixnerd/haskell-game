@@ -269,29 +269,6 @@ data Player = Player
   { _playerPhysicsController :: P.KinematicCharacterController
   }
 
-uncfloat :: CFloat -> Float
-uncfloat (CFloat f) = f
-
-allocatePlayerTransform :: MonadIO m => Player -> m (P.Transform)
-allocatePlayerTransform p = liftIO $
-                            P.getGhostObject (_playerPhysicsController p) >>=
-                            P.pairCachingGhostObjectToCollisionObject >>=
-                            P.coAllocateWorldTransform
-
-getPlayerLocation :: MonadIO m => Player -> m (L.V3 Float)
-getPlayerLocation p = liftIO $ do
-  xform <- allocatePlayerTransform p
-  (x, y, z) <- P.getOrigin xform
-  P.del xform
-  return $ L.V3 (uncfloat x) (uncfloat y) (uncfloat z)
-
-getPlayerOpenGLMatrix :: MonadIO m => Player -> m (L.M44 CFloat)
-getPlayerOpenGLMatrix p = liftIO $ do
-  xform <- allocatePlayerTransform p
-  m <- P.getOpenGLMatrix xform
-  P.del xform
-  return m
-
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''NamedHandler
