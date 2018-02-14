@@ -25,6 +25,7 @@ import qualified Linear                      as L
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks  as B
 import           Text.Printf
+import qualified Physics.Bullet              as P
 
 newtype Game a = Game { _unGame :: ML.LoggingT IO a }
   deriving ( Functor
@@ -264,6 +265,33 @@ defaultWindowConfig = WindowConfig
   , _windowConfigWindowContextShare = Nothing
   }
 
+data Player = Player 
+  { _playerPhysicsController :: P.KinematicCharacterController
+  }
+
+uncfloat :: CFloat -> Float
+uncfloat (CFloat f) = f
+
+allocatePlayerTransform :: MonadIO m => Player -> m (P.Transform)
+allocatePlayerTransform p = liftIO $
+                            P.getGhostObject (_playerPhysicsController p) >>=
+                            P.pairCachingGhostObjectToCollisionObject >>=
+                            P.coAllocateWorldTransform
+
+getPlayerLocation :: MonadIO m => Player -> m (L.V3 Float)
+getPlayerLocation p = liftIO $ do
+  xform <- allocatePlayerTransform p
+  (x, y, z) <- P.getOrigin xform
+  P.del xform
+  return $ L.V3 (uncfloat x) (uncfloat y) (uncfloat z)
+
+getPlayerOpenGLMatrix :: MonadIO m => Player -> m (L.M44 CFloat)
+getPlayerOpenGLMatrix p = liftIO $ do
+  xform <- allocatePlayerTransform p
+  m <- P.getOpenGLMatrix xform
+  P.del xform
+  return m
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''NamedHandler
@@ -275,4 +303,5 @@ mconcat <$> mapM makeLenses
   , ''EndoRegister
   , ''WindowConfig
   , ''GraphicsContext
+  , ''Player
   ]
