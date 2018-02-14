@@ -12,16 +12,11 @@ import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
 import           Game.Graphics.OpenGL.Binding
+import           Game.Entity.Player
+import           Game.World.Physics
 import qualified Graphics.UI.GLFW             as G
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
-
-plainChanges :: B.Behavior a -> B.MomentIO (B.Event a)
-plainChanges b = do
-  (e, handle_) <- B.newEvent
-  eb <- B.changes b
-  B.reactimate' $ (fmap handle_) <$> eb
-  return e
 
 compileGameNetwork ::
   MonadIO m =>
@@ -67,8 +62,16 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
             ePrintHello :: B.Event (IO ())
             ePrintHello = const (print ("hello" :: String)) <$> eHello
 
+        p <- newPlayer
+        pw <- newPhysicsWorld
+        pw' <- addPlayerToPhysicsWorld p pw
+        let eStepPhysicsWorld :: B.Event (IO ())
+            eStepPhysicsWorld = const (void $ stepPhysicsWorld pw') <$> eTick
+
         gameState <- let installInputEvents gs = gs & gameStateMousePosEvent .~ eMousePos
                                                     & gameStateKeyEvent .~ eKey
+                                                    & gameStatePlayer .~ p
+                                                    & gameStatePhysicsWorld .~ pw'
                      in
                        installMovementScript $ installInputEvents initGameState  
 
@@ -79,20 +82,27 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
         bWorld <- B.stepper gameState eNewWorld
         let eWorld = (const <$> bWorld) B.<@> eTick
         let eUpdater = (\w -> B.unions $
-                               fmap (fmap (>=>)) $
-                               toList $
-                               w ^. gameStateEndoRegister . unEndoRegister) <$> eWorld
+                              fmap (fmap (>=>)) $
+                              toList $
+                              w ^. gameStateEndoRegister . unEndoRegister) <$> eWorld
         eUpdater' <- B.switchE eUpdater
         bUpdater <- B.accumB return eUpdater'
         let eUpdateWorld = bUpdater B.<@> eWorld
         eNewWorld <- B.execute eUpdateWorld
 
-        B.reactimate ((print . _gameStateBackgroundColor) <$> eWorld)
         B.reactimate ePrintHello
         B.reactimate eClose
         B.reactimate eRender
         B.reactimate eEscapeToClose
+        B.reactimate eStepPhysicsWorld
 
   net <- liftIO $ B.compile network
   liftIO $ B.actuate net
   return (hello, shouldClose, key, mousePos, tick)
+
+installKeyEventListener :: ((G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys) -> GameState -> B.MomentIO GameState)
+                        -> EndoName
+                        -> GameState
+                        -> B.MomentIO GameState
+installKeyEventListener el en gs = 
+  return $ gs & gameStateEndoRegister %~ registerEndo en (el <$> (gs ^. gameStateKeyEvent))

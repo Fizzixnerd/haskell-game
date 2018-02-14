@@ -56,7 +56,6 @@ data GameState = GameState
                                        , G.ModifierKeys )
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
-  , _gameStateBackgroundColor :: G.Color4 Float
   }
 
 initGameState :: GameState
@@ -72,7 +71,6 @@ initGameState = GameState
   , _gameStateKeyEvent      = error "keyEvent not set."
   , _gameStatePhysicsWorld  = error "physicsWorld not set."
   , _gameStatePlayer        = error "player not set."
-  , _gameStateBackgroundColor = G.Color4 1.0 0 0 0
   }
 
 data Camera = Camera

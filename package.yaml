@@ -64,7 +64,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall
-    - -fplugin Foreign.Storable.Generic.Plugin
+#    - -fplugin Foreign.Storable.Generic.Plugin
     - -dynamic
     dependencies:
     - haskell-game
