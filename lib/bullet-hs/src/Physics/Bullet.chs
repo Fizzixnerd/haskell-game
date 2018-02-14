@@ -4,6 +4,7 @@
 
 module Physics.Bullet where
 
+import Control.Exception
 import Data.Functor (void)
 import Unsafe.Coerce
 import Foreign.C.Types
@@ -44,11 +45,7 @@ class New a x | a -> x where
   del :: a -> IO ()
 
 withNew :: New a x => x -> (a -> IO b) -> IO b
-withNew x f = do
-  a <- new x
-  b <- f a
-  del a
-  return b
+withNew x f = bracket (new x) del f
 
 -- | btDbvtBroadphase
 {#fun new_broadphase_interface as ^
