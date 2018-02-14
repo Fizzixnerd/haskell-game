@@ -16,8 +16,9 @@ data UniformMVP = UniformMVP deriving (Eq, Ord, Show)
 
 instance Uniform UniformMVP where
   type UniformContents UniformMVP = M44 GLfloat
+  type UniformLocationType UniformMVP = DefaultBlock
   uniformLocation _    = makeGettableStateVar (return (UniformLocation 0))
-  uniformDefault prg _ = makeSettableStateVar $
+  uniform prg _ = makeSettableStateVar $
     \mat -> primMarshall prg (UniformLocation 0) mat
 
 render :: (TextureTarget t, MonadIO m)
@@ -33,7 +34,7 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   currentProgram $= Just prog
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
-  uniformDefault prog UniformMVP $= (gs ^. gameStateCamera . cameraMVP)
+  uniform prog UniformMVP $= (gs ^. gameStateCamera . cameraMVP)
   drawElements Triangles (fromIntegral n) GL.UnsignedInt nullPtr
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
