@@ -22,7 +22,7 @@ changeMovement k ks p@Player {..} = do
               G.Key'W -> L.V3 0 0 (negate 1)
               G.Key'A -> L.V3 (negate 1) 0 0
               G.Key'S -> L.V3 0 0 1
-              G.Key'F -> L.V3 1 0 0
+              G.Key'D -> L.V3 1 0 0
               _       -> L.V3 0 0 0
   lv <- getPlayerLinearVelocity p
   setPlayerLinearVelocity p (L.normalize $ lv `op_` dir)
@@ -31,5 +31,5 @@ script :: Script
 script = defaultScript
   { _scriptOnInit = installKeyEventListener 
                     (\(_, k, _, ks, _) gs -> do
-                        void $ changeMovement k ks (gs ^. gameStatePlayer)
+                        changeMovement k ks (gs ^. gameStatePlayer)
                         return gs) "movement" }

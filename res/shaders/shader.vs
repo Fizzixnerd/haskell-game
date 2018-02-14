@@ -11,6 +11,6 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  gl_Position = MVP * vertexPos;
+  gl_Position = MVP * vertexPos + vec4(0, 0, -5, 0);
   vs_out.UV = vertexUV;
 }
