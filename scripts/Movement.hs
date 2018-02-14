@@ -5,19 +5,21 @@ module Movement where
 import ClassyPrelude
 import Game.Types
 import qualified Reactive.Banana.Combinators as B
+import qualified Graphics.Rendering.OpenGL.GL as G
 import Control.Lens
 import qualified Linear as L
 import qualified Graphics.UI.GLFW as G
 import GHC.Float (double2Float)
 
-keyToMovement :: G.Key -> Maybe Movement
-keyToMovement G.Key'W = Just MoveForward
-keyToMovement G.Key'A = Just MoveLeft
-keyToMovement G.Key'S = Just MoveBackward
-keyToMovement G.Key'D = Just MoveRight
-keyToMovement G.Key'LeftShift = Just MoveDown
-keyToMovement G.Key'Space = Just MoveUp
-keyToMovement _ = Nothing
+keyToMovement :: G.Key -> G.KeyState -> Maybe Movement
+keyToMovement _ G.KeyState'Released = Nothing
+keyToMovement G.Key'W _ = Just MoveForward
+keyToMovement G.Key'A _ = Just MoveLeft
+keyToMovement G.Key'S _ = Just MoveBackward
+keyToMovement G.Key'D _ = Just MoveRight
+keyToMovement G.Key'LeftShift _ = Just MoveDown
+keyToMovement G.Key'Space _ = Just MoveUp
+keyToMovement _ _ = Nothing
 
 mouseToMovement :: (G.Window, Double, Double) -> Movement
 mouseToMovement (_, x, y) = MoveCameraDir x y
@@ -54,10 +56,14 @@ script = defaultScript
   { _scriptOnInit = \gs ->
       let eMovement = B.unionWith const 
                       (B.filterJust (
-                          (\(_,k,_,_,_) -> 
-                             keyToMovement k) <$> (gs ^. gameStateKeyEvent))) (mouseToMovement <$> (gs ^. gameStateMousePosEvent))
+                          (\(_,k,_,ks,_) -> 
+                             keyToMovement k ks) <$> (gs ^. gameStateKeyEvent))) (mouseToMovement <$> (gs ^. gameStateMousePosEvent))
       in
-        gs & gameStateEndoRegister %~ registerEndo "movement" 
-        ((\m gs_ -> gs_ & gameStateCamera %~ moveCamera (0.005/60) (3/60) m) <$> eMovement)
+        return $ gs & gameStateEndoRegister %~ registerEndo "movement" 
+        ((\m gs_ -> return $ gs_ 
+                    { _gameStateBackgroundColor = G.Color4 0 1.0 0 0
+                    ,_gameStateCamera = 
+                        moveCamera (0.005/60) (3/60) m $
+                        gs_ ^. gameStateCamera}) <$> eMovement)
   }
 

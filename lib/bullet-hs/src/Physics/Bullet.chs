@@ -1,14 +1,16 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Physics.Bullet where
 
+import Control.Exception
 import Data.Functor (void)
 import Unsafe.Coerce
 import Foreign.C.Types
 import Foreign hiding (new, void)
-import qualified Graphics.Rendering.OpenGL.GL.CoordTrans as GL
+import qualified Linear as L
 
 #include "cbullet.h"
 
@@ -17,6 +19,7 @@ import qualified Graphics.Rendering.OpenGL.GL.CoordTrans as GL
 {#pointer *action_interface as ^ newtype#}
 {#pointer *box_shape as ^ newtype#}
 {#pointer *broadphase_interface as ^ newtype#}
+{#pointer *capsule_shape as ^ newtype#}
 {#pointer *collision_configuration as ^ newtype#}
 {#pointer *collision_dispatcher as ^ newtype#}
 {#pointer *collision_object as ^ newtype#}
@@ -44,11 +47,7 @@ class New a x | a -> x where
   del :: a -> IO ()
 
 withNew :: New a x => x -> (a -> IO b) -> IO b
-withNew x f = do
-  a <- new x
-  b <- f a
-  del a
-  return b
+withNew x f = bracket (new x) del f
 
 -- | btDbvtBroadphase
 {#fun new_broadphase_interface as ^
@@ -301,6 +300,25 @@ instance New StaticPlaneShape ((CFloat, CFloat, CFloat), CFloat) where
   new ((x, y, z), pc) = newStaticPlaneShape x y z pc
   del x = freeStaticPlaneShape x
 
+-- | btCapsuleShape
+
+{#fun new_capsule_shape as ^
+ { `CFloat',
+   `CFloat' } -> `CapsuleShape'
+#}
+
+{#fun free_capsule_shape as ^
+ { `CapsuleShape' } -> `()'
+#}
+
+instance New CapsuleShape (CFloat, CFloat) where
+  new (r, h) = newCapsuleShape r h
+  del x = freeCapsuleShape x
+
+{#fun capsule_shape_to_convex_shape as ^
+ { `CapsuleShape' } -> `ConvexShape'
+#}
+
 -- | btSphereShape
 
 {#fun new_sphere_shape as ^
@@ -406,15 +424,15 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
  { `Transform' } -> `()'
 #}
 
-withOpenGLMatrix :: (Ptr CFloat -> IO ()) -> m (L.M44 CFloat)
-withOpenGLMatrix f = liftIO $ do
-  mems <- mallocForeignPtr
-  withForeignPtr mems f
-  peek mems
+allocaMatrix :: (Ptr CFloat -> IO b) -> IO b
+allocaMatrix = allocaBytes $ sizeOf (undefined :: L.M44 CFloat)
+  
+peekMatrix :: Ptr CFloat -> IO (L.M44 CFloat)
+peekMatrix p = peek $ castPtr p
 
 {#fun get_opengl_matrix as getOpenGLMatrix
  { `Transform',
-   withOpenGLMatrix- `GL.GLmatrix Float' return*} -> `()'
+   allocaMatrix- `L.M44 CFloat' peekMatrix*} -> `()'
 #}
 
 -- | btTypedConstraint

@@ -4,7 +4,7 @@ module Game.Graphics.Rendering where
 
 import           ClassyPrelude
 import           Control.Lens
-import qualified Data.Vector.Storable            as VS
+import qualified Data.Vector.Storable         as VS
 import           Foreign
 import           Foreign.C.Types
 import           Game.Types
