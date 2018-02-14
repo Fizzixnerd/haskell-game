@@ -406,7 +406,7 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
  { `Transform' } -> `()'
 #}
 
-withOpenGLMatrix :: (Ptr CFloat -> IO ()) -> m (L.M44 Float)
+withOpenGLMatrix :: (Ptr CFloat -> IO ()) -> m (L.M44 CFloat)
 withOpenGLMatrix f = liftIO $ do
   mems <- mallocForeignPtr
   withForeignPtr mems f
