@@ -1,3 +1,6 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+
 module Game.Graphics.OpenGL.Utils
   ( module X
   , withForeignBufferVec
@@ -8,6 +11,8 @@ module Game.Graphics.OpenGL.Utils
   , maybeNullPtr
   , foreignPoke
   , unsafeWithVecLen
+  , fillFrozenM44CFloat
+  , unsafeWithFrozenMatrix
   ) where
 
 import Foreign as X
@@ -19,8 +24,8 @@ import Foreign as X
   , nullPtr
   , with
   )
-
 import qualified Data.Vector.Storable as VS
+import qualified Data.Vector.Storable.Mutable as MS
 import Graphics.GL.Types
 import qualified Data.ByteString.Internal as BI (create)
 import qualified Data.ByteString.Unsafe as BU (unsafeUseAsCStringLen)
@@ -28,11 +33,10 @@ import Data.ByteString
 import Control.Monad.IO.Class as X
 import Data.Bits
 import Control.Monad (void)
-import Foreign
-  ( allocaArray
-  , withForeignPtr
-  , peekElemOff
-  )
+import Foreign hiding (void)
+import Foreign.C.Types
+import Linear (M44)
+import Prelude
 
 withForeignBufferVec :: (Storable a, MonadIO m) => Int -> (Ptr a -> IO ()) -> m (VS.Vector a)
 withForeignBufferVec n f = liftIO $ do
@@ -78,3 +82,21 @@ unsafeWithVecLen vec act = liftIO $
   VS.unsafeWith vec $ \ptr -> act (fromIntegral n) ptr
   where
     n = VS.length vec
+newtype FrozenM44 a  = FrozenM44 (ForeignPtr (M44 a))
+  deriving (Eq, Ord, Show)
+
+fillFrozenM44_ :: Storable a => Int -> (Ptr a -> IO b) -> IO (FrozenM44 a)
+fillFrozenM44_ bytesize act = do
+  mems <- mallocForeignPtrBytes (16 * bytesize) :: IO (ForeignPtr a)
+  _ <- withForeignPtr mems act
+  return $ FrozenM44 (castForeignPtr mems :: ForeignPtr (M44 a))
+
+fillFrozenM44CFloat :: (Ptr CFloat -> IO b) -> IO (FrozenM44 CFloat)
+fillFrozenM44CFloat = fillFrozenM44_ (sizeOf (0 :: CFloat))
+
+unsafeWithFrozenMatrix :: forall a b. Storable a => FrozenM44 a -> (M44 a -> M44 a) -> (Ptr a -> IO b) -> IO ()
+unsafeWithFrozenMatrix (FrozenM44 mtr) endo act = do
+  let mvec = MS.unsafeFromForeignPtr0 mtr 1 :: MS.IOVector (M44 a)
+  MS.unsafeModify mvec endo 1
+  _ <- MS.unsafeWith mvec (act . \ptr -> castPtr ptr :: Ptr a)
+  return ()
