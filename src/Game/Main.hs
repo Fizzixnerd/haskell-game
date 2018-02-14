@@ -15,9 +15,9 @@ import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import qualified Linear.OpenGL                as L ()
 import qualified Graphics.UI.GLFW             as G
-import qualified Graphics.Rendering.OpenGL.GL as G
 import           Text.Printf
 import           Game.Graphics.OpenGL.Binding
+import qualified Graphics.Rendering.OpenGL.GL as GL
 
 withWindow :: MonadIO m => (G.Window -> m a) -> m a
 withWindow f = do
@@ -46,9 +46,9 @@ doItAndGimmeFireThing = do
   liftIO $ G.makeContextCurrent $ Just win
 
   liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
-  G.cullFace G.$= Just G.Back
-  G.depthFunc G.$= Just G.Less
-  G.debugMessageCallback G.$= Just (printf "!!!%s!!!\n\n" . show)
+  GL.cullFace $= Just GL.Back
+  GL.depthFunc $= Just GL.Less
+  GL.debugMessageCallback $= Just (printf "!!!%s!!!\n\n" . show)
   printContextVersion win
 
   prog <- compileShaders
@@ -63,8 +63,8 @@ doItAndGimmeFireThing = do
       nmlLocation = AttribLocation 2
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
-  G.clearColor G.$= G.Color4 0 0 0.4 0
-  G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
+  GL.clearColor $= GL.Color4 0 0 0.4 0
+  GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
   (hello, shouldClose, key, mousePos, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
 

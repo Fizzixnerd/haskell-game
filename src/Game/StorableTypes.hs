@@ -1,21 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module Game.StorableTypes where
 
--- import GHC.Generics
--- import Foreign.Storable.Generic
 import Foreign.C.Types
 import Foreign.Storable
-import Foreign.Ptr
 import Control.Lens
 import qualified Linear as L
-
-{-
-instance (GStorable a) => GStorable (L.V2 a)
-instance (GStorable a) => GStorable (L.V3 a)
-instance (GStorable a) => GStorable (L.V4 a)
--}
 
 data VTNPoint = VTNPoint
   { _vtnPointV :: !(L.V4 CFloat)

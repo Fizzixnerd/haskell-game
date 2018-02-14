@@ -32,8 +32,6 @@ dependencies:
 - bytestring
 - classy-prelude
 - containers
-- derive-storable
-- derive-storable-plugin
 - ghc
 - ghc-paths
 - gl

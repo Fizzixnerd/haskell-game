@@ -11,7 +11,6 @@ import Game.Graphics.OpenGL.Shader
 import Game.Graphics.OpenGL.Utils
 import Linear
 import qualified Data.Vector.Storable as VS
-import Foreign.ForeignPtr
 -- NB everything is transposed by default. Will fix.
 
 newtype UniformLocation = UniformLocation
