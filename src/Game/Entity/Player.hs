@@ -1,4 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Game.Entity.Player where
 
@@ -8,6 +10,30 @@ import qualified Physics.Bullet as P
 import qualified Linear as L
 import Foreign.C.Types
 import Control.Lens
+import Unsafe.Coerce
+
+newPlayer :: MonadIO m => m Player
+newPlayer = liftIO $ do
+  pcgo :: P.PairCachingGhostObject <- P.new ()
+  startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
+  P.setIdentity startXform
+  P.setOrigin startXform 0 0 0
+  P.pcgoSetWorldTransform pcgo startXform
+  P.del startXform
+  
+  playerShape <- P.newCapsuleShape 1 1
+  psConvex <- P.capsuleShapeToConvexShape playerShape
+  let stepHeight = 0.35
+  controller :: P.KinematicCharacterController <- P.new (pcgo, psConvex, stepHeight)
+  go <- P.getGhostObject controller
+  P.pcgoSetCollisionShape go (unsafeCoerce playerShape) -- TODO: Fix this nonsense
+  P.setUp controller 0 1 0
+  return $ Player controller
+
+destroyPlayer :: MonadIO m => Player -> m ()
+destroyPlayer Player {..} = liftIO $ do
+  P.del =<< P.getGhostObject _playerPhysicsController
+  P.del _playerPhysicsController
 
 allocatePlayerTransform :: MonadIO m => Player -> m (P.Transform)
 allocatePlayerTransform p = liftIO $

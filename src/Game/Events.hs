@@ -16,6 +16,13 @@ import qualified Graphics.UI.GLFW             as G
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
 
+plainChanges :: B.Behavior a -> B.MomentIO (B.Event a)
+plainChanges b = do
+  (e, handle_) <- B.newEvent
+  eb <- B.changes b
+  B.reactimate' $ (fmap handle_) <$> eb
+  return e
+
 compileGameNetwork ::
   MonadIO m =>
   Program
@@ -23,7 +30,7 @@ compileGameNetwork ::
   -> VertexArrayObject
   -> (BufferObject, Int)
   -> TextureObject TextureTarget2D
-  -> m (NamedHandler b1, NamedHandler b2, NamedHandler G.Window,
+  -> m (NamedHandler b1, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys),
         NamedHandler (G.Window, Double, Double), NamedHandler G.Window)
 compileGameNetwork prog texSampleLoc vao ebuf tex = do
@@ -33,7 +40,6 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
   (addHandlerKey, key) <- newNamedEventHandler "key"
   (addHandlerHello, hello) <- newNamedEventHandler "hello"
   (addHandlerMousePos, mousePos) <- newNamedEventHandler "mousePos"
-  (addHandlerGameReset, gameReset) <- newNamedEventHandler "gameReset"
 
   movementScript <- liftIO $ loadForeignScript $ ScriptName "scripts" "Movement"
   let installMovementScript = scriptInstall movementScript
@@ -45,7 +51,6 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
         eKey <- B.fromAddHandler addHandlerKey
         eHello <- B.fromAddHandler addHandlerHello
         eMousePos <- B.fromAddHandler addHandlerMousePos
-        eGameReset <- B.fromAddHandler addHandlerGameReset
 
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
@@ -62,16 +67,25 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
             ePrintHello :: B.Event (IO ())
             ePrintHello = const (print ("hello" :: String)) <$> eHello
 
-            gameState :: GameState
-            gameState = installMovementScript $
-                        installInputEvents $ initGameState
-              where installInputEvents gs = gs & gameStateMousePosEvent .~ eMousePos
-                                               & gameStateKeyEvent .~ eKey
+        gameState <- let installInputEvents gs = gs & gameStateMousePosEvent .~ eMousePos
+                                & gameStateKeyEvent .~ eKey in
+                       installMovementScript $
+                       installInputEvents $ initGameState  
+        --  b w -> b (w -> mio w), e w -> e (mio w) -> mio (e w) -+
+        --  ^                                                     |
+        --  |                                                     |
+        --  +-----------------------------------------------------+
 
-            eResetGame :: B.Event (GameState -> GameState)
-            eResetGame = const (const gameState) <$> eGameReset
-
-        bWorld <- B.accumB gameState (B.unions $ toList $ gameState ^. gameStateEndoRegister . unEndoRegister)
+        bWorld <- B.stepper gameState eNewWorld
+        eWorld <- plainChanges bWorld
+        let eUpdater = (\w -> B.unions $
+                               fmap (fmap (\f g x -> (f >=> g) x)) $
+                               toList $
+                               w ^. gameStateEndoRegister . unEndoRegister) <$> eWorld
+        eUpdater' <- B.switchE eUpdater
+        bUpdater <- B.accumB return eUpdater'
+        let eUpdateWorld = bUpdater B.<@> eWorld
+        eNewWorld <- B.execute eUpdateWorld
 
         B.reactimate ePrintHello
         B.reactimate eClose
@@ -80,4 +94,4 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
 
   net <- liftIO $ B.compile network
   liftIO $ B.actuate net
-  return (hello, gameReset, shouldClose, key, mousePos, tick)
+  return (hello, shouldClose, key, mousePos, tick)

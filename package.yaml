@@ -49,6 +49,9 @@ dependencies:
 - vector
 - wavefront
 
+ghc-options:
+  - -dynamic
+
 library:
   source-dirs: src
 
@@ -62,6 +65,7 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -fplugin Foreign.Storable.Generic.Plugin
+    - -dynamic
     dependencies:
     - haskell-game
 
@@ -73,5 +77,6 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -dynamic
     dependencies:
     - haskell-game

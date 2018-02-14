@@ -271,6 +271,19 @@ extern "C" {
   void free_static_plane_shape(static_plane_shape* static_plane_shape) {
     delete reinterpret_cast<btStaticPlaneShape*>(static_plane_shape);
   }
+
+  // btCapsuleShape
+  capsule_shape* new_capsule_shape(scalar radius, scalar height) {
+    return reinterpret_cast<capsule_shape*>(new btCapsuleShape(radius, height));
+  }
+
+  void free_capsule_shape(capsule_shape* capsule_shape) {
+    delete reinterpret_cast<btCapsuleShape*>(capsule_shape);
+  }
+
+  convex_shape* capsule_shape_to_convex_shape(capsule_shape* capsule_shape) {
+    return reinterpret_cast<convex_shape*>(capsule_shape);
+  }
   
   // btSphereShape
   sphere_shape* new_sphere_shape(scalar radius) {

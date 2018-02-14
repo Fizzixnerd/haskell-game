@@ -19,6 +19,7 @@ import qualified Linear as L
 {#pointer *action_interface as ^ newtype#}
 {#pointer *box_shape as ^ newtype#}
 {#pointer *broadphase_interface as ^ newtype#}
+{#pointer *capsule_shape as ^ newtype#}
 {#pointer *collision_configuration as ^ newtype#}
 {#pointer *collision_dispatcher as ^ newtype#}
 {#pointer *collision_object as ^ newtype#}
@@ -298,6 +299,25 @@ instance New RigidBodyConstructionInfo (Mass, MotionState, CollisionShape, (CFlo
 instance New StaticPlaneShape ((CFloat, CFloat, CFloat), CFloat) where
   new ((x, y, z), pc) = newStaticPlaneShape x y z pc
   del x = freeStaticPlaneShape x
+
+-- | btCapsuleShape
+
+{#fun new_capsule_shape as ^
+ { `CFloat',
+   `CFloat' } -> `CapsuleShape'
+#}
+
+{#fun free_capsule_shape as ^
+ { `CapsuleShape' } -> `()'
+#}
+
+instance New CapsuleShape (CFloat, CFloat) where
+  new (r, h) = newCapsuleShape r h
+  del x = freeCapsuleShape x
+
+{#fun capsule_shape_to_convex_shape as ^
+ { `CapsuleShape' } -> `ConvexShape'
+#}
 
 -- | btSphereShape
 

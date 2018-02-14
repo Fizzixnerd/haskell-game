@@ -38,44 +38,51 @@ runGame :: Game a -> IO a
 runGame g = ML.runStderrLoggingT $ _unGame g
 
 newtype EventRegister = EventRegister { _unEventRegister :: MS.Map EventName (B.Event ()) }
-newtype EndoRegister  = EndoRegister { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> GameState)) }
+newtype EndoRegister  = EndoRegister { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> B.MomentIO GameState)) }
 
 type ScanCode = Int
 
 data GameState = GameState
-  { _gameStateCamera :: Camera
+  { _gameStateCamera        :: Camera
   , _gameStateActiveScripts :: Vector Script
   , _gameStateEventRegister :: EventRegister
   , _gameStateEndoRegister  :: EndoRegister
   , _gameStateMousePosEvent :: B.Event (G.Window, Double, Double)
-  , _gameStateKeyEvent      :: B.Event (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys)
+  , _gameStateKeyEvent      :: B.Event ( G.Window
+                                       , G.Key
+                                       , ScanCode
+                                       , G.KeyState
+                                       , G.ModifierKeys )
+  , _gameStatePhysicsWorld  :: PhysicsWorld
+  , _gameStatePlayer        :: Player
   }
 
 initGameState :: GameState
 initGameState = GameState
   { _gameStateCamera = Camera
-    { _cameraPosition = L.V3 0 0 2
-    , _cameraOrientation = (0, 0)
+    { _cameraOrientation = (0, 0)
     , _cameraFOV = pi/2 }
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateEndoRegister  = EndoRegister mempty
   , _gameStateMousePosEvent = error "mousePosEvent not set."
   , _gameStateKeyEvent      = error "keyEvent not set."
+  , _gameStatePhysicsWorld  = error "physicsWorld not set."
+  , _gameStatePlayer        = error "player not set."
   }
 
 data Camera = Camera
-  { _cameraPosition :: L.V3 Float
-  , _cameraOrientation :: (Float, Float)
+  { _cameraOrientation :: (Float, Float)
   , _cameraFOV :: Float
   } deriving (Eq, Show, Ord)
 
 cameraMVP :: Getter Camera (L.M44 Float)
 cameraMVP = to go
   where
-    go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
+    go (Camera (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
       where
         vup  = L.V3 0 1 0
+        vpos = L.V3 0 0 0
         vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
         camModel = L.identity
         camView = L.lookAt vpos (vpos + vdir) vup
@@ -147,11 +154,11 @@ data ScriptName = ScriptName
 data Script = Script
   { _scriptSuperScripts :: Vector ScriptName
   , _scriptName :: ScriptName
-  , _scriptOnInit :: GameState -> GameState
-  , _scriptOnLoad :: GameState -> GameState
-  , _scriptOnEvent :: Vector (EventName, EndoName, GameState -> GameState)
-  , _scriptOnUnload :: GameState -> GameState
-  , _scriptOnExit :: GameState -> GameState
+  , _scriptOnInit :: GameState -> B.MomentIO GameState
+  , _scriptOnLoad :: GameState -> B.MomentIO GameState
+  , _scriptOnEvent :: Vector (EventName, EndoName, GameState -> B.MomentIO GameState)
+  , _scriptOnUnload :: GameState -> B.MomentIO GameState
+  , _scriptOnExit :: GameState -> B.MomentIO GameState
   }
 
 instance Eq Script where
@@ -167,11 +174,11 @@ defaultScript :: Script
 defaultScript = Script
   { _scriptSuperScripts = empty
   , _scriptName = error "Don't change this."
-  , _scriptOnInit = id
-  , _scriptOnLoad = id
+  , _scriptOnInit = return
+  , _scriptOnLoad = return
   , _scriptOnEvent = empty
-  , _scriptOnUnload = id
-  , _scriptOnExit = id
+  , _scriptOnUnload = return
+  , _scriptOnExit = return
   }
 
 lookupEventByName :: EventName -> EventRegister -> Maybe (B.Event ())
@@ -181,7 +188,7 @@ lookupEventByName en (EventRegister er) = lookup en er
 -- deregisterEventByName :: EventName -> EventRegister -> EventRegister
 -- deregisterEventByName en (EventRegister er) = EventRegister $ MS.delete en er
 
-registerEndoByName :: EventName -> EndoName -> (GameState -> GameState) -> EventRegister -> EndoRegister -> EndoRegister
+registerEndoByName :: EventName -> EndoName -> (GameState -> B.MomentIO GameState) -> EventRegister -> EndoRegister -> EndoRegister
 registerEndoByName eventName endoName endo eventR endoR =
   let me = lookupEventByName eventName eventR in
   case me of
@@ -190,7 +197,7 @@ registerEndoByName eventName endoName endo eventR endoR =
       let e' = const endo <$> e
       registerEndo endoName e' endoR
 
-registerEndo :: EndoName -> B.Event (GameState -> GameState) -> EndoRegister -> EndoRegister
+registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
 registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
 registerEvent :: NamedEventHandler () -> EventRegister -> B.MomentIO (EventRegister, NamedHandler ())
@@ -271,6 +278,12 @@ data Player = Player
 
 data PhysicsWorld = PhysicsWorld
   { _physicsWorldDynamicsWorld :: P.DynamicsWorld
+  , _physicsWorldPlayers :: Vector Player
+  , _physicsWorldBroadphaseInterface :: P.BroadphaseInterface
+  , _physicsWorldGhostPairCallback :: P.GhostPairCallback
+  , _physicsWorldCollisionConfiguration :: P.CollisionConfiguration
+  , _physicsWorldCollisionDispatcher :: P.CollisionDispatcher
+  , _physicsWorldConstraintSolver :: P.ConstraintSolver
   }
 
 mconcat <$> mapM makeLenses

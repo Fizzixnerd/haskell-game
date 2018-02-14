@@ -11,6 +11,7 @@ extern "C" {
   typedef struct action_interface { char unused; } action_interface;
   typedef struct box_shape { char unused; } box_shape;
   typedef struct broadphase_interface { char unused; } broadphase_interface;
+  typedef struct capsule_shape { char unused; } capsule_shape;
   typedef struct collision_configuration { char unused; } collision_configuration;
   typedef struct collision_dispatcher { char unused; } collision_dispatcher;
   typedef struct collision_object { char unused; } collision_object;
@@ -18,11 +19,14 @@ extern "C" {
   typedef struct constraint_solver { char unused; } constraint_solver;
   typedef struct convex_shape { char unused; } convex_shape;
   typedef struct dynamics_world { char unused; } dynamics_world;
-  typedef struct kinematic_character_controller { char unused; } kinematic_character_controller;
+  typedef struct kinematic_character_controller { char unused; }
+    kinematic_character_controller;
   typedef struct motion_state { char unused; } motion_state;
-  typedef struct pair_caching_ghost_object { char unused; } pair_caching_ghost_object;
+  typedef struct pair_caching_ghost_object { char unused; }
+    pair_caching_ghost_object;
   typedef struct rigid_body { char unused; } rigid_body;
-  typedef struct rigid_body_construction_info { char unused; } rigid_body_construction_info;
+  typedef struct rigid_body_construction_info { char unused; }
+    rigid_body_construction_info;
   typedef struct serializer { char unused; } serializer;
   typedef struct sphere_shape { char unused; } sphere_shape;
   typedef struct static_plane_shape { char unused; } static_plane_shape;
@@ -124,6 +128,11 @@ extern "C" {
 					     scalar z,
 					     scalar plane_constant);
   void free_static_plane_shape(static_plane_shape* static_plane_shape);
+
+  // btCapsuleShape
+  capsule_shape* new_capsule_shape(scalar radius, scalar height);
+  void free_capsule_shape(capsule_shape* capsule_shape);
+  convex_shape* capsule_shape_to_convex_shape(capsule_shape* capsule_shape);
 
   // btSphereShape
   sphere_shape* new_sphere_shape(scalar radius);

@@ -37,7 +37,6 @@ printContextVersion win = liftIO $ do
   printf "%i.%i.%i\n" maj min_ rev
 
 doItAndGimmeFireThing :: Game ( NamedHandler a
-                              , NamedHandler b
                               , NamedHandler G.Window
                               , G.Window
                               , IO () )
@@ -67,7 +66,7 @@ doItAndGimmeFireThing = do
   G.clearColor G.$= G.Color4 0 0 0.4 0
   G.viewport G.$= (G.Position 0 0, G.Size 1920 1080)
 
-  (hello, gameReset, shouldClose, key, mousePos, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
+  (hello, shouldClose, key, mousePos, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
@@ -86,16 +85,15 @@ doItAndGimmeFireThing = do
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (hello, gameReset, shouldClose, win, someFunc')
+  return (hello, shouldClose, win, someFunc')
 
 game :: Game ( NamedHandler ()
-             , NamedHandler ()
              , IO ()
              , ThreadId )
 game = do
-  (h, r, sc, w, x) <- doItAndGimmeFireThing
+  (h, sc, w, x) <- doItAndGimmeFireThing
   ti <- liftIO $ forkIO x
-  return (h, r, fire sc w, ti)
+  return (h, fire sc w, ti)
 
 someFunc :: IO ()
 someFunc = void $ runGame game

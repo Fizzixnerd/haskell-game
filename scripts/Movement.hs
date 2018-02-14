@@ -10,14 +10,15 @@ import qualified Linear as L
 import qualified Graphics.UI.GLFW as G
 import GHC.Float (double2Float)
 
-keyToMovement :: G.Key -> Maybe Movement
-keyToMovement G.Key'W = Just MoveForward
-keyToMovement G.Key'A = Just MoveLeft
-keyToMovement G.Key'S = Just MoveBackward
-keyToMovement G.Key'D = Just MoveRight
-keyToMovement G.Key'LeftShift = Just MoveDown
-keyToMovement G.Key'Space = Just MoveUp
-keyToMovement _ = Nothing
+keyToMovement :: G.Key -> G.KeyState -> Maybe Movement
+keyToMovement _ G.KeyState'Released = Nothing
+keyToMovement G.Key'W _ = Just MoveForward
+keyToMovement G.Key'A _ = Just MoveLeft
+keyToMovement G.Key'S _ = Just MoveBackward
+keyToMovement G.Key'D _ = Just MoveRight
+keyToMovement G.Key'LeftShift _ = Just MoveDown
+keyToMovement G.Key'Space _ = Just MoveUp
+keyToMovement _ _ = Nothing
 
 mouseToMovement :: (G.Window, Double, Double) -> Movement
 mouseToMovement (_, x, y) = MoveCameraDir x y
@@ -39,7 +40,7 @@ rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
 translateCameraRelative :: L.V3 Float -> Camera -> Camera
-translateCameraRelative v cam = cam & cameraPosition +~ vrel
+translateCameraRelative v cam = cam
   where
     vrel = L.rotate (L.axisAngle (L.V3 0 1 0) (fst . _cameraOrientation $ cam)) v
 
@@ -54,10 +55,13 @@ script = defaultScript
   { _scriptOnInit = \gs ->
       let eMovement = B.unionWith const 
                       (B.filterJust (
-                          (\(_,k,_,_,_) -> 
-                             keyToMovement k) <$> (gs ^. gameStateKeyEvent))) (mouseToMovement <$> (gs ^. gameStateMousePosEvent))
+                          (\(_,k,_,ks,_) -> 
+                             keyToMovement k ks) <$> (gs ^. gameStateKeyEvent))) (mouseToMovement <$> (gs ^. gameStateMousePosEvent))
       in
-        gs & gameStateEndoRegister %~ registerEndo "movement" 
-        ((\m gs_ -> gs_ & gameStateCamera %~ moveCamera (0.005/60) (3/60) m) <$> eMovement)
+        return $ gs & gameStateEndoRegister %~ registerEndo "movement" 
+        ((\m gs_ -> return $ gs_ 
+                    { _gameStateCamera = 
+                      moveCamera (0.005/60) (3/60) m $
+                      gs_ ^. gameStateCamera}) <$> eMovement)
   }
 
