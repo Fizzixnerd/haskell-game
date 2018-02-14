@@ -20,6 +20,7 @@ import qualified Control.Monad.Logger        as ML
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Game.StorableTypes
+import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Reactive.Banana.Combinators as B
@@ -55,12 +56,14 @@ data GameState = GameState
                                        , G.ModifierKeys )
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
+  , _gameStateBackgroundColor :: G.Color4 Float
   }
 
 initGameState :: GameState
 initGameState = GameState
   { _gameStateCamera = Camera
-    { _cameraOrientation = (0, 0)
+    { _cameraPosition = L.V3 0 0 (negate 2)
+    , _cameraOrientation = (0, 0)
     , _cameraFOV = pi/2 }
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
@@ -69,20 +72,21 @@ initGameState = GameState
   , _gameStateKeyEvent      = error "keyEvent not set."
   , _gameStatePhysicsWorld  = error "physicsWorld not set."
   , _gameStatePlayer        = error "player not set."
+  , _gameStateBackgroundColor = G.Color4 1.0 0 0 0
   }
 
 data Camera = Camera
-  { _cameraOrientation :: (Float, Float)
+  { _cameraPosition :: L.V3 Float
+  , _cameraOrientation :: (Float, Float)
   , _cameraFOV :: Float
   } deriving (Eq, Show, Ord)
 
 cameraMVP :: Getter Camera (L.M44 Float)
 cameraMVP = to go
   where
-    go (Camera (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
+    go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
       where
         vup  = L.V3 0 1 0
-        vpos = L.V3 0 0 0
         vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
         camModel = L.identity
         camView = L.lookAt vpos (vpos + vdir) vup

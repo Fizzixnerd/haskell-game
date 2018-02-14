@@ -5,6 +5,7 @@ module Movement where
 import ClassyPrelude
 import Game.Types
 import qualified Reactive.Banana.Combinators as B
+import qualified Graphics.Rendering.OpenGL.GL as G
 import Control.Lens
 import qualified Linear as L
 import qualified Graphics.UI.GLFW as G
@@ -40,7 +41,7 @@ rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
 translateCameraRelative :: L.V3 Float -> Camera -> Camera
-translateCameraRelative v cam = cam
+translateCameraRelative v cam = cam & cameraPosition +~ vrel
   where
     vrel = L.rotate (L.axisAngle (L.V3 0 1 0) (fst . _cameraOrientation $ cam)) v
 
@@ -60,8 +61,9 @@ script = defaultScript
       in
         return $ gs & gameStateEndoRegister %~ registerEndo "movement" 
         ((\m gs_ -> return $ gs_ 
-                    { _gameStateCamera = 
-                      moveCamera (0.005/60) (3/60) m $
-                      gs_ ^. gameStateCamera}) <$> eMovement)
+                    { _gameStateBackgroundColor = G.Color4 0 1.0 0 0
+                    ,_gameStateCamera = 
+                        moveCamera (0.005/60) (3/60) m $
+                        gs_ ^. gameStateCamera}) <$> eMovement)
   }
 

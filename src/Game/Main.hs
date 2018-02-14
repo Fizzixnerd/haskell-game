@@ -70,7 +70,9 @@ doItAndGimmeFireThing = do
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  liftIO $ G.setCursorPosCallback win (Just (\w x y -> fire mousePos (w, x, y) >> G.setCursorPos w (1920 / 2) (1080 / 2)))
+  liftIO $ G.setCursorPosCallback win (Just (\w x y -> do
+                                                fire mousePos (w, x, y)
+                                                G.setCursorPos w (1920 / 2) (1080 / 2)))
 
   let someFunc' :: IO ()
       someFunc' = do

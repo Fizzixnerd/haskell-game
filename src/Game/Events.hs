@@ -68,18 +68,18 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
             ePrintHello = const (print ("hello" :: String)) <$> eHello
 
         gameState <- let installInputEvents gs = gs & gameStateMousePosEvent .~ eMousePos
-                                & gameStateKeyEvent .~ eKey in
-                       installMovementScript $
-                       installInputEvents $ initGameState  
+                                                    & gameStateKeyEvent .~ eKey
+                     in
+                       installMovementScript $ installInputEvents initGameState  
+
         --  b w -> b (w -> mio w), e w -> e (mio w) -> mio (e w) -+
         --  ^                                                     |
         --  |                                                     |
         --  +-----------------------------------------------------+
-
         bWorld <- B.stepper gameState eNewWorld
-        eWorld <- plainChanges bWorld
+        let eWorld = (const <$> bWorld) B.<@> eTick
         let eUpdater = (\w -> B.unions $
-                               fmap (fmap (\f g x -> (f >=> g) x)) $
+                               fmap (fmap (>=>)) $
                                toList $
                                w ^. gameStateEndoRegister . unEndoRegister) <$> eWorld
         eUpdater' <- B.switchE eUpdater
@@ -87,6 +87,7 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
         let eUpdateWorld = bUpdater B.<@> eWorld
         eNewWorld <- B.execute eUpdateWorld
 
+        B.reactimate ((print . _gameStateBackgroundColor) <$> eWorld)
         B.reactimate ePrintHello
         B.reactimate eClose
         B.reactimate eRender
