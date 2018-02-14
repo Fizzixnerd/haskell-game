@@ -403,8 +403,11 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
  { `Transform' } -> `()'
 #}
 
-withOpenGLMatrix :: (Ptr CFloat -> IO b) -> IO (GL.GLmatrix Float)
-withOpenGLMatrix f = GL.withNewMatrix GL.RowMajor (void . f . castPtr)
+withOpenGLMatrix :: (Ptr CFloat -> IO ()) -> m (L.M44 CFloat)
+withOpenGLMatrix f = liftIO $ do
+  mems <- mallocForeignPtr
+  withForeignPtr mems f
+  peek mems
 
 {#fun get_opengl_matrix as getOpenGLMatrix
  { `Transform',

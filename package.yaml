@@ -24,7 +24,6 @@ dependencies:
 - GLFW-b
 - JuicyPixels
 - ObjectName
-- ObjectName
 - OpenGL
 - Rasterific
 - StateVar

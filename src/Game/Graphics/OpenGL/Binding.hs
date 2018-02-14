@@ -116,6 +116,7 @@ import Game.Graphics.OpenGL.Uniform as X
   ( Uniform(..)
   , HasUniformComponent(..)
   , UniformBlock(..)
+  , DefaultBlock
   )
 
 import Data.StateVar as X
