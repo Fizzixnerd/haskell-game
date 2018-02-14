@@ -11,7 +11,7 @@ import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
-import           Game.Graphics.OpenGL.LowBinding
+import           Game.Graphics.OpenGL.Binding
 import qualified Graphics.UI.GLFW             as G
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
@@ -19,7 +19,6 @@ import qualified Reactive.Banana.Frameworks   as B
 compileGameNetwork ::
   MonadIO m =>
   Program
-  -> UniformLocation
   -> TextureUnit
   -> VertexArrayObject
   -> (BufferObject, Int)
@@ -27,7 +26,7 @@ compileGameNetwork ::
   -> m (NamedHandler b1, NamedHandler b2, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys),
         NamedHandler (G.Window, Double, Double), NamedHandler G.Window)
-compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
+compileGameNetwork prog texSampleLoc vao ebuf tex = do
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
   (addHandlerTick, tick) <- newNamedEventHandler "tick"
@@ -53,7 +52,7 @@ compileGameNetwork prog mvpLoc texSampleLoc vao ebuf tex = do
 
             eRender :: B.Event (IO ())
             eRender = B.apply ((\gs w -> do
-                                   render gs prog mvpLoc texSampleLoc vao (snd ebuf) tex
+                                   render gs prog texSampleLoc vao (snd ebuf) tex
                                    G.swapBuffers w) <$> bWorld) eTick
 
             eEscapeToClose :: B.Event (IO ())
