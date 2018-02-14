@@ -269,6 +269,10 @@ data Player = Player
   { _playerPhysicsController :: P.KinematicCharacterController
   }
 
+data PhysicsWorld = PhysicsWorld
+  { _physicsWorldDynamicsWorld :: P.DynamicsWorld
+  }
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''NamedHandler
@@ -281,4 +285,5 @@ mconcat <$> mapM makeLenses
   , ''WindowConfig
   , ''GraphicsContext
   , ''Player
+  , ''PhysicsWorld
   ]
