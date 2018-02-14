@@ -24,3 +24,7 @@ cabal.project.local
 
 *~
 \#*\#
+
+lib/bullet-hs/cbits/CmakeFiles/*
+lib/bullet-hs/cbits/MakeFile
+lib/bullet-hs/libcbullet.so.1.0
