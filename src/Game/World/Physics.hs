@@ -6,6 +6,8 @@ module Game.World.Physics where
 
 import ClassyPrelude
 import Game.Types
+import qualified Linear as L
+import Foreign.C.Types
 -- import Game.Entity.Player
 import qualified Physics.Bullet as P
 import Control.Lens hiding (cons)
@@ -40,6 +42,9 @@ addPlayerToPhysicsWorld p w = liftIO $ do
   P.addAction (w ^. physicsWorldDynamicsWorld) =<<
     P.kinematicCharacterControllerToActionInterface (p ^. playerPhysicsController)
   return $ w & physicsWorldPlayers %~ cons p
+
+physicsWorldSetGravity :: MonadIO m => PhysicsWorld -> L.V3 CFloat -> m ()
+physicsWorldSetGravity p (L.V3 x y z) = liftIO $ P.dwSetGravity (p ^. physicsWorldDynamicsWorld) x y z
 
 destroyPhysicsWorld :: MonadIO m => PhysicsWorld -> m ()
 destroyPhysicsWorld PhysicsWorld {..} = liftIO $ do

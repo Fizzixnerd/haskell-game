@@ -41,6 +41,17 @@ allocatePlayerTransform p = liftIO $
                             P.pairCachingGhostObjectToCollisionObject >>=
                             P.coAllocateWorldTransform
 
+getPlayerOrientation :: MonadIO m => Player -> m (L.Quaternion CFloat)
+getPlayerOrientation p = liftIO $ do
+  (i, j, k, r) <- withPlayerTransform p (\t -> P.getRotation t)
+  return $ L.Quaternion r (L.V3 i j k)
+
+setPlayerOrientation :: MonadIO m => Player -> m (L.Quaternion CFloat)
+setPlayerOrientation p (L.Quaternion r (L.V3 i j k)) =
+  withPlayerTransform p (\t -> do
+                            P.setRotation t i j k r
+                            P.pcgoSetWorldTransform (p ^. playerPhysicsController) t)
+
 withPlayerTransform :: MonadIO m => Player -> (P.Transform -> IO b) -> m b
 withPlayerTransform p f = liftIO $ bracket (allocatePlayerTransform p) P.del f
 
