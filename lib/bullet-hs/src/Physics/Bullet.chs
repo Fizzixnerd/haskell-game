@@ -403,7 +403,7 @@ instance IsCollisionShape BoxShape
 #}
 
 instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloat)) where
-  new ((r, i, j, k), (x, y, z)) = newTransform r i j k x y z
+  new ((i, j, k, r), (x, y, z)) = newTransform i j k r x y z
   del x = freeTransform x
 
 {#fun get_origin as ^
@@ -415,6 +415,22 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
 
 {#fun set_origin as ^
  { `Transform',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun get_rotation as ^
+ { `Transform',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+{#fun set_rotation as ^
+ { `Transform',
+   `CFloat',
    `CFloat',
    `CFloat',
    `CFloat' } -> `()'
