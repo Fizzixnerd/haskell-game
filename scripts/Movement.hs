@@ -48,11 +48,14 @@ changeMovement k ks cam p@Player {..} = do
 
 script :: Script
 script = defaultScript
-  { _scriptOnInit = installKeyEventListener keyhandle "movement" >=> installMouseEventListener mousehandle "camOrientation" }
+  { _scriptOnInit = installKeyEventListener keyhandle "movement" >=>
+                    installMouseEventListener mousehandle "camOrientation" }
   where
     keyhandle (_, k, _, ks, _) gs = do
       changeMovement k ks (gs ^. gameStateCamera) (gs ^. gameStatePlayer)
       return gs
-    mousehandle (x, y) gs = liftIO (printf "Harro senpai:%s\n" (show (x,y))) >> return (gs & gameStateCamera %~ camMove)
+    mousehandle (x, y) gs = liftIO $ do
+      printf "Harro senpai:%s\n" (show (x,y))
+      return (gs & gameStateCamera %~ camMove)
       where
         camMove = rotateCamera $ mousePosToRot (0.005/60) x y
