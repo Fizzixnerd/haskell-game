@@ -60,7 +60,7 @@ data GameState = GameState
 initGameState :: GameState
 initGameState = GameState
   { _gameStateCamera = Camera
-    { _cameraPosition = L.V3 0 0 2
+    { _cameraPosition = L.V3 0 0 3
     , _cameraOrientation = (0, 0)
     , _cameraFOV = pi/2 }
   , _gameStateActiveScripts = empty

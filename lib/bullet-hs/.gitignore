@@ -1,9 +1,9 @@
 .stack-work/
 bullet-hs.cabal
 *~
-cbits/CmakeFiles/
-cbits/CmakeCache.txt
-cbits/MakeFile
+cbits/CMakeFiles/
+cbits/CMakeCache.txt
+cbits/Makefile
 cbits/libcbullet.so*
 cbits/cmake_install.cmake
 cbits/install_manifest.txt
