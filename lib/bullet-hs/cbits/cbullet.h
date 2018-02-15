@@ -74,26 +74,29 @@ extern "C" {
 		      const scalar* fixed_time_step);
   //  int default_step_simulation(discrete_dynamics_world* world, scalar time_step);
   void add_rigid_body(dynamics_world* world, rigid_body* rigid_body);
-  int get_num_collision_objects(dynamics_world* world);
-  collision_object* get_collision_object(dynamics_world* world, int idx);
+  int get_num_collision_objects(const dynamics_world* world);
+  collision_object* get_collision_object(const dynamics_world* world, int idx);
   void add_collision_object(dynamics_world* world, collision_object* obj);
   void remove_collision_object(dynamics_world* world, collision_object* obj);
   void add_action(dynamics_world* world, action_interface* action);
   void remove_action(dynamics_world* world, action_interface* action);
-  int get_num_constraints(dynamics_world* world);
-  typed_constraint* get_constraint(dynamics_world* world, int idx);
+  int get_num_constraints(const dynamics_world* world);
+  typed_constraint* get_constraint(const dynamics_world* world, int idx);
   void add_constraint(dynamics_world* world, typed_constraint* constriant);
   void remove_constraint(dynamics_world* world, typed_constraint* constraint);
-  void dw_serialize(dynamics_world* world, serializer* serializer);
+  void dw_serialize(const dynamics_world* world, serializer* serializer);
 
   //btCollisionObject
-  rigid_body* collision_object_to_rigid_body(collision_object* obj);
-  transform* co_allocate_world_transform(collision_object* obj);
+  rigid_body* collision_object_to_rigid_body(const collision_object* obj);
+  transform* co_allocate_world_transform(const collision_object* obj);
+  int isStaticObject(const collision_object* obj);
+  int isKinematicObject(const collision_object* obj);
+  int hasContactResponse(const collision_object* obj);
 
   // btDefaultMotionState
   motion_state* new_default_motion_state(transform* transform);
   void free_motion_state(motion_state* motion_state);
-  transform* ms_allocate_world_transform(motion_state* motion_state);
+  transform* ms_allocate_world_transform(const motion_state* motion_state);
 
   // byRigidBodyContructionInfo
   rigid_body_construction_info* new_rigid_body_construction_info
@@ -108,9 +111,9 @@ extern "C" {
   // btRigidBody
   rigid_body* new_rigid_body(rigid_body_construction_info* rbci);
   void free_rigid_body(rigid_body* rigid_body);
-  motion_state* rb_get_motion_state(rigid_body* rigid_body);
-  int is_static_object(rigid_body* rigid_body); // returns bool
-  int is_kinematic_object(rigid_body* rigid_body); // returns bool
+  motion_state* rb_get_motion_state(const rigid_body* rigid_body);
+  //  int is_static_object(const rigid_body* rigid_body); // returns bool
+  //  int is_kinematic_object(const rigid_body* rigid_body); // returns bool
   void set_activation_state(rigid_body* rigid_body, int new_state);
   transform* allocate_center_of_mass_transform(rigid_body* rigid_body);
 
@@ -153,13 +156,13 @@ extern "C" {
 			   scalar y,
 			   scalar z);
   void free_transform(transform* transform);
-  void get_origin(transform* transform, scalar* x_out, scalar* y_out, scalar* z_out);
+  void get_origin(const transform* transform, scalar* x_out, scalar* y_out, scalar* z_out);
   void set_origin(transform* transform, scalar x, scalar y, scalar z);
-  void get_rotation(transform* transform, scalar* i_out, scalar* j_out,
+  void get_rotation(const transform* transform, scalar* i_out, scalar* j_out,
 		    scalar* k_out, scalar* r_out);
   void set_rotation(transform* transform, scalar i, scalar j, scalar k, scalar r);
   void set_identity(transform* transform);
-  void get_opengl_matrix(transform* transform, scalar* out /* size 16 */);
+  void get_opengl_matrix(const transform* transform, scalar* out /* size 16 */);
 
   // btTypedConstraint
   void free_typed_constraint(typed_constraint* constraint);
@@ -174,18 +177,18 @@ extern "C" {
   serializer* new_default_serializer();
   void free_serializer(serializer* serializer);
   const unsigned char* get_buffer_pointer(serializer* serializer);
-  int get_current_buffer_size(serializer* serializer);
+  int get_current_buffer_size(const serializer* serializer);
 
   // btPairCachingGhostObject 
   // TODO: Finish API
   pair_caching_ghost_object* new_pair_caching_ghost_object();
   void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object);
-  collision_object* pair_caching_ghost_object_to_collision_object
-  (pair_caching_ghost_object* ghost_object);
-  void pcgo_set_world_transform(pair_caching_ghost_object* ghost_object,
-				transform* transform);
-  void pcgo_set_collision_shape(pair_caching_ghost_object* ghost_object,
-				collision_shape* shape);
+  //collision_object* pair_caching_ghost_object_to_collision_object
+  //(const pair_caching_ghost_object* ghost_object);
+  //void pcgo_set_world_transform(pair_caching_ghost_object* ghost_object,
+  //				transform* transform);
+  //void pcgo_set_collision_shape(pair_caching_ghost_object* ghost_object,
+  //				collision_shape* shape);
 
   // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller
@@ -194,12 +197,12 @@ extern "C" {
    scalar step_height);
   void free_kinematic_character_controller(kinematic_character_controller* kcc);
   void set_up(kinematic_character_controller* kcc, scalar x, scalar y, scalar z);
-  void get_up(kinematic_character_controller* kcc, scalar* x, scalar* y, scalar* z);
+  void get_up(const kinematic_character_controller* kcc, scalar* x, scalar* y, scalar* z);
   void set_angular_velocity(kinematic_character_controller* kcc,
 			    scalar ang1,
 			    scalar ang2,
 			    scalar ang3);
-  void get_angular_velocity(kinematic_character_controller* kcc,
+  void get_angular_velocity(const kinematic_character_controller* kcc,
 			    scalar* ang1,
 			    scalar* ang2,
 			    scalar* ang3);

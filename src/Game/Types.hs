@@ -59,10 +59,7 @@ data GameState = GameState
 
 initGameState :: GameState
 initGameState = GameState
-  { _gameStateCamera = Camera
-    { _cameraPosition = L.V3 0 0 3
-    , _cameraOrientation = (0, 0)
-    , _cameraFOV = pi/2 }
+  { _gameStateCamera = error "camera no set."
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateEndoRegister  = EndoRegister mempty
@@ -72,33 +69,24 @@ initGameState = GameState
   , _gameStatePlayer        = error "player not set."
   }
 
+-- | Camera exists in physics world to deal with collisions.  It also
+--   always looks at a target.
 data Camera = Camera
-  { _cameraPosition :: L.V3 Float
-  , _cameraOrientation :: (Float, Float)
-  , _cameraFOV :: Float
-  } deriving (Eq, Show, Ord)
+  { _cameraController :: P.CollisionObject
+  , _cameraTarget :: P.CollisionObject
+  }
 
-cameraMVP :: Getter Camera (L.M44 Float)
-cameraMVP = to go
-  where
-    go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
-      where
-        vup  = L.V3 0 1 0
-        vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
-        camModel = L.identity
-        camView = L.lookAt vpos (vpos + vdir) vup
-      -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
-        camPerspective = L.perspective cfov (16/9) 0.1 100
-
-data Movement =
-    MoveLeft
-  | MoveRight
-  | MoveForward
-  | MoveBackward
-  | MoveUp
-  | MoveDown
-  | MoveCameraDir Double Double
-  deriving (Eq, Show, Ord)
+-- cameraMVP :: Getter Camera (L.M44 Float)
+-- cameraMVP = to go
+--   where
+--     go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
+--       where
+--         vup  = L.V3 0 1 0
+--         vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
+--         camModel = L.identity
+--         camView = L.lookAt vpos (vpos + vdir) vup
+--       -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+--         camPerspective = L.perspective cfov (16/9) 0.1 100
 
 data NamedHandler a = NamedHandler
   { _namedHandlerName :: EventName

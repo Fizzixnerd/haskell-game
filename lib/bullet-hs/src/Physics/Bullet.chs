@@ -214,7 +214,7 @@ instance New DynamicsWorld ( CollisionDispatcher
    `Serializer' } -> `()'
 #}
 
--- | byCollisionObject
+-- | btCollisionObject
 {#fun collision_object_to_rigid_body as ^
  { `CollisionObject' } -> `RigidBody'
 #}
@@ -367,20 +367,12 @@ instance New BoxShape (CFloat, CFloat, CFloat) where
    alloca- `CFloat' peek* } -> `()'
 #}
 
-class IsCollisionShape cs where
-  calculateLocalInertia :: cs -> Mass -> IO (CFloat, CFloat, CFloat)
-  calculateLocalInertia ss m = calculateLocalInertia_ (unsafeCoerce ss :: CollisionShape) m
+calculateLocalInertia :: IsCollisionShape cs => cs -> Mass -> IO (CFloat, CFloat, CFloat)
+calculateLocalInertia cs m = calculateLocalInertia_ (toCollisionShape cs) m
 
-  makeRigidBody :: cs
-                -> Mass
-                -> MotionState
-                -> (CFloat, CFloat, CFloat)
-                -> IO RigidBody
-  makeRigidBody cs m dms (x, y, z) = do
-    rbci <- newRigidBodyConstructionInfo m dms (unsafeCoerce cs :: CollisionShape) x y z
-    rb <- newRigidBody rbci
-    del rbci
-    return rb
+class IsCollisionShape cs where
+  toCollisionShape :: cs -> CollisionShape
+  toCollisionShape cs = unsafeCoerce cs
 
 instance IsCollisionShape SphereShape
 instance IsCollisionShape StaticPlaneShape
@@ -457,6 +449,10 @@ peekMatrix p = peek $ castPtr p
  { `TypedConstraint' } -> `()'
 #}
 
+class IsTypedConstraint tc where
+  toTypedConstraint :: tc -> TypedConstraint
+  toTypedConstraint = unsafeCoerce
+
 -- | btPoint2PointConstraint
 
 {#fun new_point2point_constraint as newPoint2PointConstraint
@@ -509,6 +505,8 @@ instance New PairCachingGhostObject () where
  { `PairCachingGhostObject',
    `CollisionShape' } -> `()'
 #}
+
+instance IsCollisionObject PairCachingGhostObject
 
 -- | btKinematicCharacterController
 

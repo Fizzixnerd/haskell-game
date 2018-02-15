@@ -2,6 +2,21 @@
 
 ** Types
 
+*** Camera
+
+    A Camera should live in the physics world, because it can collide
+    with objects.  It should attach to an object.
+
+    It will look something like this:
+
+    #+BEGIN_SRC haskell -n
+      data Camera = Camera
+	{ cameraTarget = <<Entity>>
+	, cameraLocation = <<PhysicsEntity>>
+	, 
+	}
+    #+END_SRC
+
 *** Scripts
 
     Scripts are run-time loaded fragments of Haskell code, associated
