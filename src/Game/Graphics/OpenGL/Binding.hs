@@ -119,6 +119,22 @@ import Game.Graphics.OpenGL.Uniform as X
   , DefaultBlock
   )
 
+import Game.Graphics.OpenGL.Window as X
+  ( DepthFunc(..)
+  , depthFunc
+  , Color4(..)
+  , color4
+  , clearColor
+  , DebugSource(..)
+  , DebugType(..)
+  , DebugSeverity(..)
+  , DebugID(..)
+  , debugMessageCallback
+  , DebugCallbackFun
+  , Face(..)
+  , cullFace
+  )
+
 import Data.StateVar as X
 
 import Linear.OpenGL as X ()
