@@ -57,8 +57,8 @@ bufferData :: MonadIO m
            -> m (VertexArrayObject, BufferObject, (BufferObject, Int))
 bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
   vao <- genObjectName
-  let flags = defaultBufferAttribFlags & mapType .~ MapReadWrite 
-                                       & mapPersistent .~ True 
+  let flags = defaultBufferAttribFlags & mapType .~ MapReadWrite
+                                       & mapPersistent .~ True
                                        & mapCoherent .~ True
   vbuf <- unsafeWithVecLen objPoints $ \vtxs vecLen ->
     initBufferObject (fromIntegral $ vecLen * (sizeOf (undefined :: VTNPoint))) flags (castPtr vtxs)
