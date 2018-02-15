@@ -13,8 +13,8 @@ import qualified Reactive.Banana.Frameworks as B
 scriptInstall :: Script -> GameState -> B.MomentIO GameState
 scriptInstall s gs = do
   gs'  <- s ^. scriptOnInit $ gs
-  gs'' <- s ^. scriptOnLoad $ gs' 
-  let newEndoRegister = foldr (\(eventName, endoName, endo) endoR -> 
+  gs'' <- s ^. scriptOnLoad $ gs'
+  let newEndoRegister = foldr (\(eventName, endoName, endo) endoR ->
                                  registerEndoByName
                                 eventName
                                 endoName

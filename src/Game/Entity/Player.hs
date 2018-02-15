@@ -20,7 +20,7 @@ newPlayer = liftIO $ do
   P.setOrigin startXform 0 0 0
   P.pcgoSetWorldTransform pcgo startXform
   P.del startXform
-  
+
   playerShape <- P.newCapsuleShape 1 1
   psConvex <- P.capsuleShapeToConvexShape playerShape
   let stepHeight = 0.35
@@ -35,7 +35,7 @@ destroyPlayer Player {..} = liftIO $ do
   P.del =<< P.getGhostObject _playerPhysicsController
   P.del _playerPhysicsController
 
-allocatePlayerTransform :: MonadIO m => Player -> m (P.Transform)
+allocatePlayerTransform :: MonadIO m => Player -> m P.Transform
 allocatePlayerTransform p = liftIO $
                             P.getGhostObject (p ^. playerPhysicsController) >>=
                             P.pairCachingGhostObjectToCollisionObject >>=
@@ -58,9 +58,9 @@ getPlayerLinearVelocity p = liftIO $ do
   return $ L.V3 x y z
 
 setPlayerLinearVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
-setPlayerLinearVelocity p v = liftIO $ P.setLinearVelocity 
-                              (p ^. playerPhysicsController) 
-                              (v ^. L._x) 
+setPlayerLinearVelocity p v = liftIO $ P.setLinearVelocity
+                              (p ^. playerPhysicsController)
+                              (v ^. L._x)
                               (v ^. L._y)
                               (v ^. L._z)
 
@@ -70,8 +70,8 @@ getPlayerAngularVelocity p = liftIO $ do
   return $ L.V3 alpha beta gamma
 
 setPlayerAngularVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
-setPlayerAngularVelocity p omega = liftIO $ P.setAngularVelocity 
-                                   (p ^. playerPhysicsController) 
-                                   (omega ^. L._x) 
+setPlayerAngularVelocity p omega = liftIO $ P.setAngularVelocity
+                                   (p ^. playerPhysicsController)
+                                   (omega ^. L._x)
                                    (omega ^. L._y)
                                    (omega ^. L._z)

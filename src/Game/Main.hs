@@ -13,7 +13,6 @@ import           Game.Graphics.Init
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import qualified Linear.OpenGL                as L ()
 import qualified Graphics.UI.GLFW             as G
 import           Text.Printf
 import           Game.Graphics.OpenGL.Binding
@@ -58,6 +57,7 @@ doItAndGimmeFireThing = do
 
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
+
   let posLocation = AttribLocation 0
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
@@ -71,7 +71,7 @@ doItAndGimmeFireThing = do
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
   liftIO $ G.setCursorPosCallback win (Just (\w x y -> do
-                                                fire mousePos (w, x, y)
+                                                fire mousePos (x, y)
                                                 G.setCursorPos w (1920 / 2) (1080 / 2)))
 
   let someFunc' :: IO ()
@@ -88,14 +88,17 @@ doItAndGimmeFireThing = do
               unless sc $ loop w
 
   return (hello, shouldClose, win, someFunc')
-
+{-
 game :: Game ( NamedHandler ()
              , IO ()
              , ThreadId )
+-}
+game :: Game (IO ())
 game = do
   (h, sc, w, x) <- doItAndGimmeFireThing
-  ti <- liftIO $ forkIO x
-  return (h, fire sc w, ti)
+  return x
+--  ti <- liftIO $ forkIO x
+--  return (h, fire sc w, ti)
 
 someFunc :: IO ()
-someFunc = void $ runGame game
+someFunc = join (runGame game)

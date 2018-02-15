@@ -27,7 +27,7 @@ compileGameNetwork ::
   -> TextureObject TextureTarget2D
   -> m (NamedHandler b1, NamedHandler G.Window,
         NamedHandler (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys),
-        NamedHandler (G.Window, Double, Double), NamedHandler G.Window)
+        NamedHandler (Double, Double), NamedHandler G.Window)
 compileGameNetwork prog texSampleLoc vao ebuf tex = do
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
@@ -73,7 +73,7 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
                                                     & gameStatePlayer .~ p
                                                     & gameStatePhysicsWorld .~ pw'
                      in
-                       installMovementScript $ installInputEvents initGameState  
+                       installMovementScript $ installInputEvents initGameState
 
         --  b w -> b (w -> mio w), e w -> e (mio w) -> mio (e w) -+
         --  ^                                                     |
@@ -104,5 +104,9 @@ installKeyEventListener :: ((G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKe
                         -> EndoName
                         -> GameState
                         -> B.MomentIO GameState
-installKeyEventListener el en gs = 
+installKeyEventListener el en gs =
   return $ gs & gameStateEndoRegister %~ registerEndo en (el <$> (gs ^. gameStateKeyEvent))
+
+installMouseEventListener :: ((Double, Double) -> GameState -> B.MomentIO GameState) -> EndoName -> GameState -> B.MomentIO GameState
+installMouseEventListener el en gs =
+  return $ gs & gameStateEndoRegister %~ registerEndo en (el <$> (gs ^. gameStateMousePosEvent))
