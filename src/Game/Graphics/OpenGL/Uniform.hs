@@ -7,16 +7,11 @@
 
 module Game.Graphics.OpenGL.Uniform where
 
-import Graphics.GL.Core45
 import Graphics.GL.Types
 import Game.Graphics.OpenGL.Utils
-import Game.Graphics.OpenGL.DataType
 import Game.Graphics.OpenGL.Shader
-import Game.Graphics.OpenGL.BufferObject
 import Game.Graphics.OpenGL.PrimUniform
 import Data.StateVar
-import Linear
-import qualified Data.Vector.Storable as VS
 
 newtype UniformBlock = UniformBlock
   { uniformBlockInternal :: GLuint

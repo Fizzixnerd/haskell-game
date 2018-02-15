@@ -20,7 +20,6 @@ import qualified Control.Monad.Logger        as ML
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Game.StorableTypes
-import qualified Graphics.Rendering.OpenGL.GL as G
 import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Reactive.Banana.Combinators as B
@@ -48,7 +47,7 @@ data GameState = GameState
   , _gameStateActiveScripts :: Vector Script
   , _gameStateEventRegister :: EventRegister
   , _gameStateEndoRegister  :: EndoRegister
-  , _gameStateMousePosEvent :: B.Event (G.Window, Double, Double)
+  , _gameStateMousePosEvent :: B.Event (Double, Double)
   , _gameStateKeyEvent      :: B.Event ( G.Window
                                        , G.Key
                                        , ScanCode
@@ -60,7 +59,11 @@ data GameState = GameState
 
 initGameState :: GameState
 initGameState = GameState
-  { _gameStateActiveScripts = empty
+  { _gameStateCamera = Camera
+    { _cameraPosition = L.V3 0 0 3
+    , _cameraOrientation = (0, 0)
+    , _cameraFOV = pi/2 }
+  , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateEndoRegister  = EndoRegister mempty
   , _gameStateMousePosEvent = error "mousePosEvent not set."
@@ -272,7 +275,7 @@ defaultWindowConfig = WindowConfig
   , _windowConfigWindowContextShare = Nothing
   }
 
-data Player = Player 
+data Player = Player
   { _playerPhysicsController :: P.KinematicCharacterController
   }
 

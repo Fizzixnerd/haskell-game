@@ -40,17 +40,6 @@ newtype BufferObjectComponentSize = BufferObjectComponentSize
   { bufferObjectComponentSize :: GLint
   } deriving (Eq, Ord, Show, Num, Real, Enum, Integral)
 
--- Should probably remove. I'm lazy
-toBufferObjectOffset :: Integral a => a -> BufferObjectOffset
-toBufferObjectOffset = BufferObjectOffset . fromIntegral
-
-toBufferObjectSize :: Integral a => a -> BufferObjectSize
-toBufferObjectSize = BufferObjectSize . fromIntegral
-
-toBufferObjectStride :: Integral a => a -> BufferObjectStride
-toBufferObjectStride = BufferObjectStride . fromIntegral
-
-
 data IntegerHandling
   = Normalized
   | NotNormalized
