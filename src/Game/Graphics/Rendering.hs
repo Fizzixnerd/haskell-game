@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Game.Graphics.Rendering where
 
+import Unsafe.Coerce
 import           ClassyPrelude
 import           Control.Lens
 import qualified Data.Vector.Storable         as VS
@@ -9,6 +10,7 @@ import           Foreign
 import           Foreign.C.Types
 import           Game.Types
 import           Game.Graphics.OpenGL.Binding
+import           Game.Entity.Player
 import           Linear
 import qualified Graphics.Rendering.OpenGL.GL as GL (DataType(..))
 
@@ -34,7 +36,11 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   currentProgram $= Just prog
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
-  uniform prog UniformMVP $= (gs ^. gameStateCamera . cameraMVP)
+  cameraMatrix <- getPlayerOpenGLMatrix $ (gs ^. gameStatePlayer)
+  uniform prog UniformMVP $= (unsafeCoerce cameraMatrix) -- coercing
+                                                         -- from
+                                                         -- cfloat ->
+                                                         -- float
   drawElements Triangles (fromIntegral n) GL.UnsignedInt nullPtr
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
@@ -74,7 +80,6 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
   vertexArrayAttribFormat vao nmlLoc (BufferObjectComponentSize 3) GLFloat NotNormalized relOffset
   vertexArrayVertexBuffer vao nmlLoc vbuf nmlOffset stride
   vertexArrayAttribBinding vao nmlLoc nmlLoc
-
 
   (ebuf, lene) <- unsafeWithVecLen objIndices $ \indxs vecLen -> do
     ebuf <- initBufferObject (fromIntegral $ vecLen * sizeOf (undefined :: CUInt)) flags (castPtr indxs)

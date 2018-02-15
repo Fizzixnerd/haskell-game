@@ -145,16 +145,19 @@ extern "C" {
   convex_shape* box_shape_to_convex_shape(box_shape* box_shape);
 
   // btTransform
-  transform* new_transform(scalar r, // quaternion
-			   scalar i,
+  transform* new_transform(scalar i, // quaternion
 			   scalar j,
 			   scalar k,
+			   scalar r,
 			   scalar x, // vector
 			   scalar y,
 			   scalar z);
   void free_transform(transform* transform);
   void get_origin(transform* transform, scalar* x_out, scalar* y_out, scalar* z_out);
   void set_origin(transform* transform, scalar x, scalar y, scalar z);
+  void get_rotation(transform* transform, scalar* i_out, scalar* j_out,
+		    scalar* k_out, scalar* r_out);
+  void set_rotation(transform* transform, scalar i, scalar j, scalar k, scalar r);
   void set_identity(transform* transform);
   void get_opengl_matrix(transform* transform, scalar* out /* size 16 */);
 

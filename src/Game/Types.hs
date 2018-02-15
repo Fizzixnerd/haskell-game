@@ -201,6 +201,8 @@ registerEndoByName eventName endoName endo eventR endoR =
 registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
 registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
+-- TODO: Deregistering Endos should work now.
+
 registerEvent :: NamedEventHandler () -> EventRegister -> B.MomentIO (EventRegister, NamedHandler ())
 registerEvent neh (EventRegister er) = do
   let name = namedEventHandlerName neh

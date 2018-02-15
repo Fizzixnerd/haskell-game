@@ -338,6 +338,18 @@ extern "C" {
     reinterpret_cast<btTransform*>(transform)->setOrigin(btVector3(x, y, z));
   }
 
+  void get_rotation(transform* transform, scalar* i_out, scalar* j_out, scalar* k_out, scalar* r_out) {
+    btQuaternion quat = reinterpret_cast<btTransform*>(transform)->getRotation();
+    *i_out = quat[0];
+    *j_out = quat[1];
+    *k_out = quat[2];
+    *r_out = quat[3];
+  }
+
+  void set_rotation(transform* transform, scalar i, scalar j, scalar k, scalar r) {
+    reinterpret_cast<btTransform*>(transform)->setRotation(btQuaternion(i, j, k, r));
+  }
+
   void set_identity(transform* transform) {
     reinterpret_cast<btTransform*>(transform)->setIdentity();
   }
