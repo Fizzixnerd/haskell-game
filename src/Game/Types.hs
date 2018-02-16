@@ -50,7 +50,6 @@ data GameState = GameState
   , _gameStateActiveScripts :: Vector Script
   , _gameStateEventRegister :: EventRegister
   , _gameStateEndoRegister  :: EndoRegister
-  , _gameStateMousePosEvent :: B.Event (Double, Double)
   , _gameStateKeyEvent      :: B.Event ( G.Window
                                        , G.Key
                                        , ScanCode
@@ -59,6 +58,9 @@ data GameState = GameState
                                        )
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
+  , _gameStateMouseSpeed    :: Float
+  , _gameStateMousePos      :: MousePos
+  , _gameStateCurrentTime   :: Double
   }
 
 initGameState :: GameState
@@ -71,10 +73,12 @@ initGameState = GameState
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateEndoRegister  = EndoRegister mempty
-  , _gameStateMousePosEvent = error "mousePosEvent not set."
   , _gameStateKeyEvent      = error "keyEvent not set."
   , _gameStatePhysicsWorld  = error "physicsWorld not set."
   , _gameStatePlayer        = error "player not set."
+  , _gameStateMouseSpeed    = 0.01
+  , _gameStateMousePos      = MousePos (L.V2 0 0)
+  , _gameStateCurrentTime   = 0
   }
 
 data Camera = Camera
@@ -332,6 +336,13 @@ instance Storable VTNIndex where
     n <- peekByteOff ptr (2 * sizeOf (0 :: Int))
     return $ VTNIndex v t n
 
+type WindowWidth  = Int
+type WindowHeight = Int
+
+data MousePos = MousePos
+  { _mousePos :: !(L.V2 Double)
+  } deriving (Eq, Ord, Show)
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''NamedHandler
@@ -346,4 +357,5 @@ mconcat <$> mapM makeLenses
   , ''Player
   , ''PhysicsWorld
   , ''VTNPoint, ''VTNIndex
+  , ''MousePos
   ]
