@@ -32,6 +32,7 @@ extern "C" {
   typedef struct static_plane_shape { char unused; } static_plane_shape;
   typedef struct transform { char unused; } transform;
   typedef struct typed_constraint { char unused; } typed_constraint;
+  typedef struct point2point_constraint { char unused; } point2point_constraint;
   typedef struct overlapping_pair_cache { char unused; } overlapping_pair_cache;
   typedef struct ghost_pair_callback { char unused; } ghost_pair_callback;
   typedef float scalar;
@@ -70,33 +71,37 @@ extern "C" {
   void dw_set_gravity(dynamics_world* world, scalar x, scalar y, scalar z);
   int step_simulation(dynamics_world* world,
 		      scalar time_step,
-		      const int* max_sub_steps,
-		      const scalar* fixed_time_step);
-  //  int default_step_simulation(discrete_dynamics_world* world, scalar time_step);
+		      int* max_sub_steps,
+		      scalar* fixed_time_step);
   void add_rigid_body(dynamics_world* world, rigid_body* rigid_body);
-  int get_num_collision_objects(const dynamics_world* world);
-  collision_object* get_collision_object(const dynamics_world* world, int idx);
+  int get_num_collision_objects(dynamics_world* world);
+  collision_object* get_collision_object(dynamics_world* world, int idx);
   void add_collision_object(dynamics_world* world, collision_object* obj);
   void remove_collision_object(dynamics_world* world, collision_object* obj);
   void add_action(dynamics_world* world, action_interface* action);
   void remove_action(dynamics_world* world, action_interface* action);
-  int get_num_constraints(const dynamics_world* world);
-  typed_constraint* get_constraint(const dynamics_world* world, int idx);
+  int get_num_constraints(dynamics_world* world);
+  typed_constraint* get_constraint(dynamics_world* world, int idx);
   void add_constraint(dynamics_world* world, typed_constraint* constriant);
   void remove_constraint(dynamics_world* world, typed_constraint* constraint);
-  void dw_serialize(const dynamics_world* world, serializer* serializer);
+  void dw_serialize(dynamics_world* world, serializer* serializer);
 
   //btCollisionObject
-  rigid_body* collision_object_to_rigid_body(const collision_object* obj);
-  transform* co_allocate_world_transform(const collision_object* obj);
-  int isStaticObject(const collision_object* obj);
-  int isKinematicObject(const collision_object* obj);
-  int hasContactResponse(const collision_object* obj);
+  transform* co_allocate_world_transform(collision_object* obj);
+  void co_set_world_transform(collision_object* obj, transform* transform);
+  int is_static_object(collision_object* obj);
+  int is_kinematic_object(collision_object* obj);
+  int is_static_or_kinematic_object(collision_object* obj);
+  int has_contact_response(collision_object* obj);
+  collision_shape* get_collision_shape(collision_object* obj);
+  void set_collision_shape(collision_object* obj, collision_shape* shape);
+  void set_activation_state(collision_object* obj, int new_state);
 
   // btDefaultMotionState
   motion_state* new_default_motion_state(transform* transform);
   void free_motion_state(motion_state* motion_state);
-  transform* ms_allocate_world_transform(const motion_state* motion_state);
+  transform* ms_allocate_world_transform(motion_state* motion_state);
+  void ms_set_world_transform(motion_state* motion_state, transform* transform);
 
   // byRigidBodyContructionInfo
   rigid_body_construction_info* new_rigid_body_construction_info
@@ -110,20 +115,42 @@ extern "C" {
 
   // btRigidBody
   rigid_body* new_rigid_body(rigid_body_construction_info* rbci);
-  void free_rigid_body(rigid_body* rigid_body);
-  motion_state* rb_get_motion_state(const rigid_body* rigid_body);
-  //  int is_static_object(const rigid_body* rigid_body); // returns bool
-  //  int is_kinematic_object(const rigid_body* rigid_body); // returns bool
-  void set_activation_state(rigid_body* rigid_body, int new_state);
+  void free_rigid_body(rigid_body* body);
+  motion_state* rb_get_motion_state(rigid_body* body);
+  void rb_set_gravity(rigid_body* body, scalar x, scalar y, scalar z);
+  void rb_get_gravity(rigid_body* body, scalar* x, scalar* y, scalar* z);
+  void get_total_force(rigid_body* body, scalar* x, scalar* y, scalar* z);
+  void get_total_torque(rigid_body* body, scalar* x, scalar* y, scalar* z);
+  void apply_force(rigid_body* body,
+		   scalar x,
+		   scalar y,
+		   scalar z,
+		   scalar rel_x,
+		   scalar rel_y,
+		   scalar rel_z);
+  void apply_torque(rigid_body* body, scalar x, scalar y, scalar z);
+  void clear_forces(rigid_body* body);
   transform* allocate_center_of_mass_transform(rigid_body* rigid_body);
 
   // btCollisionShape
-  void calculate_local_inertia(collision_shape* collision_shape,
+  void free_collision_shape(collision_shape* shape);
+  void calculate_local_inertia(collision_shape* shape,
 			       scalar mass,
 			       scalar* x_out,
 			       scalar* y_out,
 			       scalar* z_out);
-  void free_collision_shape(collision_shape* collision_shape);
+  void get_bounding_sphere(collision_shape* shape,
+			   scalar* x,
+			   scalar* y,
+			   scalar* z,
+			   scalar* r);
+  int is_convex(collision_shape* shape);
+  int is_polyhedral(collision_shape* shape);
+  int is_non_moving(collision_shape* shape);
+  int is_concave(collision_shape* shape);
+  int is_compound(collision_shape* shape);
+  int is_soft_body(collision_shape* shape);
+  int is_infinite(collision_shape* shape);
 
   // btStaticPlaneShape
   static_plane_shape* new_static_plane_shape(scalar x,
@@ -135,17 +162,14 @@ extern "C" {
   // btCapsuleShape
   capsule_shape* new_capsule_shape(scalar radius, scalar height);
   void free_capsule_shape(capsule_shape* capsule_shape);
-  convex_shape* capsule_shape_to_convex_shape(capsule_shape* capsule_shape);
 
   // btSphereShape
   sphere_shape* new_sphere_shape(scalar radius);
   void free_sphere_shape(sphere_shape* sphere_shape);
-  convex_shape* sphere_shape_to_convex_shape(sphere_shape* sphere_shape);
-
+  
   // btBoxShape
   box_shape* new_box_shape(scalar half_x, scalar half_y, scalar half_z);
   void free_box_shape(box_shape* box_shape);
-  convex_shape* box_shape_to_convex_shape(box_shape* box_shape);
 
   // btTransform
   transform* new_transform(scalar i, // quaternion
@@ -156,39 +180,40 @@ extern "C" {
 			   scalar y,
 			   scalar z);
   void free_transform(transform* transform);
-  void get_origin(const transform* transform, scalar* x_out, scalar* y_out, scalar* z_out);
+  void get_origin(transform* transform,
+		  scalar* x_out,
+		  scalar* y_out,
+		  scalar* z_out);
   void set_origin(transform* transform, scalar x, scalar y, scalar z);
-  void get_rotation(const transform* transform, scalar* i_out, scalar* j_out,
-		    scalar* k_out, scalar* r_out);
+  void get_rotation(transform* transform,
+		    scalar* i_out,
+		    scalar* j_out,
+		    scalar* k_out,
+		    scalar* r_out);
   void set_rotation(transform* transform, scalar i, scalar j, scalar k, scalar r);
   void set_identity(transform* transform);
-  void get_opengl_matrix(const transform* transform, scalar* out /* size 16 */);
+  void get_opengl_matrix(transform* transform, scalar* out /* size 16 */);
 
   // btTypedConstraint
   void free_typed_constraint(typed_constraint* constraint);
 
   // btPoint2PointConstraint
-  typed_constraint* new_point2point_constraint(rigid_body* rigid_body,
-					       scalar pivot_x,
-					       scalar pivot_y,
-					       scalar pivot_z);
+  point2point_constraint* new_point2point_constraint(rigid_body* rigid_body,
+						     scalar pivot_x,
+						     scalar pivot_y,
+						     scalar pivot_z);
+  void free_point2point_constraint(point2point_constraint* p2p);
 
   // btDefaultSerializer
   serializer* new_default_serializer();
   void free_serializer(serializer* serializer);
   const unsigned char* get_buffer_pointer(serializer* serializer);
-  int get_current_buffer_size(const serializer* serializer);
+  int get_current_buffer_size(serializer* serializer);
 
   // btPairCachingGhostObject 
   // TODO: Finish API
   pair_caching_ghost_object* new_pair_caching_ghost_object();
   void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object);
-  //collision_object* pair_caching_ghost_object_to_collision_object
-  //(const pair_caching_ghost_object* ghost_object);
-  //void pcgo_set_world_transform(pair_caching_ghost_object* ghost_object,
-  //				transform* transform);
-  //void pcgo_set_collision_shape(pair_caching_ghost_object* ghost_object,
-  //				collision_shape* shape);
 
   // btKinematicCharacterController
   kinematic_character_controller* new_kinematic_character_controller
@@ -197,12 +222,12 @@ extern "C" {
    scalar step_height);
   void free_kinematic_character_controller(kinematic_character_controller* kcc);
   void set_up(kinematic_character_controller* kcc, scalar x, scalar y, scalar z);
-  void get_up(const kinematic_character_controller* kcc, scalar* x, scalar* y, scalar* z);
+  void get_up(kinematic_character_controller* kcc, scalar* x, scalar* y, scalar* z);
   void set_angular_velocity(kinematic_character_controller* kcc,
 			    scalar ang1,
 			    scalar ang2,
 			    scalar ang3);
-  void get_angular_velocity(const kinematic_character_controller* kcc,
+  void get_angular_velocity(kinematic_character_controller* kcc,
 			    scalar* ang1,
 			    scalar* ang2,
 			    scalar* ang3);
@@ -251,8 +276,6 @@ extern "C" {
 				int bool_use_ghost_object_sweep_test);
   int on_ground(kinematic_character_controller* kcc); // returns bool
   void set_up_interpolate(kinematic_character_controller* kcc, int bool_value); // ?
-  action_interface* kinematic_character_controller_to_action_interface
-  (kinematic_character_controller* kcc);
 
 #ifdef __cplusplus
 }

@@ -37,6 +37,7 @@ import qualified Linear as L
 {#pointer *static_plane_shape as ^ newtype#}
 {#pointer *transform as ^ newtype#}
 {#pointer *typed_constraint as ^ newtype#}
+{#pointer *point2point_constraint as Point2PointConstraint newtype#}
 {#pointer *overlapping_pair_cache as ^ newtype#}
 {#pointer *ghost_pair_callback as ^ newtype#}
 
@@ -98,6 +99,7 @@ instance New CollisionConfiguration () where
   new _ = newDefaultCollisionConfiguration
   del x = freeCollisionConfiguration x
 
+-- | btCollisionDispatcher
 {#fun new_collision_dispatcher as ^
  { `CollisionConfiguration' } -> `CollisionDispatcher'
 #}
@@ -110,6 +112,7 @@ instance New CollisionDispatcher CollisionConfiguration where
   new x = newCollisionDispatcher x
   del x = freeCollisionDispatcher x
 
+-- | btSequentialImpulseConstraintSolver
 {#fun new_sequential_impulse_constraint_solver as ^
  {} -> `ConstraintSolver'
 #}
@@ -121,7 +124,6 @@ instance New CollisionDispatcher CollisionConfiguration where
 instance New ConstraintSolver () where
   new _ = newSequentialImpulseConstraintSolver
   del x = freeConstraintSolver x
-
 
 -- | btDiscreteDynamicsWorld
 {#fun new_discrete_dynamics_world as ^
@@ -170,25 +172,37 @@ instance New DynamicsWorld ( CollisionDispatcher
    `Int' } -> `CollisionObject'
 #}
 
-{#fun add_collision_object as ^
+{#fun add_collision_object as addCollisionObject_
  { `DynamicsWorld',
    `CollisionObject' } -> `()'
 #}
 
-{#fun remove_collision_object as ^
+addCollisionObject :: IsCollisionObject co => DynamicsWorld -> co -> IO ()
+addCollisionObject dw = addCollisionObject_ dw . toCollisionObject
+
+{#fun remove_collision_object as removeCollisionObject_
  { `DynamicsWorld',
    `CollisionObject' } -> `()'
 #}
 
-{#fun add_action as ^
+removeCollisionObject :: IsCollisionObject co => DynamicsWorld -> co -> IO ()
+removeCollisionObject dw = removeCollisionObject dw . toCollisionObject
+
+{#fun add_action as addAction_
  { `DynamicsWorld',
    `ActionInterface' } -> `()'
 #}
 
-{#fun remove_action as ^
+addAction :: IsActionInterface ai => DynamicsWorld -> ai -> IO ()
+addAction dw = addAction dw . toActionInterface
+
+{#fun remove_action as removeAction_
  { `DynamicsWorld',
    `ActionInterface' } -> `()'
 #}
+
+removeAction :: IsActionInterface ai => DynamicsWorld -> ai -> IO ()
+removeAction dw = removeAction_ dw . toActionInterface
 
 {#fun get_num_constraints as ^
  { `DynamicsWorld' } -> `Int'
@@ -199,15 +213,21 @@ instance New DynamicsWorld ( CollisionDispatcher
    `Int' } -> `TypedConstraint'
 #}
 
-{#fun add_constraint as ^
+{#fun add_constraint as addConstraint_
  { `DynamicsWorld',
    `TypedConstraint' } -> `()'
 #}
 
-{#fun remove_constraint as ^
+addConstraint :: IsTypedConstraint tc => DynamicsWorld -> tc -> IO ()
+addConstraint dw = addConstraint_ dw . toTypedConstraint
+
+{#fun remove_constraint as removeConstraint_
  { `DynamicsWorld',
    `TypedConstraint' } -> `()'
 #}
+
+removeConstraint :: IsTypedConstraint tc => DynamicsWorld -> tc -> IO ()
+removeConstraint dw = removeConstraint_ dw . toTypedConstraint
 
 {#fun dw_serialize as ^
  { `DynamicsWorld',
@@ -215,12 +235,73 @@ instance New DynamicsWorld ( CollisionDispatcher
 #}
 
 -- | btCollisionObject
-{#fun collision_object_to_rigid_body as ^
- { `CollisionObject' } -> `RigidBody'
+class IsCollisionObject cs where
+  toCollisionObject :: cs -> CollisionObject
+  toCollisionObject = unsafeCoerce
+
+instance IsCollisionObject CollisionObject
+
+{#fun co_allocate_world_transform as coAllocateWorldTransform_
+ { `CollisionObject' } -> `Transform'
 #}
 
-{#fun co_allocate_world_transform as ^
- { `CollisionObject' } -> `Transform'
+coAllocateWorldTransform :: IsCollisionObject co => co -> IO Transform
+coAllocateWorldTransform = coAllocateWorldTransform . toCollisionObject
+
+{#fun co_set_world_transform as coSetWorldTransform_
+ { `CollisionObject',
+   `Transform' } -> `()'
+#}
+
+coSetWorldTransform :: IsCollisionObject co => co -> Transform -> IO ()
+coSetWorldTransform = coSetWorldTransform_ . toCollisionObject
+
+{#fun is_static_object as isStaticObject_
+ { `CollisionObject' } -> `Bool'
+#}
+
+isStaticObject :: IsCollisionObject co => co -> IO Bool
+isStaticObject = isStaticObject_ . toCollisionObject
+
+{#fun is_kinematic_object as isKinematicObject_
+ { `CollisionObject' } -> `Bool'
+#}
+
+isKinematicObject :: IsCollisionObject co => co -> IO Bool
+isKinematicObject = isKinematicObject_ . toCollisionObject
+
+{#fun is_static_or_kinematic_object as isStaticOrKinematicObject_
+ { `CollisionObject' } -> `Bool'
+#}
+
+isStaticOrKinematicObject :: IsCollisionObject co => co -> IO Bool
+isStaticOrKinematicObject = isStaticOrKinematicObject_ . toCollisionObject
+
+{#fun has_contact_response as hasContactResponse_
+ { `CollisionObject' } -> `Bool'
+#}
+
+hasContactResponse :: IsCollisionObject co => co -> IO Bool
+hasContactResponse = hasContactResponse_ . toCollisionObject
+
+{#fun get_collision_shape as getCollisionShape_
+ { `CollisionObject' } -> `CollisionShape'
+#}
+
+getCollisionShape :: IsCollisionObject co => co -> IO CollisionShape
+getCollisionShape = getCollisionShape_ . toCollisionObject
+
+{#fun set_collision_shape as setCollisionShape_
+ { `CollisionObject',
+   `CollisionShape' } -> `()'
+#}
+
+setCollisionShape :: (IsCollisionShape cs, IsCollisionObject co) => co -> cs -> IO ()
+setCollisionShape co cs = setCollisionShape_ (toCollisionObject co) (toCollisionShape cs)
+
+{#fun set_activation_state as ^
+ { `CollisionObject',
+   `Int' } -> `()'
 #}
 
 -- | btDefaultMotionState
@@ -241,7 +322,7 @@ instance New MotionState Transform where
 #}
 
 -- | btRigidBodyConstructionInfo
-{#fun new_rigid_body_construction_info as ^
+{#fun new_rigid_body_construction_info as newRigidBodyConstructionInfo_
  { `CFloat',
    `MotionState',
    `CollisionShape',
@@ -249,6 +330,9 @@ instance New MotionState Transform where
    `CFloat',
    `CFloat' } -> `RigidBodyConstructionInfo'
 #}
+
+newRigidBodyConstructionInfo :: IsCollisionShape cs => CFloat -> MotionState -> cs -> CFloat -> CFloat -> CFloat -> IO RigidBodyConstructionInfo
+newRigidBodyConstructionInfo m ms cs x y z = newRigidBodyConstructionInfo m ms (toCollisionShape cs) x y z
 
 {#fun free_rigid_body_construction_info as ^
  { `RigidBodyConstructionInfo' } -> `()'
@@ -259,6 +343,8 @@ instance New RigidBodyConstructionInfo (Mass, MotionState, CollisionShape, (CFlo
   del x = freeRigidBodyConstructionInfo x
 
 -- | btRigidBody
+instance IsCollisionObject RigidBody
+
 {#fun new_rigid_body as ^
  { `RigidBodyConstructionInfo' } -> `RigidBody'
 #}
@@ -271,19 +357,153 @@ instance New RigidBodyConstructionInfo (Mass, MotionState, CollisionShape, (CFlo
  { `RigidBody' } -> `MotionState'
 #}
 
-{#fun is_static_object as ^
- { `RigidBody' } -> `Bool'
+{#fun rb_set_gravity as ^
+ { `RigidBody',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
 #}
 
-{#fun is_kinematic_object as ^
- { `RigidBody' } -> `Bool'
+{#fun rb_get_gravity as ^
+ { `RigidBody',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+{#fun get_total_force as ^
+ { `RigidBody',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+{#fun get_total_torque as ^
+ { `RigidBody',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+{#fun apply_force as ^
+ { `RigidBody',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun apply_torque as ^
+ { `RigidBody',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun clear_forces as ^
+ { `RigidBody' } -> `()'
 #}
 
 {#fun allocate_center_of_mass_transform as ^
  { `RigidBody' } -> `Transform'
 #}
 
+-- | btConvexShape
+class IsConvexShape cs where
+  toConvexShape :: cs -> ConvexShape
+  toConvexShape = unsafeCoerce
+
+instance IsConvexShape ConvexShape
+
+-- | btCollisionShape
+class IsCollisionShape cs where
+  toCollisionShape :: cs -> CollisionShape
+  toCollisionShape = unsafeCoerce
+
+instance IsCollisionShape CollisionShape
+
+{#fun free_collision_shape as freeCollisionShape_
+ { `CollisionShape' } -> `()'
+#}
+
+freeCollisionShape :: IsCollisionShape cs => cs -> IO ()
+freeCollisionShape = freeCollisionShape_ . toCollisionShape
+
+{#fun calculate_local_inertia as calculateLocalInertia_
+ { `CollisionShape',
+   `CFloat',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+calculateLocalInertia :: IsCollisionShape cs => cs -> Mass -> IO (CFloat, CFloat, CFloat)
+calculateLocalInertia = calculateLocalInertia_ . toCollisionShape
+
+{#fun get_bounding_sphere as getBoundingSphere_
+ { `CollisionShape',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+getBoundingSphere :: IsCollisionShape cs => cs -> IO (CFloat, CFloat, CFloat, CFloat)
+getBoundingSphere = getBoundingSphere_ . toCollisionShape
+
+{#fun is_convex as isConvex_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isConvex :: IsCollisionShape cs => cs -> IO Bool
+isConvex = isConvex_ . toCollisionShape
+
+{#fun is_polyhedral as isPolyhedral_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isPolyhedral :: IsCollisionShape cs => cs -> IO Bool
+isPolyhedral = isPolyhedral_ . toCollisionShape
+
+{#fun is_non_moving as isNonMoving_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isNonMoving :: IsCollisionShape cs => cs -> IO Bool
+isNonMoving = isNonMoving_ . toCollisionShape
+
+{#fun is_concave as isConcave_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isConcave :: IsCollisionShape cs => cs -> IO Bool
+isConcave = isConcave_ . toCollisionShape
+
+{#fun is_compound as isCompound_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isCompound :: IsCollisionShape cs => cs -> IO Bool
+isCompound = isCompound_ . toCollisionShape
+
+{#fun is_soft_body as isSoftBody_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isSoftBody :: IsCollisionShape cs => cs -> IO Bool
+isSoftBody = isSoftBody_ . toCollisionShape
+
+{#fun is_infinite as isInfinite_
+ { `CollisionShape' } -> `Bool'
+#}
+
+isInfinite :: IsCollisionShape cs => cs -> IO Bool
+isInfinite = isInfinite_ . toCollisionShape
+
 -- | btStaticPlaneShape
+instance IsCollisionShape StaticPlaneShape
 
 {#fun new_static_plane_shape as ^
  { `CFloat',
@@ -301,6 +521,8 @@ instance New StaticPlaneShape ((CFloat, CFloat, CFloat), CFloat) where
   del x = freeStaticPlaneShape x
 
 -- | btCapsuleShape
+instance IsCollisionShape CapsuleShape
+instance IsConvexShape CapsuleShape
 
 {#fun new_capsule_shape as ^
  { `CFloat',
@@ -315,11 +537,9 @@ instance New CapsuleShape (CFloat, CFloat) where
   new (r, h) = newCapsuleShape r h
   del x = freeCapsuleShape x
 
-{#fun capsule_shape_to_convex_shape as ^
- { `CapsuleShape' } -> `ConvexShape'
-#}
-
 -- | btSphereShape
+instance IsCollisionShape SphereShape
+instance IsConvexShape SphereShape
 
 {#fun new_sphere_shape as ^
  { `CFloat' } -> `SphereShape'
@@ -333,11 +553,9 @@ instance New SphereShape CFloat where
   new r = newSphereShape r
   del x = freeSphereShape x
 
-{#fun sphere_shape_to_convex_shape as ^
- { `SphereShape' } -> `ConvexShape'
-#}
-
 -- | btBoxShape
+instance IsCollisionShape BoxShape
+instance IsConvexShape BoxShape
 
 {#fun new_box_shape as ^
  { `CFloat',
@@ -352,31 +570,6 @@ instance New SphereShape CFloat where
 instance New BoxShape (CFloat, CFloat, CFloat) where
   new (x, y, z) = newBoxShape x y z
   del x = freeBoxShape x
-
-{#fun box_shape_to_convex_shape as ^
- { `BoxShape' } -> `ConvexShape'
-#}
-
--- | btCollisionShape
-
-{#fun calculate_local_inertia as calculateLocalInertia_
- { `CollisionShape',
-   `CFloat',
-   alloca- `CFloat' peek*,
-   alloca- `CFloat' peek*,
-   alloca- `CFloat' peek* } -> `()'
-#}
-
-calculateLocalInertia :: IsCollisionShape cs => cs -> Mass -> IO (CFloat, CFloat, CFloat)
-calculateLocalInertia cs m = calculateLocalInertia_ (toCollisionShape cs) m
-
-class IsCollisionShape cs where
-  toCollisionShape :: cs -> CollisionShape
-  toCollisionShape cs = unsafeCoerce cs
-
-instance IsCollisionShape SphereShape
-instance IsCollisionShape StaticPlaneShape
-instance IsCollisionShape BoxShape
 
 -- | btTransform
 
@@ -444,22 +637,25 @@ peekMatrix p = peek $ castPtr p
 #}
 
 -- | btTypedConstraint
-
-{#fun free_typed_constraint
- { `TypedConstraint' } -> `()'
-#}
-
 class IsTypedConstraint tc where
   toTypedConstraint :: tc -> TypedConstraint
   toTypedConstraint = unsafeCoerce
 
+{#fun free_typed_constraint as freeTypedConstraint_
+ { `TypedConstraint' } -> `()'
+#}
+
+freeTypedConstraint :: IsTypedConstraint tc => tc -> IO ()
+freeTypedConstraint = freeTypedConstraint_ . toTypedConstraint
+
 -- | btPoint2PointConstraint
+instance IsTypedConstraint Point2PointConstraint
 
 {#fun new_point2point_constraint as newPoint2PointConstraint
  { `RigidBody',
    `CFloat',
    `CFloat',
-   `CFloat' } -> `TypedConstraint'
+   `CFloat' } -> `Point2PointConstraint'
 #}
 
 -- | btDefaultSerializer
@@ -479,6 +675,7 @@ instance New Serializer () where
 -- more stuff can go for Serializers, but I'll leave it for now...
 
 -- | btPairCachingGhostObject
+instance IsCollisionObject PairCachingGhostObject
 
 {#fun new_pair_caching_ghost_object as ^
  {} -> `PairCachingGhostObject'
@@ -492,29 +689,24 @@ instance New PairCachingGhostObject () where
   new _ = newPairCachingGhostObject
   del x = freePairCachingGhostObject x
 
-{#fun pair_caching_ghost_object_to_collision_object as ^
- { `PairCachingGhostObject' } -> `CollisionObject'
-#}
+-- | btActionInterface
+class IsActionInterface ai where
+  toActionInterface :: ai -> ActionInterface
+  toActionInterface = unsafeCoerce
 
-{#fun pcgo_set_world_transform as ^
- { `PairCachingGhostObject',
-   `Transform' } -> `()'
-#}
-
-{#fun pcgo_set_collision_shape as ^
- { `PairCachingGhostObject',
-   `CollisionShape' } -> `()'
-#}
-
-instance IsCollisionObject PairCachingGhostObject
+instance IsActionInterface ActionInterface
 
 -- | btKinematicCharacterController
+instance IsActionInterface KinematicCharacterController
 
-{#fun new_kinematic_character_controller as ^
+{#fun new_kinematic_character_controller as newKinematicCharacterController_
  { `PairCachingGhostObject',
    `ConvexShape',
    `CFloat' } -> `KinematicCharacterController'
 #}
+
+newKinematicCharacterController :: IsConvexShape cs => PairCachingGhostObject -> cs -> CFloat -> IO KinematicCharacterController
+newKinematicCharacterController pcgo cs sh = newKinematicCharacterController pcgo (toConvexShape cs) sh
 
 {#fun free_kinematic_character_controller as ^
  { `KinematicCharacterController' } -> `()'
@@ -686,8 +878,4 @@ instance New KinematicCharacterController (PairCachingGhostObject, ConvexShape, 
 {#fun set_up_interpolate as ^
  { `KinematicCharacterController',
    `Bool' } -> `()'
-#}
-
-{#fun kinematic_character_controller_to_action_interface as ^
- { `KinematicCharacterController' } -> `ActionInterface'
 #}

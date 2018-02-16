@@ -27,7 +27,7 @@ someFunc = do
   spsxform :: Transform <- new ((0, 0, 0, 1), (0, negate 1, 0))
   gms :: MotionState <- new spsxform
   traceM "made StaticPlaneShape MotionState"
-  grb <- makeRigidBody sps 0 gms (0, 0, 0)
+  grb <- newRigidBody =<< newRigidBodyConstructionInfo 0 gms sps 0 0 0
   traceM "made StaticPlaneShape RigidBody"
   addRigidBody w grb
   traceM "added StaticPlaneShape RigidBody"
@@ -45,22 +45,20 @@ someFunc = do
   startXform <- new ((0, 0, 0, 0), (0, 0, 0))
   setIdentity startXform
   setOrigin startXform 0 50 0
-  pcgoSetWorldTransform pcgo startXform
+  coSetWorldTransform pcgo startXform
   del startXform
-  ssConvex <- sphereShapeToConvexShape ss
   let stepHeight = 0.35
-  kcc :: KinematicCharacterController <- new (pcgo, ssConvex, stepHeight)
+  kcc :: KinematicCharacterController <- newKinematicCharacterController pcgo ss stepHeight
   pcgo <- getGhostObject kcc
-  pcgoSetCollisionShape pcgo (unsafeCoerce ss)
+  setCollisionShape pcgo ss
   setUp kcc 0 1 0
-  addCollisionObject w =<< pairCachingGhostObjectToCollisionObject pcgo
-  addAction w =<< kinematicCharacterControllerToActionInterface kcc
+  addCollisionObject w pcgo
+  addAction w kcc
 
   traceM "starting sim"
   forM [1..300] (\x -> if x /= 200 then do
                     stepSimulation w (1 / 60) 1 (1 / 60)
                     xform <- getGhostObject kcc >>=
-                             pairCachingGhostObjectToCollisionObject >>=
                              coAllocateWorldTransform
                     getOrigin xform >>= print
                     del xform

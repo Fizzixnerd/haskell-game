@@ -97,16 +97,6 @@ cameraMVP = to go
       -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
         camPerspective = L.perspective cfov (16/9) 0.1 100
 
-data Movement
-  = MoveLeft
-  | MoveRight
-  | MoveForward
-  | MoveBackward
-  | MoveUp
-  | MoveDown
-  | MoveCameraDir Double Double
-  deriving (Eq, Show, Ord)
-
 data NamedHandler a = NamedHandler
   { _namedHandlerName :: EventName
   , _namedHandlerHandler :: B.Handler a

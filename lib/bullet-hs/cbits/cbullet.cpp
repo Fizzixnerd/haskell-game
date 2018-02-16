@@ -45,7 +45,8 @@ extern "C" {
     delete reinterpret_cast<btCollisionConfiguration*>(collision_configuration);
   }
 
-  collision_dispatcher* new_collision_dispatcher(collision_configuration* collision_configuration) {
+  collision_dispatcher* new_collision_dispatcher
+  (collision_configuration* collision_configuration) {
     return reinterpret_cast<collision_dispatcher*>
       (new btCollisionDispatcher
        (reinterpret_cast<btCollisionConfiguration*>
@@ -57,13 +58,15 @@ extern "C" {
   }
 
   constraint_solver* new_sequential_impulse_constraint_solver() {
-    return reinterpret_cast<constraint_solver*>(new btSequentialImpulseConstraintSolver());
+    return reinterpret_cast<constraint_solver*>
+      (new btSequentialImpulseConstraintSolver());
   }
   
   void free_constraint_solver(constraint_solver* solver) {
     delete reinterpret_cast<btConstraintSolver*>(solver);
   }
 
+  // btDiscreteDynamicsWorld
   dynamics_world* new_discrete_dynamics_world
   (collision_dispatcher* dispatcher,
    broadphase_interface* broadphase,
@@ -84,7 +87,7 @@ extern "C" {
     reinterpret_cast<btDynamicsWorld*>(world)->setGravity(btVector3(x, y, z));
   }
 
-  int step_simulation(dynamics_world* world, scalar time_step, const int* max_sub_steps, const scalar* fixed_time_step) {
+  int step_simulation(dynamics_world* world, scalar time_step, int* max_sub_steps, scalar* fixed_time_step) {
     int mss = max_sub_steps ? *max_sub_steps : 1;
     scalar fts = fixed_time_step ? *fixed_time_step : (1.0f / 60.0f);
     return reinterpret_cast<btDynamicsWorld*>(world)->
@@ -151,17 +154,53 @@ extern "C" {
   }
 
   // btCollisionObject
-  rigid_body* collision_object_to_rigid_body(collision_object* obj) {
-    return reinterpret_cast<rigid_body*>
-      (btRigidBody::upcast
-       (reinterpret_cast<btCollisionObject*>(obj)));
-  }
-
   transform* co_allocate_world_transform(collision_object* obj) {
       btTransform trans = reinterpret_cast<btCollisionObject*>(obj)->
 	getWorldTransform();
       btTransform* pTrans = new btTransform(trans);
       return reinterpret_cast<transform*>(pTrans);
+  }
+
+  void co_set_world_transform(collision_object* obj, transform* transform) {
+    reinterpret_cast<btCollisionObject*>(obj)->
+      setWorldTransform(*reinterpret_cast<btTransform*>(transform));
+  }
+
+  int is_static_object(collision_object* obj) {
+    return reinterpret_cast<btCollisionObject*>(obj)->
+      isStaticObject();
+  }
+
+  int is_kinematic_object(collision_object* obj) {
+    return reinterpret_cast<btCollisionObject*>(obj)->
+      isKinematicObject();
+  }
+
+  int is_static_or_kinematic_object(collision_object* obj) {
+    return reinterpret_cast<btCollisionObject*>(obj)->
+      isStaticOrKinematicObject();
+  }
+
+  int has_contact_response(collision_object* obj) {
+    return reinterpret_cast<btCollisionObject*>(obj)->
+      hasContactResponse();
+  }
+
+  collision_shape* get_collision_shape(collision_object* obj) {
+    return reinterpret_cast<collision_shape*>
+      (reinterpret_cast<btCollisionObject*>(obj)->
+       getCollisionShape());
+  }
+
+  void set_collision_shape(collision_object* obj, collision_shape* shape) {
+    reinterpret_cast<btCollisionObject*>(obj)->
+      setCollisionShape(reinterpret_cast<btCollisionShape*>(shape));
+  }
+
+  void set_activation_state(collision_object* obj, int new_state) {
+    reinterpret_cast<btCollisionObject*>(obj)->
+      setActivationState(new_state);
+
   }
 
   // btMotionState
@@ -178,6 +217,11 @@ extern "C" {
     btTransform* trans = new btTransform;
     reinterpret_cast<btMotionState*>(motion_state)->getWorldTransform(*trans);
     return reinterpret_cast<transform*>(trans);
+  }
+
+  void ms_set_world_transform(motion_state* motion_state, transform* transform) {
+    reinterpret_cast<btMotionState*>(motion_state)->
+      setWorldTransform(*reinterpret_cast<btTransform*>(transform));
   }
 
   // btRigidBodyConstructioninfo
@@ -217,18 +261,44 @@ extern "C" {
        getMotionState());
   }
 
-  int is_static_object(rigid_body* rigid_body) {
-    return reinterpret_cast<btRigidBody*>(rigid_body)->
-      isStaticObject();
+  void rb_set_gravity(rigid_body* body, scalar x, scalar y, scalar z) {
+    reinterpret_cast<btRigidBody*>(body)->setGravity(btVector3(x, y, z));
   }
 
-  int is_kinematic_object(rigid_body* rigid_body) {
-    return reinterpret_cast<btRigidBody*>(rigid_body)->
-      isKinematicObject();
+  void rb_get_gravity(rigid_body* body, scalar* x, scalar* y, scalar* z) {
+    btVector3 g = reinterpret_cast<btRigidBody*>(body)->getGravity();
+    *x = g[0];
+    *y = g[1];
+    *z = g[2];
   }
 
-  void set_activation_state(rigid_body* rigid_body, int new_state) {
-    reinterpret_cast<btRigidBody*>(rigid_body)->setActivationState(new_state);
+  void get_total_force(rigid_body* body, scalar* x, scalar* y, scalar* z) {
+    btVector3 F = reinterpret_cast<btRigidBody*>(body)->getTotalForce();
+    *x = F[0];
+    *y = F[1];
+    *z = F[2];
+  }
+
+  void get_total_torque(rigid_body* body, scalar* x, scalar* y, scalar* z) {
+    btVector3 T = reinterpret_cast<btRigidBody*>(body)->getTotalTorque();
+    *x = T[0];
+    *y = T[1];
+    *z = T[2];
+  }
+
+  void apply_force(rigid_body* body,
+		   scalar x, scalar y, scalar z,
+		   scalar rel_x, scalar rel_y, scalar rel_z) {
+    reinterpret_cast<btRigidBody*>(body)->
+      applyForce(btVector3(x, y, z), btVector3(rel_x, rel_y, rel_z));
+  }
+
+  void apply_torque(rigid_body* body, scalar x, scalar y, scalar z){
+    reinterpret_cast<btRigidBody*>(body)->applyTorque(btVector3(x, y, z));
+  }
+
+  void clear_forces(rigid_body* body) {
+    reinterpret_cast<btRigidBody*>(body)->clearForces();
   }
 
   transform* allocate_center_of_mass_transform(rigid_body* rigid_body) {
@@ -239,26 +309,63 @@ extern "C" {
   }
 
   // btCollisionShape
-  void calculate_local_inertia(collision_shape* collision_shape,
+  void free_collision_shape(collision_shape* shape) {
+    delete reinterpret_cast<btCollisionShape*>(shape);
+  }
+
+  void calculate_local_inertia(collision_shape* shape,
 			       scalar mass,
 			       scalar* x_out,
 			       scalar* y_out,
 			       scalar* z_out) {
     btVector3 inertia;
-    reinterpret_cast<btCollisionShape*>(collision_shape)->
+    reinterpret_cast<btCollisionShape*>(shape)->
       calculateLocalInertia(mass, inertia);
     *x_out = inertia[0];
     *y_out = inertia[1];
     *z_out = inertia[2];
   }
 
-  void free_collision_shape(collision_shape* collision_shape) {
-    delete reinterpret_cast<btCollisionShape*>(collision_shape);
+  void get_bounding_sphere(collision_shape* shape,
+			   scalar* x,
+			   scalar* y,
+			   scalar* z,
+			   scalar* r) {
+    btVector3 loc;
+    btScalar rad;
+    reinterpret_cast<btCollisionShape*>(shape)->getBoundingSphere(loc, rad);
+    *x = loc[0];
+    *y = loc[1];
+    *z = loc[2];
+    *r = rad;
   }
 
-  // int default_step_simulation(discrete_dynamics_world* world, scalar time_step) {
-  //   return step_simulation(world, time_step, NULL, NULL);
-  // }
+  int is_convex(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isConvex();
+  }
+
+  int is_polyhedral(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isPolyhedral();
+  }
+  int is_non_moving(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isNonMoving();
+  }
+
+  int is_concave(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isConcave();
+  }
+
+  int is_compound(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isCompound();
+  }
+
+  int is_soft_body(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isSoftBody();
+  }
+
+  int is_infinite(collision_shape* shape) {
+    reinterpret_cast<btCollisionShape*>(shape)->isInfinite();
+  }
 
   // btStaticPlaneShape
   static_plane_shape* new_static_plane_shape(scalar x,
@@ -281,10 +388,6 @@ extern "C" {
     delete reinterpret_cast<btCapsuleShape*>(capsule_shape);
   }
 
-  convex_shape* capsule_shape_to_convex_shape(capsule_shape* capsule_shape) {
-    return reinterpret_cast<convex_shape*>(capsule_shape);
-  }
-  
   // btSphereShape
   sphere_shape* new_sphere_shape(scalar radius) {
     return reinterpret_cast<sphere_shape*>(new btSphereShape(radius));
@@ -294,10 +397,6 @@ extern "C" {
     delete reinterpret_cast<btSphereShape*>(sphere_shape);
   }
 
-  convex_shape* sphere_shape_to_convex_shape(sphere_shape* sphere_shape) {
-    return reinterpret_cast<convex_shape*>(sphere_shape);
-  }
-  
   //btBoxShape
   box_shape* new_box_shape(scalar half_x, scalar half_y, scalar half_z) {
     return reinterpret_cast<box_shape*>(new btBoxShape(btVector3(half_x, half_y, half_z)));
@@ -307,10 +406,6 @@ extern "C" {
     delete reinterpret_cast<btBoxShape*>(box_shape);
   }
 
-  convex_shape* box_shape_to_convex_shape(box_shape* box_shape) {
-    return reinterpret_cast<convex_shape*>(box_shape);
-  }
-  
   // btTransform
   transform* new_transform(scalar r, // quaternion
 			   scalar i,
@@ -364,14 +459,18 @@ extern "C" {
   }
 
   // btPoint2PointConstraint
-  typed_constraint* new_point2point_constraint(rigid_body* rigid_body,
+  point2point_constraint* new_point2point_constraint(rigid_body* rigid_body,
 					       scalar pivot_x,
 					       scalar pivot_y,
 					       scalar pivot_z) {
-    return reinterpret_cast<typed_constraint*>
+    return reinterpret_cast<point2point_constraint*>
       (new btPoint2PointConstraint
        (*reinterpret_cast<btRigidBody*>(rigid_body),
 	btVector3(pivot_x, pivot_y, pivot_z)));
+  }
+
+  void free_point2point_constraint(point2point_constraint* p2p) {
+    delete reinterpret_cast<btPoint2PointConstraint*>(p2p);
   }
 
   // btDefaultSerializer
@@ -399,26 +498,6 @@ extern "C" {
 
   void free_pair_caching_ghost_object(pair_caching_ghost_object* ghost_object) {
     delete reinterpret_cast<btPairCachingGhostObject*>(ghost_object);
-  }
-
-  collision_object* pair_caching_ghost_object_to_collision_object
-  (pair_caching_ghost_object* ghost_object) {
-    return reinterpret_cast<collision_object*>(ghost_object);
-  }
-
-  void pcgo_set_world_transform(pair_caching_ghost_object* ghost_object,
-				transform* transform) {
-    btPairCachingGhostObject* go = reinterpret_cast<btPairCachingGhostObject*>
-      (ghost_object);
-    btTransform xform = *reinterpret_cast<btTransform*>(transform);
-    go->setWorldTransform(xform);
-  }
-
-  void pcgo_set_collision_shape(pair_caching_ghost_object* ghost_object,
-			   collision_shape* shape) {
-    btPairCachingGhostObject* go = reinterpret_cast<btPairCachingGhostObject*>
-      (ghost_object);
-    go->setCollisionShape(reinterpret_cast<btCollisionShape*>(shape));
   }
 
   // btKinematicCharacterController
@@ -632,8 +711,4 @@ extern "C" {
       setUpInterpolate(bool_value);
   }
 
-  action_interface* kinematic_character_controller_to_action_interface
-  (kinematic_character_controller* kcc) {
-    return reinterpret_cast<action_interface*>(kcc);
-  }
 }
