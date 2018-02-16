@@ -8,10 +8,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Game.Types
-  ( module Game.Types
-  , module Game.StorableTypes
-  ) where
+module Game.Types where
 
 import           ClassyPrelude
 import qualified Codec.Wavefront             as W
@@ -19,26 +16,32 @@ import           Control.Lens
 import qualified Control.Monad.Logger        as ML
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
-import           Game.StorableTypes
+import           Foreign.Storable
 import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
+import qualified Physics.Bullet              as P
 import qualified Reactive.Banana.Combinators as B
 import qualified Reactive.Banana.Frameworks  as B
 import           Text.Printf
-import qualified Physics.Bullet              as P
 
-newtype Game a = Game { _unGame :: ML.LoggingT IO a }
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , ML.MonadLogger
-           , MonadIO )
+newtype Game a = Game
+  { _unGame :: ML.LoggingT IO a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , ML.MonadLogger
+             , MonadIO
+             )
 
 runGame :: Game a -> IO a
 runGame g = ML.runStderrLoggingT $ _unGame g
 
-newtype EventRegister = EventRegister { _unEventRegister :: MS.Map EventName (B.Event ()) }
-newtype EndoRegister  = EndoRegister { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> B.MomentIO GameState)) }
+newtype EventRegister = EventRegister
+  { _unEventRegister :: MS.Map EventName (B.Event ())
+  }
+newtype EndoRegister  = EndoRegister
+  { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> B.MomentIO GameState))
+  }
 
 type ScanCode = Int
 
@@ -52,14 +55,19 @@ data GameState = GameState
                                        , G.Key
                                        , ScanCode
                                        , G.KeyState
-                                       , G.ModifierKeys )
+                                       , G.ModifierKeys
+                                       )
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
   }
 
 initGameState :: GameState
 initGameState = GameState
-  { _gameStateCamera = error "camera no set."
+  { _gameStateCamera = Camera
+    { _cameraPosition = L.V3 0 0 3
+    , _cameraOrientation = (0, 0)
+    , _cameraFOV = pi/2
+    }
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateEndoRegister  = EndoRegister mempty
@@ -72,21 +80,32 @@ initGameState = GameState
 -- | Camera exists in physics world to deal with collisions.  It also
 --   always looks at a target.
 data Camera = Camera
-  { _cameraController :: P.CollisionObject
-  , _cameraTarget :: P.CollisionObject
-  }
+  { _cameraPosition :: L.V3 Float
+  , _cameraOrientation :: (Float, Float)
+  , _cameraFOV :: Float
+  } deriving (Eq, Show, Ord)
 
--- cameraMVP :: Getter Camera (L.M44 Float)
--- cameraMVP = to go
---   where
---     go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
---       where
---         vup  = L.V3 0 1 0
---         vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
---         camModel = L.identity
---         camView = L.lookAt vpos (vpos + vdir) vup
---       -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
---         camPerspective = L.perspective cfov (16/9) 0.1 100
+cameraMVP :: Getter Camera (L.M44 Float)
+cameraMVP = to go
+  where
+    go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
+      where
+        vup  = L.V3 0 1 0
+        vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
+        camModel = L.identity
+        camView = L.lookAt vpos (vpos + vdir) vup
+      -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+        camPerspective = L.perspective cfov (16/9) 0.1 100
+
+data Movement
+  = MoveLeft
+  | MoveRight
+  | MoveForward
+  | MoveBackward
+  | MoveUp
+  | MoveDown
+  | MoveCameraDir Double Double
+  deriving (Eq, Show, Ord)
 
 data NamedHandler a = NamedHandler
   { _namedHandlerName :: EventName
@@ -277,6 +296,44 @@ data PhysicsWorld = PhysicsWorld
   , _physicsWorldConstraintSolver :: P.ConstraintSolver
   }
 
+data VTNPoint = VTNPoint
+  { _vtnPointV :: !(L.V4 CFloat)
+  , _vtnPointT :: !(L.V2 CFloat)
+  , _vtnPointN :: !(L.V3 CFloat)
+  } deriving (Eq, Show, Ord, Read)
+
+data VTNIndex = VTNIndex
+  { _vtnIndexV :: !Int
+  , _vtnIndexT :: !Int
+  , _vtnIndexN :: !Int
+  } deriving (Eq, Show, Ord, Read)
+
+instance Storable VTNPoint where
+  sizeOf _ = 9 * sizeOf (0 :: CFloat)
+  alignment _ = alignment (0 :: CFloat)
+  poke ptr (VTNPoint v t n) = do
+    pokeByteOff ptr 0 v
+    pokeByteOff ptr (4 * sizeOf (0 :: CFloat)) t
+    pokeByteOff ptr (6 * sizeOf (0 :: CFloat)) n
+  peek ptr = do
+    v <- peekByteOff ptr 0
+    t <- peekByteOff ptr (4 * sizeOf (0 :: CFloat))
+    n <- peekByteOff ptr (6 * sizeOf (0 :: CFloat))
+    return $ VTNPoint v t n
+
+instance Storable VTNIndex where
+  sizeOf _ = 3 * sizeOf (0 :: Int)
+  alignment _ = alignment (0 :: Int)
+  poke ptr (VTNIndex v t n) = do
+    pokeByteOff ptr 0 v
+    pokeByteOff ptr (1 * sizeOf (0 :: Int)) t
+    pokeByteOff ptr (2 * sizeOf (0 :: Int)) n
+  peek ptr = do
+    v <- peekByteOff ptr 0
+    t <- peekByteOff ptr (1 * sizeOf (0 :: Int))
+    n <- peekByteOff ptr (2 * sizeOf (0 :: Int))
+    return $ VTNIndex v t n
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''NamedHandler
@@ -290,4 +347,5 @@ mconcat <$> mapM makeLenses
   , ''GraphicsContext
   , ''Player
   , ''PhysicsWorld
+  , ''VTNPoint, ''VTNIndex
   ]

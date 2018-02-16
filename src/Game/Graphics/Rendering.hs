@@ -36,8 +36,10 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   currentProgram $= Just prog
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
-  cameraMatrix <- getPlayerOpenGLMatrix $ (gs ^. gameStatePlayer)
-  uniform prog UniformMVP $= (unsafeCoerce cameraMatrix) -- coercing
+--  cameraMatrix <- getPlayerOpenGLMatrix $ (gs ^. gameStatePlayer)
+  let cameraMatrix = gs ^. gameStateCamera . cameraMVP
+  uniform prog UniformMVP $= cameraMatrix
+--  uniform prog UniformMVP $= (unsafeCoerce cameraMatrix) -- coercing
                                                          -- from
                                                          -- cfloat ->
                                                          -- float
