@@ -49,6 +49,7 @@ someFunc = do
   del startXform
   let stepHeight = 0.35
   kcc :: KinematicCharacterController <- newKinematicCharacterController pcgo ss stepHeight
+  traceM "Made KinematicCharacterController."
   pcgo <- getGhostObject kcc
   setCollisionShape pcgo ss
   setUp kcc 0 1 0

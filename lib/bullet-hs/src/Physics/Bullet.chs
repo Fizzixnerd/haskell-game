@@ -194,7 +194,7 @@ removeCollisionObject dw = removeCollisionObject dw . toCollisionObject
 #}
 
 addAction :: IsActionInterface ai => DynamicsWorld -> ai -> IO ()
-addAction dw = addAction dw . toActionInterface
+addAction dw = addAction_ dw . toActionInterface
 
 {#fun remove_action as removeAction_
  { `DynamicsWorld',
@@ -246,7 +246,7 @@ instance IsCollisionObject CollisionObject
 #}
 
 coAllocateWorldTransform :: IsCollisionObject co => co -> IO Transform
-coAllocateWorldTransform = coAllocateWorldTransform . toCollisionObject
+coAllocateWorldTransform = coAllocateWorldTransform_ . toCollisionObject
 
 {#fun co_set_world_transform as coSetWorldTransform_
  { `CollisionObject',
@@ -332,7 +332,7 @@ instance New MotionState Transform where
 #}
 
 newRigidBodyConstructionInfo :: IsCollisionShape cs => CFloat -> MotionState -> cs -> CFloat -> CFloat -> CFloat -> IO RigidBodyConstructionInfo
-newRigidBodyConstructionInfo m ms cs x y z = newRigidBodyConstructionInfo m ms (toCollisionShape cs) x y z
+newRigidBodyConstructionInfo m ms cs x y z = newRigidBodyConstructionInfo_ m ms (toCollisionShape cs) x y z
 
 {#fun free_rigid_body_construction_info as ^
  { `RigidBodyConstructionInfo' } -> `()'
@@ -706,7 +706,7 @@ instance IsActionInterface KinematicCharacterController
 #}
 
 newKinematicCharacterController :: IsConvexShape cs => PairCachingGhostObject -> cs -> CFloat -> IO KinematicCharacterController
-newKinematicCharacterController pcgo cs sh = newKinematicCharacterController pcgo (toConvexShape cs) sh
+newKinematicCharacterController pcgo cs sh = newKinematicCharacterController_ pcgo (toConvexShape cs) sh
 
 {#fun free_kinematic_character_controller as ^
  { `KinematicCharacterController' } -> `()'
