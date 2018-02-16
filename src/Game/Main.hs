@@ -14,6 +14,7 @@ import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import qualified Graphics.UI.GLFW             as G
+import qualified Linear                       as L
 import           Text.Printf
 import           Game.Graphics.OpenGL.Binding
 
@@ -43,7 +44,6 @@ doItAndGimmeFireThing = do
   win <- createWindow defaultWindowConfig
   liftIO $ G.makeContextCurrent $ Just win
 
-  liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
   cullFace $= Just Back
   depthFunc $= Just DepthLess
   let debugFunc src typ ident sever msg = printf "!!! OpenGL Error. Severity %s; ID: %s; Source: %s; Type: %s; Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)
@@ -67,14 +67,13 @@ doItAndGimmeFireThing = do
 --  GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
   let texSampleLoc = TextureUnit 0
-  (hello, shouldClose, key, mousePos, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
+  (hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  liftIO $ G.setCursorPosCallback win (Just (\w x y -> do
-                                                fire mousePos (x, y)
-                                                G.setCursorPos w (1920 / 2) (1080 / 2)))
-
+  let mouseCallBack _ x y = fire mouseData (MousePos (L.V2 x y))
+  liftIO $ G.setCursorPosCallback win $ Just mouseCallBack
+  liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
   let someFunc' :: IO ()
       someFunc' = do
         loop win

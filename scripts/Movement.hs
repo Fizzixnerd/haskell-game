@@ -11,19 +11,6 @@ import Foreign.C.Types
 import qualified Linear as L
 import           GHC.Float (double2Float)
 import qualified Graphics.UI.GLFW as G
-import Text.Printf
-
-mousePosToRot :: Float -> Double -> Double -> (Float, Float)
-mousePosToRot mouseSpeed x y = (xrot, yrot)
-  where
-    clampy a b = max a . min b
-    xrot = mouseSpeed * clampy (-20) 20 (double2Float (1920/2 - x))
-    yrot = mouseSpeed * clampy (-20) 20 (double2Float (1080/2 - y))
-
-rotateCamera :: (Float, Float) -> Camera -> Camera
-rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
-  where
-    go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
 relativeDir :: Camera -> L.V3 Float -> L.V3 Float
 relativeDir cam = L.rotate (L.axisAngle (L.V3 0 1 0) (fst . _cameraOrientation $ cam))
@@ -48,14 +35,9 @@ changeMovement k ks cam p@Player {..} = do
 
 script :: Script
 script = defaultScript
-  { _scriptOnInit = installKeyEventListener keyhandle "movement" >=>
-                    installMouseEventListener mousehandle "camOrientation" }
+  { _scriptOnInit = installKeyEventListener keyhandle "movement"
+                     }
   where
     keyhandle (_, k, _, ks, _) gs = do
       changeMovement k ks (gs ^. gameStateCamera) (gs ^. gameStatePlayer)
       return gs
-    mousehandle (x, y) gs = liftIO $ do
-      printf "Harro senpai:%s\n" (show (x,y))
-      return (gs & gameStateCamera %~ camMove)
-      where
-        camMove = rotateCamera $ mousePosToRot (0.005/60) x y
