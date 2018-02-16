@@ -37,10 +37,8 @@ newPhysicsWorld = liftIO $ do
 addPlayerToPhysicsWorld :: MonadIO m => Player -> PhysicsWorld -> m PhysicsWorld
 addPlayerToPhysicsWorld p w = liftIO $ do
   P.addCollisionObject (w ^. physicsWorldDynamicsWorld) =<< 
-    P.pairCachingGhostObjectToCollisionObject =<<
     P.getGhostObject (p ^. playerPhysicsController)
-  P.addAction (w ^. physicsWorldDynamicsWorld) =<<
-    P.kinematicCharacterControllerToActionInterface (p ^. playerPhysicsController)
+  P.addAction (w ^. physicsWorldDynamicsWorld) (p ^. playerPhysicsController)
   return $ w & physicsWorldPlayers %~ cons p
 
 physicsWorldSetGravity :: MonadIO m => PhysicsWorld -> L.V3 CFloat -> m ()

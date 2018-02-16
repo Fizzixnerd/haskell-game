@@ -87,6 +87,8 @@ extern "C" {
   void dw_serialize(dynamics_world* world, serializer* serializer);
 
   //btCollisionObject
+  collision_object* new_collision_object();
+  void free_collision_object(collision_object* obj);
   transform* co_allocate_world_transform(collision_object* obj);
   void co_set_world_transform(collision_object* obj, transform* transform);
   int is_static_object(collision_object* obj);
@@ -96,6 +98,10 @@ extern "C" {
   collision_shape* get_collision_shape(collision_object* obj);
   void set_collision_shape(collision_object* obj, collision_shape* shape);
   void set_activation_state(collision_object* obj, int new_state);
+  void get_interpolation_linear_velocity(collision_object* obj, scalar* x, scalar* y,
+					 scalar* z);
+  void set_interpolation_linear_velocity(collision_object* obj, scalar x, scalar y,
+					 scalar z);
 
   // btDefaultMotionState
   motion_state* new_default_motion_state(transform* transform);

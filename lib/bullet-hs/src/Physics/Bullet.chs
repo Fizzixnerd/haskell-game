@@ -241,6 +241,18 @@ class IsCollisionObject cs where
 
 instance IsCollisionObject CollisionObject
 
+{#fun new_collision_object as ^
+ {} -> `CollisionObject'
+#}
+
+{#fun free_collision_object as ^
+ { `CollisionObject' } -> `()'
+#}
+
+instance New CollisionObject () where
+  new _ = newCollisionObject
+  del x = freeCollisionObject x
+
 {#fun co_allocate_world_transform as coAllocateWorldTransform_
  { `CollisionObject' } -> `Transform'
 #}
@@ -302,6 +314,20 @@ setCollisionShape co cs = setCollisionShape_ (toCollisionObject co) (toCollision
 {#fun set_activation_state as ^
  { `CollisionObject',
    `Int' } -> `()'
+#}
+
+{#fun get_interpolation_linear_velocity as ^
+ { `CollisionObject',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+{#fun set_interpolation_linear_velocity as ^
+ { `CollisionObject',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
 #}
 
 -- | btDefaultMotionState

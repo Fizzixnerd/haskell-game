@@ -5,12 +5,11 @@
 module Game.Entity.Player where
 
 import ClassyPrelude
-import Game.Types
-import qualified Physics.Bullet as P
-import qualified Linear as L
-import Foreign.C.Types
 import Control.Lens
-import Unsafe.Coerce
+import Foreign.C.Types
+import Game.Types
+import qualified Linear         as L
+import qualified Physics.Bullet as P
 
 newPlayer :: MonadIO m => m Player
 newPlayer = liftIO $ do
@@ -18,15 +17,14 @@ newPlayer = liftIO $ do
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
   P.setOrigin startXform 0 0 0
-  P.pcgoSetWorldTransform pcgo startXform
+  P.coSetWorldTransform pcgo startXform
   P.del startXform
 
   playerShape <- P.newCapsuleShape 1 1
-  psConvex <- P.capsuleShapeToConvexShape playerShape
   let stepHeight = 0.35
-  controller :: P.KinematicCharacterController <- P.new (pcgo, psConvex, stepHeight)
+  controller <- P.newKinematicCharacterController pcgo playerShape stepHeight
   go <- P.getGhostObject controller
-  P.pcgoSetCollisionShape go (unsafeCoerce playerShape) -- TODO: Fix this nonsense
+  P.setCollisionShape go playerShape
   P.setUp controller 0 1 0
   return $ Player controller
 
@@ -38,7 +36,6 @@ destroyPlayer Player {..} = liftIO $ do
 allocatePlayerTransform :: MonadIO m => Player -> m P.Transform
 allocatePlayerTransform p = liftIO $
                             P.getGhostObject (p ^. playerPhysicsController) >>=
-                            P.pairCachingGhostObjectToCollisionObject >>=
                             P.coAllocateWorldTransform
 
 getPlayerOrientation :: MonadIO m => Player -> m (L.Quaternion CFloat)
@@ -51,7 +48,7 @@ setPlayerOrientation p (L.Quaternion r (L.V3 i j k)) = liftIO $
   withPlayerTransform p (\t -> do
                             P.setRotation t i j k r
                             pcgo <- P.getGhostObject $ p ^. playerPhysicsController
-                            P.pcgoSetWorldTransform pcgo t)
+                            P.coSetWorldTransform pcgo t)
 
 withPlayerTransform :: MonadIO m => Player -> (P.Transform -> IO b) -> m b
 withPlayerTransform p f = liftIO $ bracket (allocatePlayerTransform p) P.del f

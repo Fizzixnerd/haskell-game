@@ -154,6 +154,14 @@ extern "C" {
   }
 
   // btCollisionObject
+  collision_object* new_collision_object() {
+    return reinterpret_cast<collision_object*>(new btCollisionObject());
+  }
+  
+  void free_collision_object(collision_object* obj) {
+    delete reinterpret_cast<btCollisionObject*>(obj);
+  }
+
   transform* co_allocate_world_transform(collision_object* obj) {
       btTransform trans = reinterpret_cast<btCollisionObject*>(obj)->
 	getWorldTransform();
@@ -200,7 +208,21 @@ extern "C" {
   void set_activation_state(collision_object* obj, int new_state) {
     reinterpret_cast<btCollisionObject*>(obj)->
       setActivationState(new_state);
+  }
 
+  void get_interpolation_linear_velocity(collision_object* obj, scalar* x, scalar* y,
+					 scalar* z) {
+    btVector3 v = reinterpret_cast<btCollisionObject*>(obj)->
+      getInterpolationLinearVelocity();
+    *x = v[0];
+    *y = v[1];
+    *z = v[2];
+  }
+
+  void set_interpolation_linear_velocity(collision_object* obj, scalar x, scalar y,
+					 scalar z) {
+    reinterpret_cast<btCollisionObject*>(obj)->
+      setInterpolationLinearVelocity(btVector3(x, y, z));
   }
 
   // btMotionState
