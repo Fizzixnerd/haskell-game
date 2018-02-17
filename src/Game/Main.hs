@@ -71,7 +71,7 @@ doItAndGimmeFireThing = do
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  let mouseCallBack _ x y = fire mouseData (MousePos (L.V2 x y))
+  let mouseCallBack _ x y = fire mouseData $ MousePos (L.V2 x y)
   liftIO $ G.setCursorPosCallback win $ Just mouseCallBack
   liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
   let someFunc' :: IO ()

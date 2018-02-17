@@ -14,6 +14,8 @@ import           Game.Script.Installer
 import           Game.Graphics.OpenGL.Binding
 import           Game.Entity.Player
 import           Game.World.Physics
+import Game.Script.Loader
+import Game.Script.Installer
 import qualified Graphics.UI.GLFW             as G
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
@@ -64,11 +66,7 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
         let eClose :: B.Event (IO ())
             eClose = flip G.setWindowShouldClose True <$> eShouldClose
 
-            renderer :: MonadIO m => GameState -> G.Window -> m ()
-            renderer gs w = liftIO $ do
-              render gs prog texSampleLoc vao (snd ebuf) tex
-              G.swapBuffers w
-
+            eRender :: B.Event (IO ())
             eRender = B.apply ((\gs w -> do
                                    render gs prog texSampleLoc vao (snd ebuf) tex
                                    G.swapBuffers w) <$> bWorld) eTick
@@ -80,13 +78,29 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
             ePrintHello :: B.Event (IO ())
             ePrintHello = const (print ("hello" :: String)) <$> eHello
 
-            camHandler :: MousePos -> GameState -> B.MomentIO GameState
-            camHandler mouseP gs = return $ gs & gameStateCamera %~ (rotateCamera . mousePosToRot (gs^.gameStateMouseSpeed) mouseP (gs^.gameStateMousePos) $ (1/60)) & gameStateMousePos .~ mouseP
-            eCamOrientation :: B.Event (GameState -> B.MomentIO GameState)
-            eCamOrientation = camHandler <$> eMouseData
-        eWorld <- B.accumE (pure initGameState) (fmap (=<<) eCamOrientation)
+        movementScript <- liftIO $ loadForeignScript $ ScriptName "scripts/" "Movement"
+        gameState <- scriptInstall movementScript (initGameState & gameStateMousePosEvent .~ eMouseData)
+        traceM "after script install"
+
+
+        eWorld <- B.accumE (pure initGameState) (B.unions $
+                                                 fmap (fmap (=<<)) $
+                                                 toList $
+                                                 gameState ^. gameStateEndoRegister . unEndoRegister)
         eWorld' <- B.execute eWorld
         bWorld <- B.stepper initGameState eWorld'
+
+        -- bWorld <- B.stepper gameState eNewWorld
+        -- let eWorld = (const <$> bWorld) B.<@> eTick
+        -- let eUpdater = (\w -> B.unions $
+        --                       fmap (fmap (>=>)) $
+        --                       toList $
+        --                       w ^. gameStateEndoRegister . unEndoRegister) <$> eWorld
+        -- eUpdater' <- B.switchE eUpdater
+        -- bUpdater <- B.accumB return eUpdater'
+        -- let eUpdateWorld = bUpdater B.<@> eWorld
+        -- eNewWorld <- B.execute eUpdateWorld
+
         B.reactimate ePrintHello
         B.reactimate eClose
         B.reactimate eRender
@@ -103,8 +117,7 @@ installKeyEventListener :: ((G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKe
 installKeyEventListener el en gs =
   return $ gs & gameStateEndoRegister %~ registerEndo en (el <$> (gs ^. gameStateKeyEvent))
 
-{-
-installMouseEventListener :: ((MousePos, Double) -> GameState -> B.MomentIO GameState) -> EndoName -> GameState -> B.MomentIO GameState
+
+installMouseEventListener :: (MousePos -> GameState -> B.MomentIO GameState) -> EndoName -> GameState -> B.MomentIO GameState
 installMouseEventListener el en gs =
   return $ gs & gameStateEndoRegister %~ registerEndo en (el <$> (gs ^. gameStateMousePosEvent))
--}
