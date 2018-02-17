@@ -26,9 +26,17 @@ getCameraLinearVelocity Camera {..} = liftIO $ do
   (x, y, z) <- P.getInterpolationLinearVelocity _cameraController
   return $ L.V3 x y z
 
-setCameraLinearVelocity :: MonadIO m => Camera -> L.V3 CFloat -> m ()
-setCameraLinearVelocity Camera {..} (L.V3 x y z) =
+setCameraLinearVelocity :: MonadIO m => L.V3 CFloat ->  Camera -> m ()
+setCameraLinearVelocity (L.V3 x y z) Camera {..} =
   liftIO $ P.setInterpolationLinearVelocity _cameraController x y z
+
+-- updateCameraLinearVelocity :: (L.V3 CFloat -> IO (L.V3 CFloat)) -> Camera -> IO ()
+-- updateCameraLinearVelocity f cam = do
+--   v <- liftIO $ getCameraLinearVelocity cam
+--   v' <- f v
+--   liftIO $ setCameraLinearVelocity v' cam 
+
+-- cameraLinearVelocity = reference getCameraLinearVelocity setCameraLinearVelocity updateCameraLinearVelocity
 
 getCameraPosition :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraPosition Camera {..} = liftIO $ do
@@ -83,7 +91,7 @@ setCameraRadialSpeed cam rv = do
   rvOld <- getCameraRadialSpeed cam
   rhat <- getCameraRHat cam
   v <- getCameraLinearVelocity cam
-  setCameraLinearVelocity cam $ v + ((rv - rvOld) L.*^ rhat)
+  setCameraLinearVelocity (v + ((rv - rvOld) L.*^ rhat)) cam
 
 -- | Polar unit vector points DOWN.
 
@@ -104,7 +112,7 @@ setCameraPolarSpeed cam pv = do
   pvOld <- getCameraPolarSpeed cam
   thetahat <- getCameraThetaHat cam
   v <- getCameraLinearVelocity cam
-  setCameraLinearVelocity cam $ v + ((pv - pvOld) L.*^ thetahat)
+  setCameraLinearVelocity (v + ((pv - pvOld) L.*^ thetahat)) cam
 
 getCameraPhiHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraPhiHat cam = do
@@ -124,7 +132,7 @@ setCameraAzimuthalSpeed cam av = do
   avOld <- getCameraAzimuthalSpeed cam
   phihat <- getCameraPhiHat cam
   v <- getCameraLinearVelocity cam
-  setCameraLinearVelocity cam $ v + ((av - avOld) L.*^ phihat)
+  setCameraLinearVelocity (v + ((av - avOld) L.*^ phihat)) cam
 
 -- | Useful after switching targets.
 

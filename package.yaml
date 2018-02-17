@@ -36,6 +36,8 @@ dependencies:
 - ghc-paths
 - gl
 - lens
+- lens-action
+- references
 - linear
 - linear-opengl
 - monad-logger
