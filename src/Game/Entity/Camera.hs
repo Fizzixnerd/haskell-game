@@ -1,7 +1,10 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Game.Entity.Camera where
 
 import ClassyPrelude
 import Game.Types
+import Foreign.C.Types
 import qualified Linear as L
 import qualified Physics.Bullet as P
 import Control.Lens
@@ -9,38 +12,129 @@ import Control.Lens
 -- | The CollisionObject passed to this function is not freed upon
 -- destruciton of the Camera.
 
--- newCamera :: (MonadIO m, P.IsCollisionObject co) => co -> m Camera
--- newCamera co
+newCamera :: (MonadIO m, P.IsCollisionObject co) => co -> CFloat -> m Camera
+newCamera target _cameraPreferredDistance = liftIO $ do
+  let _cameraTarget = P.toCollisionObject target
+  _cameraController <- P.newCollisionObject
+  return Camera {..}
 
--- destroyCamera :: MonadIO m => Camera -> m ()
--- destroyCamera cam
+destroyCamera :: MonadIO m => Camera -> m ()
+destroyCamera Camera {..} = liftIO $ P.del _cameraController
 
--- getCameraLinearVelocity :: MonadIO m => Camera -> m (L.V3 CFloat)
--- getCameraLinearVelocity cam
+getCameraLinearVelocity :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraLinearVelocity Camera {..} = liftIO $ do
+  (x, y, z) <- P.getInterpolationLinearVelocity _cameraController
+  return $ L.V3 x y z
 
--- setCameraLinearVelocity :: MonadIO m => Camera -> L.V3 CFloat -> m ()
--- setCameraLinearVelocity cam v
+setCameraLinearVelocity :: MonadIO m => Camera -> L.V3 CFloat -> m ()
+setCameraLinearVelocity Camera {..} (L.V3 x y z) =
+  liftIO $ P.setInterpolationLinearVelocity _cameraController x y z
 
--- getCameraDisplacementToTarget :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraPosition :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraPosition Camera {..} = liftIO $ do
+  t <- P.coAllocateWorldTransform _cameraController
+  (x, y, z) <- P.getOrigin t
+  P.del t
+  return $ L.V3 x y z
 
--- getCameraDirectionToTarget :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraTargetPosition :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraTargetPosition Camera {..} = liftIO $ do
+  t <- P.coAllocateWorldTransform _cameraTarget
+  (x, y, z) <- P.getOrigin t
+  P.del t
+  return $ L.V3 x y z
 
--- getCameraRadialSpeed :: MonadIO m => Camera -> m CFloat
+getCameraOrientation :: MonadIO m => Camera -> m (L.Quaternion CFloat)
+getCameraOrientation Camera {..} = liftIO $ do
+  t <- P.coAllocateWorldTransform _cameraController
+  (i, j, k, r) <- P.getRotation t
+  return $ L.Quaternion r (L.V3 i j k)
 
--- setCameraRadialSpeed :: MonadIO m => Camera -> CFloat -> m ()
+getCameraDisplacementFromTarget :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraDisplacementFromTarget cam = do
+  targetPos <- getCameraTargetPosition cam
+  camPos <- getCameraPosition cam
+  return $ camPos - targetPos
 
--- | Split like this so we don't have to choose between physics or
--- math language for polar/azimuthal angles.
+getCameraRHat :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraRHat = fmap L.normalize <$> getCameraDisplacementFromTarget
 
--- getCameraPolarSpeed :: MonadIO m => Camera -> m CFloat
+-- r, theta, phi; theta is polar, phi is azimuthal
+-- | Radial unit vector points OUT (i.e. points to BEHIND the Camera).
 
--- setCameraPolarSpeed :: MonadIO m => Camera -> CFloat -> m ()
+-- from Wikipedia: https://en.wikipedia.org/wiki/Spherical_coordinate_system
+--
+-- r = {\sqrt {x^{2}+y^{2}+z^{2}}}
+-- theta = \arccos {\frac {z}{\sqrt {x^{2}+y^{2}+z^{2}}}}=\arccos {\frac {z}{r}}
+-- varphi = \arctan {\frac {y}{x}}
+--
+-- \hat {\mathbf {r} }} = \sin \theta \cos \varphi \,{\hat {\mathbf {x} }}+\sin \theta \sin \varphi \,{\hat {\mathbf {y} }}+\cos \theta \,{\hat {\mathbf {z} }}
+-- {\hat {\boldsymbol {\theta }}} = \cos \theta \cos \varphi \,{\hat {\mathbf {x} }}+\cos \theta \sin \varphi \,{\hat {\mathbf {y} }}-\sin \theta \,{\hat {\mathbf {z} }}
+-- {\hat {\boldsymbol {\varphi }}} = -\sin \varphi \,{\hat {\mathbf {x} }}+\cos \varphi \,{\hat {\mathbf {y} }}\end{aligned}}}
 
--- getCameraAzimuthalSpeed :: MonadIO m => Camera -> m CFloat
+getCameraRadialSpeed :: MonadIO m => Camera -> m CFloat
+getCameraRadialSpeed cam = do
+  rhat <- getCameraRHat cam
+  v <- getCameraLinearVelocity cam
+  return $ L.dot rhat v
 
--- setCameraAzimuthalSpeed :: MonadIO m => Camera -> CFloat m ()
+setCameraRadialSpeed :: MonadIO m => Camera -> CFloat -> m ()
+setCameraRadialSpeed cam rv = do
+  rvOld <- getCameraRadialSpeed cam
+  rhat <- getCameraRHat cam
+  v <- getCameraLinearVelocity cam
+  setCameraLinearVelocity cam $ v + ((rv - rvOld) L.*^ rhat)
+
+-- | Polar unit vector points DOWN.
+
+getCameraThetaHat :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraThetaHat cam = do
+  rhat <- getCameraRHat cam
+  phihat <- getCameraPhiHat cam
+  return $ L.cross phihat rhat
+
+getCameraPolarSpeed :: MonadIO m => Camera -> m CFloat
+getCameraPolarSpeed cam = do
+  v <- getCameraLinearVelocity cam
+  thetahat <- getCameraThetaHat cam
+  return $ L.dot thetahat v
+
+setCameraPolarSpeed :: MonadIO m => Camera -> CFloat -> m ()
+setCameraPolarSpeed cam pv = do
+  pvOld <- getCameraPolarSpeed cam
+  thetahat <- getCameraThetaHat cam
+  v <- getCameraLinearVelocity cam
+  setCameraLinearVelocity cam $ v + ((pv - pvOld) L.*^ thetahat)
+
+getCameraPhiHat :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraPhiHat cam = do
+  (L.V3 x y _) <- getCameraDisplacementFromTarget cam
+  let littleR = L.norm (L.V2 x y)
+      phihat = L.V3 (- y / littleR) (x / littleR) 0
+  return phihat
+
+getCameraAzimuthalSpeed :: MonadIO m => Camera -> m CFloat
+getCameraAzimuthalSpeed cam = do
+  v <- getCameraLinearVelocity cam
+  phihat <- getCameraPhiHat cam
+  return $ L.dot phihat v
+
+setCameraAzimuthalSpeed :: MonadIO m => Camera -> CFloat -> m ()
+setCameraAzimuthalSpeed cam av = do
+  avOld <- getCameraAzimuthalSpeed cam
+  phihat <- getCameraPhiHat cam
+  v <- getCameraLinearVelocity cam
+  setCameraLinearVelocity cam $ v + ((av - avOld) L.*^ phihat)
 
 -- | Useful after switching targets.
 
 -- cameraLookAtTarget :: MonadIO m => Camera -> m ()
+-- cameraLookAtTarget cam = do
+--   rhat <- getCameraRHat cam
+--   let L.V3 x y z = negate rhat
+--       controller = cam ^. cameraController
+--   t <- P.coAllocateWorldTransform controller
+  
+--   liftIO $ P.setRotation controller x y z 0
 
+-- cameraAttach :: (MonadIO m, P.IsCollisionObject co) => Camera -> co -> m ()
