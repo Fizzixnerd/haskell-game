@@ -78,10 +78,10 @@ compileGameNetwork prog texSampleLoc vao ebuf tex = do
             ePrintHello :: B.Event (IO ())
             ePrintHello = const (print ("hello" :: String)) <$> eHello
 
-        movementScript <- liftIO $ loadForeignScript $ ScriptName "scripts/" "Movement"
-        gameState <- scriptInstall movementScript (initGameState & gameStateMousePosEvent .~ eMouseData)
-        traceM "after script install"
-
+        movementScript <- liftIO $ scriptLoad $ 
+                          ScriptName "scripts/" "Movement"
+        gameState <- scriptInstall movementScript 
+                     (initGameState & gameStateMousePosEvent .~ eMouseData)
 
         eWorld <- B.accumE (pure initGameState) (B.unions $
                                                  fmap (fmap (=<<)) $

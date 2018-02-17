@@ -57,7 +57,6 @@ doItAndGimmeFireThing = do
 
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
-
   let posLocation = AttribLocation 0
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
