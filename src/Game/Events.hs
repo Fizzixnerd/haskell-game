@@ -10,6 +10,7 @@ import qualified Control.Wire as N
 import qualified FRP.Netwire as N
 import qualified FRP.Netwire.Input as N
 import qualified FRP.Netwire.Input.GLFW as N
+import qualified Graphics.UI.GLFW as G
 import           ClassyPrelude
 import           Control.Lens
 import           Game.Graphics.Rendering

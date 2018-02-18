@@ -32,6 +32,7 @@ dependencies:
 - bytestring
 - classy-prelude
 - containers
+- exceptions
 - ghc
 - ghc-paths
 - gl

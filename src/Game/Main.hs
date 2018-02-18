@@ -12,6 +12,7 @@ import           Game.Graphics.Model.Loader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
+import qualified Graphics.UI.GLFW as G
 import qualified Linear                       as L
 import           Text.Printf
 import           Game.Graphics.Binding
@@ -23,10 +24,7 @@ printContextVersion win = liftIO $ do
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min_ rev
 
-doItAndGimmeFireThing :: Game ( NamedHandler a
-                              , NamedHandler G.Window
-                              , G.Window
-                              , IO () )
+doItAndGimmeFireThing :: Game ()
 doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
                         . withWindow defaultWindowConfig
                         $ \win -> do
@@ -55,11 +53,6 @@ doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
   let texSampleLoc = TextureUnit 0
   --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
 
-  liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
-  liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))
-  let mouseCallBack _ x y = fire mouseData $ MousePos (L.V2 x y)
-  liftIO $ G.setCursorPosCallback win $ Just mouseCallBack
-  liftIO $ G.setCursorInputMode win G.CursorInputMode'Disabled
   let someFunc' :: IO ()
       someFunc' = do
         loop win
@@ -68,23 +61,14 @@ doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
         G.terminate
           where
             loop w = do
-              fire tick w
-              G.pollEvents
               sc <- G.windowShouldClose w
               unless sc $ loop w
 
-  return (hello, shouldClose, win, someFunc')
+  return ()
 {-
 game :: Game ( NamedHandler ()
              , IO ()
              , ThreadId )
 -}
-game :: Game (IO ())
-game = do
-  (h, sc, w, x) <- doItAndGimmeFireThing
-  return x
---  ti <- liftIO $ forkIO x
---  return (h, fire sc w, ti)
-
 someFunc :: IO ()
 someFunc = join (runGame game)
