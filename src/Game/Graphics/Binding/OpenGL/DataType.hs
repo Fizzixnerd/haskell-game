@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Game.Graphics.OpenGL.DataType where
+module Game.Graphics.Binding.OpenGL.DataType where
 
 import Graphics.GL.Types
 import Graphics.GL.Core45
@@ -31,7 +31,7 @@ data GLDataType
   | GLUnsignedInt10f11f11fRev
   | GLUnsignedInt5999Rev
   | GLFloat32UnsignedInt248Rev
-  deriving ( Eq, Ord, Show )
+  deriving (Eq, Ord, Show)
 
 marshallGLDataType :: GLDataType -> GLenum
 marshallGLDataType = \case
@@ -97,7 +97,7 @@ data SizedFormat
   | SizedRGBA8UI
   | SizedRGBA16UI
   | SizedRGBA32UI
-  deriving ( Eq, Ord, Show )
+  deriving (Eq, Ord, Show)
 
 marshallSizedFormat :: SizedFormat -> GLenum
 marshallSizedFormat = \case

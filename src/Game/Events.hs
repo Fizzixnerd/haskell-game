@@ -16,12 +16,9 @@ import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
-import           Game.Graphics.OpenGL.Binding
+import           Game.Graphics.Binding
 import           Game.Entity.Player
 import           Game.World.Physics
-import           Game.Script.Loader
-import           Game.Script.Installer
-import qualified Graphics.UI.GLFW             as G
 import qualified Linear                       as L
 import           GHC.Float (double2Float)
 
@@ -66,7 +63,7 @@ key'd = N.keyPressed G.Key'D
 printShit :: GameWire s a ()
 printShit = N.mkGen_ printIt
   where
-    printIt _ = Right <$> (liftIO $ print ("fuck" :: String))
+    printIt _ = Right <$> liftIO (print ("fuck" :: String))
 
 printOut :: GameWire s a ()
 printOut = printShit . mouse'L

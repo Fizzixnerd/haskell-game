@@ -6,7 +6,7 @@ import           ClassyPrelude
 import           Foreign.Ptr
 import qualified Codec.Picture                as P
 import qualified Data.Vector.Storable         as VS
-import           Game.Graphics.OpenGL.Binding
+import           Game.Graphics.Binding
 import           Graphics.GL.Core45
 
 loadPic :: MonadIO m => FilePath -> m P.DynamicImage

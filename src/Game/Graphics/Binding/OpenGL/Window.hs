@@ -1,13 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Game.Graphics.OpenGL.Window where
+module Game.Graphics.Binding.OpenGL.Window where
 
+import Data.ByteString
+import Data.StateVar
+import Foreign.Ptr
 import Graphics.GL.Types
 import Graphics.GL.Core45
-import Data.StateVar
 import Linear
-import Data.ByteString
-import Foreign.Ptr
+import Text.Printf
 
 -- Some things in here, like the definition of Face for cullFace
 -- probably shouldn't be in here. Will have to move if things get
@@ -133,3 +134,5 @@ debugMessageCallback = makeSettableStateVar $ \case
           id'  = DebugID ident
           sev' = unmarshallDebugSeverity sever
 
+simpleDebugFunc :: DebugCallbackFun
+simpleDebugFunc src typ ident sever msg = printf "!!! OpenGL Error. Severity %s; ID: %s; Source: %s; Type: %s; Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)
