@@ -1,17 +1,17 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Game.Graphics.Binding.OpenGL.Uniform where
 
-import Graphics.GL.Types
+import Data.StateVar
 import Game.Graphics.Binding.OpenGL.Utils
 import Game.Graphics.Binding.OpenGL.Shader
 import Game.Graphics.Binding.OpenGL.PrimUniform
-import Data.StateVar
+import Graphics.GL.Types
 
 newtype UniformBlock = UniformBlock
   { uniformBlockInternal :: GLuint

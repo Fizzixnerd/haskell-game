@@ -1,20 +1,20 @@
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Game.Graphics.Binding.OpenGL.BufferObject where
 
-import Graphics.GL.Core45
-import Graphics.GL.Types
-import Control.Lens
-import Game.Graphics.Binding.OpenGL.ObjectName
-import Game.Graphics.Binding.OpenGL.Boolean
-import Game.Graphics.Binding.OpenGL.Utils
+import           Control.Lens
+import           Data.Bits ((.|.))
 import qualified Data.Vector.Storable as VS
-import Game.Graphics.Binding.OpenGL.DataType
-import Data.Bits ((.|.))
+import           Game.Graphics.Binding.OpenGL.Boolean
+import           Game.Graphics.Binding.OpenGL.DataType
+import           Game.Graphics.Binding.OpenGL.ObjectName
+import           Game.Graphics.Binding.OpenGL.Utils
+import           Graphics.GL.Core45
+import           Graphics.GL.Types
 
 newtype BufferObject = BufferObject
   { getBufferObjectGLuint :: GLuint

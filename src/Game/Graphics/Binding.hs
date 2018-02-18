@@ -125,6 +125,7 @@ import Game.Graphics.Binding.OpenGL.Window as X
   , DebugCallbackFun
   , Face(..)
   , cullFace
+  , simpleDebugFunc
   )
 
 import Game.Graphics.Binding.OpenGL.Rendering as X

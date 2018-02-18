@@ -34,9 +34,8 @@ doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
 
   cullFace $= Just Back
   depthFunc $= Just DepthLess
-  let debugFunc src typ ident sever msg = printf "!!! OpenGL Error. Severity %s; ID: %s; Source: %s; Type: %s; Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)
 --- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
-  debugMessageCallback $= Just debugFunc
+  debugMessageCallback $= Just simpleDebugFunc
   printContextVersion win
 
   prog <- compileShaders

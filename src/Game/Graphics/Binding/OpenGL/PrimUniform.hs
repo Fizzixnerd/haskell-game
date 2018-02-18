@@ -5,12 +5,12 @@
 
 module Game.Graphics.Binding.OpenGL.PrimUniform where
 
-import Graphics.GL.Core45
-import Graphics.GL.Types
-import Game.Graphics.Binding.OpenGL.Shader
-import Game.Graphics.Binding.OpenGL.Utils
-import Linear
 import qualified Data.Vector.Storable as VS
+import           Game.Graphics.Binding.OpenGL.Shader
+import           Game.Graphics.Binding.OpenGL.Utils
+import           Graphics.GL.Core45
+import           Graphics.GL.Types
+import           Linear
 -- NB everything is transposed by default. Will fix.
 
 newtype UniformLocation = UniformLocation

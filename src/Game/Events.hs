@@ -14,11 +14,10 @@ import           Game.Script.Installer
 import           Game.Graphics.Binding
 import           Game.Entity.Player
 import           Game.World.Physics
-import qualified Graphics.UI.GLFW             as G
 import qualified Reactive.Banana.Combinators  as B
 import qualified Reactive.Banana.Frameworks   as B
 import qualified Linear                       as L
-import GHC.Float (double2Float)
+import           GHC.Float (double2Float)
 
 mousePosToRot :: Float -> MousePos -> MousePos -> Double -> (Float, Float)
 mousePosToRot mouseSpeed (MousePos (L.V2 newx newy)) (MousePos (L.V2 oldx oldy)) dt = if abs xrot > 0.1 || abs yrot > 0.1
@@ -35,7 +34,6 @@ rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
   where
     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
-
 compileGameNetwork ::
   MonadIO m =>
   Program
@@ -43,8 +41,8 @@ compileGameNetwork ::
   -> VertexArrayObject
   -> (BufferObject, Int)
   -> TextureObject TextureTarget2D
-  -> m (NamedHandler b1, NamedHandler G.Window,
-        NamedHandler (G.Window, G.Key, ScanCode, G.KeyState, G.ModifierKeys), NamedHandler MousePos, NamedHandler G.Window)
+  -> m (NamedHandler b1, NamedHandler Window,
+        NamedHandler (Window, Key, ScanCode, G.KeyState, G.ModifierKeys), NamedHandler MousePos, NamedHandler G.Window)
 compileGameNetwork prog texSampleLoc vao ebuf tex = do
   -- get the Handlers we need.
   (addHandlerShouldClose, shouldClose) <- newNamedEventHandler "shouldClose"
