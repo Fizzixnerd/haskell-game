@@ -12,7 +12,6 @@ import           Game.Types
 import           Game.Graphics.Binding
 import           Game.Entity.Player
 import           Linear
-import qualified Graphics.Rendering.OpenGL.GL as GL (DataType(..))
 
 data UniformMVP = UniformMVP deriving (Eq, Ord, Show)
 
@@ -32,7 +31,8 @@ render :: (TextureTarget t, MonadIO m)
        -> TextureObject t
        -> m ()
 render gs prog texSampleLoc vao n tex = liftIO $ do
-  clear [ColorBuffer, DepthBuffer]
+  clear $ defaultClearBuffer & clearBufferColor .~ True
+                             & clearBufferDepth .~ True
   currentProgram $= Just prog
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
@@ -43,7 +43,7 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
                                                          -- from
                                                          -- cfloat ->
                                                          -- float
-  drawElements Triangles (fromIntegral n) GL.UnsignedInt nullPtr
+  drawElements Triangles (fromIntegral n) UnsignedInt 
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
 unsafeWithVecLen vec f = liftIO $ do

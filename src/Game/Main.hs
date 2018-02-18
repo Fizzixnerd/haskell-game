@@ -9,7 +9,6 @@ import           Control.Concurrent
 import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
-import           Game.Graphics.Init
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader

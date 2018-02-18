@@ -11,7 +11,7 @@ import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
-import           Game.Graphics.OpenGL.Binding
+import           Game.Graphics.Binding
 import           Game.Entity.Player
 import           Game.World.Physics
 import qualified Graphics.UI.GLFW             as G
