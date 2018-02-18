@@ -47,7 +47,8 @@ doItAndGimmeFireThing = do
   cullFace $= Just Back
   depthFunc $= Just DepthLess
   let debugFunc src typ ident sever msg = printf "!!! OpenGL Error. Severity %s; ID: %s; Source: %s; Type: %s; Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)
---- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
+  -- Remember: we will eventually have to free the function pointer
+  -- that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just debugFunc
   printContextVersion win
 
@@ -66,7 +67,7 @@ doItAndGimmeFireThing = do
 --  GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
   let texSampleLoc = TextureUnit 0
-  (hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
+  --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
 
   liftIO $ G.setWindowCloseCallback win (Just $ fire shouldClose)
   liftIO $ G.setKeyCallback win (Just (\w k sc ks mk -> fire key (w, k, sc, ks, mk)))

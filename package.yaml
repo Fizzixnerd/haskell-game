@@ -37,13 +37,14 @@ dependencies:
 - gl
 - lens
 - lens-action
-- references
 - linear
 - linear-opengl
 - monad-logger
 - mtl
+- netwire
+- netwire-input
+- netwire-input-glfw
 - plugin
-- reactive-banana
 - safe-exceptions
 - text
 - vector

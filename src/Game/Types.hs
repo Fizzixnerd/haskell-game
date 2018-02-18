@@ -14,33 +14,46 @@ import           ClassyPrelude
 import qualified Codec.Wavefront             as W
 import           Control.Lens
 import qualified Control.Monad.Logger        as ML
+import qualified Control.Monad.State.Strict  as MSS
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Foreign.Storable
 import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
-import qualified Reactive.Banana.Combinators as B
-import qualified Reactive.Banana.Frameworks  as B
+import qualified FRP.Netwire as N
+import qualified FRP.Netwire.Input as N
+import qualified FRP.Netwire.Input.GLFW as N
+--import qualified Reactive.Banana.Combinators as B
+--import qualified Reactive.Banana.Frameworks  as B
 import           Text.Printf
 
+type GameWire s a b = N.Wire s () Game a b
+
 newtype Game a = Game
-  { _unGame :: ML.LoggingT IO a
+  { _unGame :: N.GLFWInputT (MSS.StateT GameState (ML.LoggingT IO)) a
   } deriving ( Functor
              , Applicative
              , Monad
-             , ML.MonadLogger
              , MonadIO
-             )
+             , MSS.MonadState GameState
+             , N.MonadMouse G.MouseButton
+             , N.MonadKeyboard G.Key )
 
-runGame :: Game a -> IO a
-runGame g = ML.runStderrLoggingT $ _unGame g
+instance ML.MonadLogger Game where
+  monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
+
+runGame :: G.Window -> GameState -> Game a -> IO ((a, N.GLFWInputState), GameState)
+runGame w s g = do
+  input <- N.getInput =<< N.mkInputControl w
+  ML.runStderrLoggingT $
+    MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
 
 newtype EventRegister = EventRegister
-  { _unEventRegister :: MS.Map EventName (B.Event ())
+  { _unEventRegister :: MS.Map EventName ()
   }
 newtype EndoRegister  = EndoRegister
-  { _unEndoRegister :: MS.Map EndoName (B.Event (GameState -> B.MomentIO GameState))
+  { _unEndoRegister :: MS.Map EndoName ()
   }
 
 type ScanCode = Int
@@ -50,12 +63,8 @@ data GameState = GameState
   , _gameStateActiveScripts :: Vector Script
   , _gameStateEventRegister :: EventRegister
   , _gameStateEndoRegister  :: EndoRegister
-  , _gameStateKeyEvent      :: B.Event ( G.Window
-                                       , G.Key
-                                       , ScanCode
-                                       , G.KeyState
-                                       , G.ModifierKeys )
-  , _gameStateMousePosEvent :: B.Event MousePos
+  , _gameStateKeyEvent      :: ()
+  , _gameStateMousePosEvent :: ()
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
   , _gameStateMouseSpeed    :: Float
@@ -78,19 +87,19 @@ initGameState = GameState
   , _gameStateCurrentTime   = 0
   }
 
--- | Camera exists in physics world to deal with collisions.  It also
---   always looks at a target.
-data Camera = Camera
-  { _cameraController     :: P.CollisionObject
-  , _cameraTarget         :: P.CollisionObject
-  , _cameraPreferredDistance :: CFloat
-  }
-
+-- -- | Camera exists in physics world to deal with collisions.  It also
+-- --   always looks at a target.
 -- data Camera = Camera
---   { _cameraPosition :: L.V3 Float
---   , _cameraOrientation :: (Float, Float)
---   , _cameraFOV :: Float
---   } deriving (Eq, Show, Ord)
+--   { _cameraController     :: P.CollisionObject
+--   , _cameraTarget         :: P.CollisionObject
+--   , _cameraPreferredDistance :: CFloat
+--   }
+
+data Camera = Camera
+  { _cameraPosition :: L.V3 Float
+  , _cameraOrientation :: (Float, Float)
+  , _cameraFOV :: Float
+  } deriving (Eq, Show, Ord)
 
 -- cameraMVP :: Getter Camera (L.M44 Float)
 -- cameraMVP = to go
@@ -103,39 +112,6 @@ data Camera = Camera
 --         camView = L.lookAt vpos (vpos + vdir) vup
 --       -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
 --         camPerspective = L.perspective cfov (16/9) 0.1 100
-
-data NamedHandler a = NamedHandler
-  { _namedHandlerName :: EventName
-  , _namedHandlerHandler :: B.Handler a
-  }
-
-type NamedEventHandler a = (B.AddHandler a, NamedHandler a)
-
-namedEventHandlerName :: NamedEventHandler a -> EventName
-namedEventHandlerName neh = _namedHandlerName $ snd neh
-
-instance Eq (NamedHandler a) where
-  NamedHandler { _namedHandlerName = l } == NamedHandler { _namedHandlerName = r } = l == r
-
-instance Ord (NamedHandler a) where
-  compare NamedHandler { _namedHandlerName = l } NamedHandler { _namedHandlerName = r } = compare l r
-
-instance Show (NamedHandler a) where
-  show NamedHandler {..} = unpack _namedHandlerName
-
-class Firable a b where
-  fire :: a -> b -> IO ()
-
-instance a ~ b => Firable (NamedHandler a) b where
-  fire NamedHandler {..} = _namedHandlerHandler
-
-instance a ~ b => Firable (B.Handler a) b where
-  fire = id
-
-newNamedEventHandler :: MonadIO m => Text -> m (NamedEventHandler a)
-newNamedEventHandler name = liftIO $ do
-  (ah, f) <- B.newAddHandler
-  return (ah, NamedHandler name f)
 
 data ExpandObjVTN = ExpandObjVTN
   { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
@@ -159,11 +135,11 @@ data ScriptName = ScriptName
 data Script = Script
   { _scriptSuperScripts :: Vector ScriptName
   , _scriptName :: ScriptName
-  , _scriptOnInit :: GameState -> B.MomentIO GameState
-  , _scriptOnLoad :: GameState -> B.MomentIO GameState
-  , _scriptOnEvent :: Vector (EventName, EndoName, GameState -> B.MomentIO GameState)
-  , _scriptOnUnload :: GameState -> B.MomentIO GameState
-  , _scriptOnExit :: GameState -> B.MomentIO GameState
+  , _scriptOnInit :: GameState -> Game GameState
+  , _scriptOnLoad :: GameState -> Game GameState
+  , _scriptOnEvent :: Vector (EventName, EndoName, GameState -> Game GameState)
+  , _scriptOnUnload :: GameState -> Game GameState
+  , _scriptOnExit :: GameState -> Game GameState
   }
 
 instance Eq Script where
@@ -186,34 +162,29 @@ defaultScript = Script
   , _scriptOnExit = return
   }
 
-lookupEventByName :: EventName -> EventRegister -> Maybe (B.Event ())
+lookupEventByName :: EventName -> EventRegister -> Maybe ()
 lookupEventByName en (EventRegister er) = lookup en er
 
 -- You can't really deregister events...
 -- deregisterEventByName :: EventName -> EventRegister -> EventRegister
 -- deregisterEventByName en (EventRegister er) = EventRegister $ MS.delete en er
 
-registerEndoByName :: EventName -> EndoName -> (GameState -> B.MomentIO GameState) -> EventRegister -> EndoRegister -> EndoRegister
-registerEndoByName eventName endoName endo eventR endoR =
-  let me = lookupEventByName eventName eventR in
-  case me of
-    Nothing -> endoR
-    Just e -> do
-      let e' = const endo <$> e
-      registerEndo endoName e' endoR
+-- registerEndoByName :: EventName
+--                    -> EndoName
+--                    -> (GameState -> Game GameState)
+--                    -> EventRegister
+--                    -> EndoRegister
+--                    -> EndoRegister
+-- registerEndoByName eventName endoName endo eventR endoR =
+--   let me = lookupEventByName eventName eventR in
+--   case me of
+--     Nothing -> endoR
+--     Just e -> do
+--       let e' = const endo <$> e
+--       registerEndo endoName e' endoR
 
-registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
-registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
-
--- TODO: Deregistering Endos should work now.
-
-registerEvent :: NamedEventHandler () -> EventRegister -> B.MomentIO (EventRegister, NamedHandler ())
-registerEvent neh (EventRegister er) = do
-  let name = namedEventHandlerName neh
-  (addHandler, fireHandle) <- liftIO $ newNamedEventHandler name
-  e <- B.fromAddHandler addHandler
-  let er' = EventRegister $ MS.insert name e er
-  return (er', fireHandle)
+-- registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
+-- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
 data GraphicsContext = GraphicsContext
   { _graphicsContextClientAPI           :: G.ClientAPI
@@ -340,7 +311,6 @@ data MousePos = MousePos
 
 mconcat <$> mapM makeLenses
   [ ''Camera
-  , ''NamedHandler
   , ''GameState
   , ''ExpandObjVTN
   , ''Script
@@ -351,6 +321,8 @@ mconcat <$> mapM makeLenses
   , ''GraphicsContext
   , ''Player
   , ''PhysicsWorld
-  , ''VTNPoint, ''VTNIndex
+  , ''VTNPoint
+  , ''VTNIndex
   , ''MousePos
+  , ''Game
   ]
