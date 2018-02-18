@@ -1,14 +1,5 @@
-module Game.Graphics.OpenGL.Binding (module X) where
+module Game.Graphics.Binding (module X) where
 
-import Graphics.Rendering.OpenGL.GL as X
-  ( MappingFailure(..)
-  , VariableType(..)
-  , ($=)
-  , clear
-  , ClearBuffer(..)
-  , drawElements
-  , PrimitiveMode(..)
-  )
 import Graphics.GL.Types as X
   ( GLfloat
   , GLint
@@ -16,7 +7,8 @@ import Graphics.GL.Types as X
   , GLboolean
   , GLdouble
   )
-import Game.Graphics.OpenGL.BufferObject as X
+
+import Game.Graphics.Binding.OpenGL.BufferObject as X
   ( BufferObjectMapType(..)
   , BufferObjectSize(..)
   , BufferObjectOffset(..)
@@ -44,8 +36,8 @@ import Game.Graphics.OpenGL.BufferObject as X
   , copyBufferSubData
   , mapBufferRange
   )
-import Game.Graphics.OpenGL.ObjectName as X
-import Game.Graphics.OpenGL.Shader as X
+import Game.Graphics.Binding.OpenGL.ObjectName as X
+import Game.Graphics.Binding.OpenGL.Shader as X
   ( VertexShader
   , TessEvalShader
   , TessControlShader
@@ -62,7 +54,7 @@ import Game.Graphics.OpenGL.Shader as X
   , validateProgram
   , currentProgram
   )
-import Game.Graphics.OpenGL.Texture as X
+import Game.Graphics.Binding.OpenGL.Texture as X
   ( TextureTarget(..)
   , createTexture
   , TextureTarget1D(..)
@@ -90,7 +82,7 @@ import Game.Graphics.OpenGL.Texture as X
   , textureParameterf
   , textureParameteri
   )
-import Game.Graphics.OpenGL.VertexArray as X
+import Game.Graphics.Binding.OpenGL.VertexArray as X
   ( VertexArrayObject
   , AttribLocation(..)
   , currentVertexArrayObject
@@ -101,25 +93,25 @@ import Game.Graphics.OpenGL.VertexArray as X
   , bindElementBuffer
   )
 
-import Game.Graphics.OpenGL.DataType as X
+import Game.Graphics.Binding.OpenGL.DataType as X
   ( SizedFormat(..)
   , GLDataType(..)
   , Capability(..)
   )
 
-import Game.Graphics.OpenGL.PrimUniform as X
+import Game.Graphics.Binding.OpenGL.PrimUniform as X
   ( UniformLocation(..)
   , PrimUniform(..)
   )
 
-import Game.Graphics.OpenGL.Uniform as X
+import Game.Graphics.Binding.OpenGL.Uniform as X
   ( Uniform(..)
   , HasUniformComponent(..)
   , UniformBlock(..)
   , DefaultBlock
   )
 
-import Game.Graphics.OpenGL.Window as X
+import Game.Graphics.Binding.OpenGL.Window as X
   ( DepthFunc(..)
   , depthFunc
   , Color4(..)
@@ -134,6 +126,19 @@ import Game.Graphics.OpenGL.Window as X
   , Face(..)
   , cullFace
   )
+
+import Game.Graphics.Binding.OpenGL.Rendering as X
+  ( IndexType(..)
+  , drawElements
+  , PrimitiveMode(..)
+  , clear
+  , ClearBuffer()
+  , clearBufferColor
+  , clearBufferStencil
+  , clearBufferDepth
+  , defaultClearBuffer
+  )
+import Game.Graphics.Binding.GLFW.Window as X
 
 import Data.StateVar as X
 

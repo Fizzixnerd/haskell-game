@@ -1,16 +1,16 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Game.Graphics.OpenGL.VertexArray where
+module Game.Graphics.Binding.OpenGL.VertexArray where
 
-import Game.Graphics.OpenGL.ObjectName
-import Game.Graphics.OpenGL.Utils
-import Game.Graphics.OpenGL.DataType
+import Game.Graphics.Binding.OpenGL.ObjectName
+import Game.Graphics.Binding.OpenGL.Utils
+import Game.Graphics.Binding.OpenGL.DataType
 import Graphics.GL.Types
 import Graphics.GL.Core45
 import Data.Vector.Storable as VS
-import Game.Graphics.OpenGL.Boolean
-import Game.Graphics.OpenGL.BufferObject
+import Game.Graphics.Binding.OpenGL.Boolean
+import Game.Graphics.Binding.OpenGL.BufferObject
 import Data.StateVar
 
 newtype VertexArrayObject = VertexArrayObject

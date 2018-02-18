@@ -5,12 +5,12 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Game.Graphics.OpenGL.Uniform where
+module Game.Graphics.Binding.OpenGL.Uniform where
 
 import Graphics.GL.Types
-import Game.Graphics.OpenGL.Utils
-import Game.Graphics.OpenGL.Shader
-import Game.Graphics.OpenGL.PrimUniform
+import Game.Graphics.Binding.OpenGL.Utils
+import Game.Graphics.Binding.OpenGL.Shader
+import Game.Graphics.Binding.OpenGL.PrimUniform
 import Data.StateVar
 
 newtype UniformBlock = UniformBlock

@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Game.Graphics.OpenGL.Window where
+module Game.Graphics.Binding.OpenGL.Window where
 
 import Graphics.GL.Types
 import Graphics.GL.Core45

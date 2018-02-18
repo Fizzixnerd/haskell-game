@@ -1,11 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Game.Graphics.OpenGL.Shader where
+module Game.Graphics.Binding.OpenGL.Shader where
 
-import Game.Graphics.OpenGL.ObjectName
-import Game.Graphics.OpenGL.Utils
-import Game.Graphics.OpenGL.Boolean
+import Game.Graphics.Binding.OpenGL.ObjectName
+import Game.Graphics.Binding.OpenGL.Utils
+import Game.Graphics.Binding.OpenGL.Boolean
 import Graphics.GL.Types
 import Graphics.GL.Core45
 import Data.ByteString

@@ -6,16 +6,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
-module Game.Graphics.OpenGL.Texture where
+module Game.Graphics.Binding.OpenGL.Texture where
 
-import Game.Graphics.OpenGL.Utils
-import Game.Graphics.OpenGL.ObjectName
-import Game.Graphics.OpenGL.Boolean
+import Game.Graphics.Binding.OpenGL.Utils
+import Game.Graphics.Binding.OpenGL.ObjectName
+import Game.Graphics.Binding.OpenGL.Boolean
 import Data.Vector.Storable as VS
 import Graphics.GL.Core45
 import Graphics.GL.Types
 import Control.Lens
-import Game.Graphics.OpenGL.DataType
+import Game.Graphics.Binding.OpenGL.DataType
 
 newtype TextureUnit = TextureUnit
   { getTextureUnitGLuint :: GLuint

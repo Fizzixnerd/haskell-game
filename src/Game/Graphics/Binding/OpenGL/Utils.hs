@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Game.Graphics.OpenGL.Utils
+module Game.Graphics.Binding.OpenGL.Utils
   ( module X
   , withForeignBufferVec
   , withForeignBufferBS

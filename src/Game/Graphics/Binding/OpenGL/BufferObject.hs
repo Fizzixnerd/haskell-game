@@ -4,16 +4,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Game.Graphics.OpenGL.BufferObject where
+module Game.Graphics.Binding.OpenGL.BufferObject where
 
 import Graphics.GL.Core45
 import Graphics.GL.Types
 import Control.Lens
-import Game.Graphics.OpenGL.ObjectName
-import Game.Graphics.OpenGL.Boolean
-import Game.Graphics.OpenGL.Utils
+import Game.Graphics.Binding.OpenGL.ObjectName
+import Game.Graphics.Binding.OpenGL.Boolean
+import Game.Graphics.Binding.OpenGL.Utils
 import qualified Data.Vector.Storable as VS
-import Game.Graphics.OpenGL.DataType
+import Game.Graphics.Binding.OpenGL.DataType
 import Data.Bits ((.|.))
 
 newtype BufferObject = BufferObject
@@ -136,7 +136,6 @@ marshallBufferObjectMapFlags BufferObjectMapFlags {..}
     bfle  = if _bufferObjectMapFlagsMapFlushExplicit then GL_MAP_FLUSH_EXPLICIT_BIT else 0
     bmun  = if _bufferObjectMapFlagsMapUnsynchronized then GL_MAP_UNSYNCHRONIZED_BIT else 0
 
-
 genBufferObject :: MonadIO m => BufferObjectSize -> BufferObjectAttribFlags -> m BufferObject
 genBufferObject size attrib@BufferObjectAttribFlags {..} = do
   bufo@(BufferObject n) <- genObjectName
@@ -180,4 +179,3 @@ clearBufferSubData (BufferObject obj) internalForm offset size form typ
 copyBufferSubData :: MonadIO m => BufferObject -> BufferObject -> BufferObjectOffset -> BufferObjectOffset -> BufferObjectSize -> m ()
 copyBufferSubData (BufferObject readB) (BufferObject writeB) readOff writeOff size
   = glCopyNamedBufferSubData readB writeB (fromIntegral readOff) (fromIntegral writeOff) (fromIntegral size)
-

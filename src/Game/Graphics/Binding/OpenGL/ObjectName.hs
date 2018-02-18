@@ -1,4 +1,4 @@
-module Game.Graphics.OpenGL.ObjectName where
+module Game.Graphics.Binding.OpenGL.ObjectName where
 
 import Foreign.Storable
 import Control.Monad.IO.Class

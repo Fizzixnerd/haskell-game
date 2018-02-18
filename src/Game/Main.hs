@@ -13,20 +13,9 @@ import           Game.Graphics.Init
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import qualified Graphics.UI.GLFW             as G
 import qualified Linear                       as L
 import           Text.Printf
-import           Game.Graphics.OpenGL.Binding
-
-withWindow :: MonadIO m => (G.Window -> m a) -> m a
-withWindow f = do
-  mwin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
-  case mwin of
-    Nothing -> error "Could not create window."
-    Just win -> do
-      x <- f win
-      liftIO $ G.destroyWindow win
-      return x
+import           Game.Graphics.Binding
 
 printContextVersion :: MonadIO m => G.Window -> m ()
 printContextVersion win = liftIO $ do
@@ -39,10 +28,10 @@ doItAndGimmeFireThing :: Game ( NamedHandler a
                               , NamedHandler G.Window
                               , G.Window
                               , IO () )
-doItAndGimmeFireThing = do
-  createGraphicsContext defaultGraphicsContext
-  win <- createWindow defaultWindowConfig
-  liftIO $ G.makeContextCurrent $ Just win
+doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
+                        . withWindow defaultWindowConfig
+                        $ \win -> do
+  contextCurrent $= Just win
 
   cullFace $= Just Back
   depthFunc $= Just DepthLess

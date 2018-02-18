@@ -9,7 +9,7 @@ import qualified Data.Vector.Storable         as VS
 import           Foreign
 import           Foreign.C.Types
 import           Game.Types
-import           Game.Graphics.OpenGL.Binding
+import           Game.Graphics.Binding
 import           Game.Entity.Player
 import           Linear
 import qualified Graphics.Rendering.OpenGL.GL as GL (DataType(..))
