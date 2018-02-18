@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
-module Game.Graphics.OpenGL.Utils
+module Game.Graphics.Binding.OpenGL.Utils
   ( module X
   , withForeignBufferVec
   , withForeignBufferBS
@@ -24,19 +23,18 @@ import Foreign as X
   , nullPtr
   , with
   )
-import qualified Data.Vector.Storable as VS
+import           Control.Monad                      (void)
+import           Control.Monad.IO.Class       as X
+import           Data.Bits
+import           Data.ByteString
+import qualified Data.ByteString.Internal     as BI (create)
+import qualified Data.ByteString.Unsafe       as BU (unsafeUseAsCStringLen)
+import qualified Data.Vector.Storable         as VS
 import qualified Data.Vector.Storable.Mutable as MS
-import Graphics.GL.Types
-import qualified Data.ByteString.Internal as BI (create)
-import qualified Data.ByteString.Unsafe as BU (unsafeUseAsCStringLen)
-import Data.ByteString
-import Control.Monad.IO.Class as X
-import Data.Bits
-import Control.Monad (void)
-import Foreign hiding (void)
-import Foreign.C.Types
-import Linear (M44)
-import Prelude
+import           Foreign                      hiding (void)
+import           Foreign.C.Types
+import           Graphics.GL.Types
+import           Linear                              (M44)
 
 withForeignBufferVec :: (Storable a, MonadIO m) => Int -> (Ptr a -> IO ()) -> m (VS.Vector a)
 withForeignBufferVec n f = liftIO $ do

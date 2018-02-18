@@ -186,70 +186,6 @@ lookupEventByName en (EventRegister er) = lookup en er
 -- registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
-data GraphicsContext = GraphicsContext
-  { _graphicsContextClientAPI           :: G.ClientAPI
-  , _graphicsContextContextVersionMajor :: Int
-  , _graphicsContextContextVersionMinor :: Int
-  , _graphicsContextContextRobustness   :: G.ContextRobustness
-  , _graphicsContextOpenGLForwardCompat :: Bool
-  , _graphicsContextOpenGLDebugContext  :: Bool
-  , _graphicsContextOpenGLProfile       :: G.OpenGLProfile
-  , _graphicsContextRefreshRate         :: Maybe Int
-  , _graphicsContextRedBits             :: Int
-  , _graphicsContextGreenBits           :: Int
-  , _graphicsContextBlueBits            :: Int
-  , _graphicsContextAlphaBits           :: Int
-  , _graphicsContextDepthBits           :: Int
-  , _graphicsContextStencilBits         :: Int
-  , _graphicsContextSamples             :: Int
-  , _graphicsContextStereo              :: Bool
-  , _graphicsContextSRGBCapable         :: Bool
-  } deriving (Eq, Ord, Show)
-
-defaultGraphicsContext :: GraphicsContext
-defaultGraphicsContext = GraphicsContext
-  { _graphicsContextClientAPI           = G.ClientAPI'OpenGL
-  , _graphicsContextContextVersionMajor = 4
-  , _graphicsContextContextVersionMinor = 5
-  , _graphicsContextContextRobustness   = G.ContextRobustness'NoRobustness
-  , _graphicsContextOpenGLForwardCompat = True
-  , _graphicsContextOpenGLDebugContext  = True
-  , _graphicsContextOpenGLProfile       = G.OpenGLProfile'Core
-  , _graphicsContextRefreshRate         = Nothing
-  , _graphicsContextRedBits             = 8
-  , _graphicsContextGreenBits           = 8
-  , _graphicsContextBlueBits            = 8
-  , _graphicsContextAlphaBits           = 8
-  , _graphicsContextDepthBits           = 24
-  , _graphicsContextStencilBits         = 8
-  , _graphicsContextSamples             = 4
-  , _graphicsContextStereo              = False
-  , _graphicsContextSRGBCapable         = False
-  }
-
-data WindowConfig = WindowConfig
-  { _windowConfigResizable          :: Bool
-  , _windowConfigVisible            :: Bool
-  , _windowConfigDecorated          :: Bool
-  , _windowConfigWidth              :: Int
-  , _windowConfigHeight             :: Int
-  , _windowConfigTitle              :: String
-  , _windowConfigMonitorFullscreen  :: Maybe G.Monitor
-  , _windowConfigWindowContextShare :: Maybe G.Window
-  } deriving (Eq, Ord, Show)
-
-defaultWindowConfig :: WindowConfig
-defaultWindowConfig = WindowConfig
-  { _windowConfigResizable          = True
-  , _windowConfigVisible            = True
-  , _windowConfigDecorated          = True
-  , _windowConfigWidth              = 1920
-  , _windowConfigHeight             = 1080
-  , _windowConfigTitle              = ""
-  , _windowConfigMonitorFullscreen  = Nothing
-  , _windowConfigWindowContextShare = Nothing
-  }
-
 data Player = Player
   { _playerPhysicsController :: P.KinematicCharacterController
   }
@@ -317,8 +253,6 @@ mconcat <$> mapM makeLenses
   , ''ScriptName
   , ''EventRegister
   , ''EndoRegister
-  , ''WindowConfig
-  , ''GraphicsContext
   , ''Player
   , ''PhysicsWorld
   , ''VTNPoint

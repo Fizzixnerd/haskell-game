@@ -1,4 +1,4 @@
-module Game.Graphics.OpenGL.Boolean where
+module Game.Graphics.Binding.OpenGL.Boolean where
 
 import Graphics.GL.Types
 import Graphics.GL.Core45

@@ -1,21 +1,22 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
-module Game.Graphics.OpenGL.Texture where
 
-import Game.Graphics.OpenGL.Utils
-import Game.Graphics.OpenGL.ObjectName
-import Game.Graphics.OpenGL.Boolean
+module Game.Graphics.Binding.OpenGL.Texture where
+
+import Control.Lens
 import Data.Vector.Storable as VS
+import Game.Graphics.Binding.OpenGL.Boolean
+import Game.Graphics.Binding.OpenGL.DataType
+import Game.Graphics.Binding.OpenGL.ObjectName
+import Game.Graphics.Binding.OpenGL.Utils
 import Graphics.GL.Core45
 import Graphics.GL.Types
-import Control.Lens
-import Game.Graphics.OpenGL.DataType
 
 newtype TextureUnit = TextureUnit
   { getTextureUnitGLuint :: GLuint

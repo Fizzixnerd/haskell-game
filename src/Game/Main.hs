@@ -9,24 +9,12 @@ import           Control.Concurrent
 import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
-import           Game.Graphics.Init
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import qualified Graphics.UI.GLFW             as G
 import qualified Linear                       as L
 import           Text.Printf
-import           Game.Graphics.OpenGL.Binding
-
-withWindow :: MonadIO m => (G.Window -> m a) -> m a
-withWindow f = do
-  mwin <- liftIO $ G.createWindow 1920 1080 "Haskell Game Hello World" Nothing Nothing
-  case mwin of
-    Nothing -> error "Could not create window."
-    Just win -> do
-      x <- f win
-      liftIO $ G.destroyWindow win
-      return x
+import           Game.Graphics.Binding
 
 printContextVersion :: MonadIO m => G.Window -> m ()
 printContextVersion win = liftIO $ do
@@ -39,17 +27,15 @@ doItAndGimmeFireThing :: Game ( NamedHandler a
                               , NamedHandler G.Window
                               , G.Window
                               , IO () )
-doItAndGimmeFireThing = do
-  createGraphicsContext defaultGraphicsContext
-  win <- createWindow defaultWindowConfig
-  liftIO $ G.makeContextCurrent $ Just win
+doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
+                        . withWindow defaultWindowConfig
+                        $ \win -> do
+  contextCurrent $= Just win
 
   cullFace $= Just Back
   depthFunc $= Just DepthLess
-  let debugFunc src typ ident sever msg = printf "!!! OpenGL Error. Severity %s; ID: %s; Source: %s; Type: %s; Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)
-  -- Remember: we will eventually have to free the function pointer
-  -- that mkGLDEBUGPROC gives us!!!
-  debugMessageCallback $= Just debugFunc
+--- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
+  debugMessageCallback $= Just simpleDebugFunc
   printContextVersion win
 
   prog <- compileShaders
