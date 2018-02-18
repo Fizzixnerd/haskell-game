@@ -30,14 +30,6 @@ setCameraLinearVelocity :: MonadIO m => L.V3 CFloat ->  Camera -> m ()
 setCameraLinearVelocity (L.V3 x y z) Camera {..} =
   liftIO $ P.setInterpolationLinearVelocity _cameraController x y z
 
--- updateCameraLinearVelocity :: (L.V3 CFloat -> IO (L.V3 CFloat)) -> Camera -> IO ()
--- updateCameraLinearVelocity f cam = do
---   v <- liftIO $ getCameraLinearVelocity cam
---   v' <- f v
---   liftIO $ setCameraLinearVelocity v' cam 
-
--- cameraLinearVelocity = reference getCameraLinearVelocity setCameraLinearVelocity updateCameraLinearVelocity
-
 getCameraPosition :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraPosition Camera {..} = liftIO $ do
   t <- P.coAllocateWorldTransform _cameraController
@@ -56,6 +48,7 @@ getCameraOrientation :: MonadIO m => Camera -> m (L.Quaternion CFloat)
 getCameraOrientation Camera {..} = liftIO $ do
   t <- P.coAllocateWorldTransform _cameraController
   (i, j, k, r) <- P.getRotation t
+  P.del t
   return $ L.Quaternion r (L.V3 i j k)
 
 getCameraDisplacementFromTarget :: MonadIO m => Camera -> m (L.V3 CFloat)
