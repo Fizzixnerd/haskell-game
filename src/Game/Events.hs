@@ -6,6 +6,7 @@
 
 module Game.Events where
 
+import           Control.Arrow
 import qualified Control.Wire as N
 import qualified FRP.Netwire as N
 import qualified FRP.Netwire.Input as N
@@ -67,7 +68,7 @@ printShit = N.mkGen_ printIt
     printIt _ = Right <$> liftIO (print ("fuck" :: String))
 
 printOut :: GameWire s a ()
-printOut = printShit . mouse'L
+printOut = printShit <<< key'w
 
 -- compileGameNetwork ::
 --   MonadIO m =>

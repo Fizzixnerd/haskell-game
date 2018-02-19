@@ -20,14 +20,12 @@ import qualified Control.Monad.Catch         as MC
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Foreign.Storable
+import qualified FRP.Netwire                 as N
+import qualified FRP.Netwire.Input           as N
+import qualified FRP.Netwire.Input.GLFW      as N
 import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
-import qualified FRP.Netwire as N
-import qualified FRP.Netwire.Input as N
-import qualified FRP.Netwire.Input.GLFW as N
---import qualified Reactive.Banana.Combinators as B
---import qualified Reactive.Banana.Frameworks  as B
 import           Text.Printf
 
 type GameWire s a b = N.Wire s () Game a b
@@ -39,18 +37,17 @@ newtype Game a = Game
              , Monad
              , MonadIO
              , MSS.MonadState GameState
-             , N.MonadMouse G.MouseButton
-             , N.MonadKeyboard G.Key
              , MC.MonadThrow
              , MC.MonadCatch
-             , MC.MonadMask )
+             , MC.MonadMask
+             , N.MonadGLFWInput )
 
 instance ML.MonadLogger Game where
   monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
 
-runGame :: G.Window -> GameState -> Game a -> IO ((a, N.GLFWInputState), GameState)
-runGame w s g = do
-  input <- N.getInput =<< N.mkInputControl w
+runGame :: GameState -> N.GLFWInputControl -> Game a -> IO ((a, N.GLFWInputState), GameState)
+runGame s ic g = do
+  input <- N.getInput ic
   ML.runStderrLoggingT $
     MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
 

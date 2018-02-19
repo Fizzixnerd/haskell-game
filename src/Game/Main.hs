@@ -6,6 +6,10 @@ module Game.Main where
 
 import           ClassyPrelude
 import           Control.Concurrent
+import qualified Control.Wire.Core           as N
+import qualified FRP.Netwire                 as N
+import qualified FRP.Netwire.Input           as N
+import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
@@ -24,10 +28,10 @@ printContextVersion win = liftIO $ do
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min_ rev
 
-doItAndGimmeFireThing :: Game ()
-doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
-                        . withWindow defaultWindowConfig
-                        $ \win -> do
+gameMain :: IO (((), N.GLFWInputState), GameState)
+gameMain = withGraphicsContext defaultGraphicsContext
+           . withWindow defaultWindowConfig
+           $ \win -> do
   contextCurrent $= Just win
 
   cullFace $= Just Back
@@ -52,23 +56,30 @@ doItAndGimmeFireThing = withGraphicsContext defaultGraphicsContext
 
   let texSampleLoc = TextureUnit 0
   --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
+  let mainWire = printOut
 
-  let someFunc' :: IO ()
+  let someFunc' :: Game ()
       someFunc' = do
-        loop win
-        deleteObjectName vao
-        deleteObjectName prog
-        G.terminate
+        let sess = N.countSession_ 1
+        loop win sess mainWire
+        liftIO $ deleteObjectName vao
+        liftIO $ deleteObjectName prog
+        liftIO $ G.terminate
           where
-            loop w = do
-              sc <- G.windowShouldClose w
-              unless sc $ loop w
+            loop :: G.Window
+                 -> (N.Session Game (N.Timed Integer ()))
+                 -> GameWire (N.Timed Integer ()) () b
+                 -> Game ()
+            loop w sess_ wire = do
+              sc <- liftIO $ G.windowShouldClose w
+              (s, sess_') <- N.stepSession sess_
+              (_, newWire) <- N.stepWire wire s (Right ())
+              unless sc $ loop w sess_' newWire
 
-  return ()
+  ic <- N.mkInputControl win
+  runGame initGameState ic someFunc'
 {-
 game :: Game ( NamedHandler ()
              , IO ()
              , ThreadId )
 -}
-someFunc :: IO ()
-someFunc = join (runGame game)
