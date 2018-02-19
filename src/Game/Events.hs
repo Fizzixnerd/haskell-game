@@ -7,8 +7,8 @@
 module Game.Events where
 
 import           Control.Arrow
-import qualified Control.Wire as N
-import qualified FRP.Netwire as N
+import           Control.Wire
+import           FRP.Netwire
 import qualified FRP.Netwire.Input as N
 import qualified FRP.Netwire.Input.GLFW as N
 import qualified Graphics.UI.GLFW as G
@@ -40,9 +40,9 @@ rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
 camera :: GameWire s a Camera
-camera = rotCam <<< N.mouseMickies
+camera = N.cursorMode N.CursorMode'Disabled <<< rotCam <<< N.mouseDelta
   where
-    rotCam = N.mkGen_ (\micky -> Right <$> (gameStateCamera <%= rotateCamera micky))
+    rotCam = mkGen_ (\(x, y) -> Right <$> (gameStateCamera <%= rotateCamera (-x, -y)))
 
 mouse'L :: GameWire s a a
 mouse'L = N.mousePressed G.MouseButton'1
@@ -63,7 +63,7 @@ key'd :: GameWire s a a
 key'd = N.keyPressed G.Key'D
 
 printShit :: GameWire s a ()
-printShit = N.mkGen_ printIt
+printShit = mkGen_ printIt
   where
     printIt _ = Right <$> liftIO (print ("fuck" :: String))
 

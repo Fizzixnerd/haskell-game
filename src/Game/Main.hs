@@ -5,21 +5,19 @@
 module Game.Main where
 
 import           ClassyPrelude
-import           Control.Concurrent
-import qualified Control.Wire.Core           as N
-import qualified FRP.Netwire                 as N
-import qualified FRP.Netwire.Input           as N
+import           Control.Wire.Core
+import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
+import           Game.Events
 import qualified Graphics.UI.GLFW            as G
-import qualified Linear                      as L
 import           Text.Printf
 import           Game.Graphics.Binding
+import           Control.Lens
 
 printContextVersion :: MonadIO m => G.Window -> m ()
 printContextVersion win = liftIO $ do
@@ -56,20 +54,26 @@ gameMain = withGraphicsContext defaultGraphicsContext
 
   let texSampleLoc = TextureUnit 0
   --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
-  let mainWire = printOut
+  
+  let renderWire :: TextureTarget t => GameWire s (Program, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
+      renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> do
+                              gs <- use simple
+                              Right <$> (render gs p tu vao_ n tex_))
+  let mainWire = renderWire >>> camera
 
   ic <- N.mkInputControl win
-  let sess = N.countSession_ 1
+  let sess = countSession_ 1
   input <- liftIO $ N.getInput ic
   let doGame :: N.GLFWInputState
-             -> N.Session IO (N.Timed Integer ())
-             -> GameWire (N.Timed Integer ()) () b
-             -> GameState
-             -> IO ((b, N.GLFWInputState), GameState)
+             -> Session IO (Timed Integer ())
+             -> GameWire (Timed Integer ()) (Program, TextureUnit, VertexArrayObject, Int, TextureObject TextureTarget2D) b
+             -> GameState (Timed Integer ())
+             -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
       doGame input_ sess_ wire gs = do
-        input' <- N.pollGLFW input_ ic
-        (timeState, sess') <- N.stepSession sess
-        let game = N.stepWire wire timeState (Right ())
-        (((result, wire), input''), gs') <- runGame gs ic game
-        doGame input'' sess' wire gs'
+        _ <- N.pollGLFW input_ ic
+        (timeState, sess') <- stepSession sess_
+        let game = stepWire wire timeState (Right (prog, texSampleLoc, vao, snd ebuf, tex))
+        (((_, wire_), input''), gs') <- runGame gs ic game
+        liftIO $ G.swapBuffers win
+        doGame input'' sess' wire_ gs'
   void $ doGame input sess mainWire initGameState

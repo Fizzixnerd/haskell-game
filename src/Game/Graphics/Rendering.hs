@@ -23,7 +23,7 @@ instance Uniform UniformMVP where
     \mat -> primMarshall prg (UniformLocation 0) mat
 
 render :: (TextureTarget t, MonadIO m)
-       => GameState
+       => GameState s
        -> Program
        -> TextureUnit
        -> VertexArrayObject
