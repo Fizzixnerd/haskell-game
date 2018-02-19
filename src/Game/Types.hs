@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Game.Types where
 
@@ -16,7 +17,6 @@ import           Control.Lens
 import qualified Control.Monad.Logger        as ML
 import qualified Control.Monad.State.Strict  as MSS
 import qualified Control.Monad.Catch         as MC
-import qualified Control.Exception.Safe      as SE
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Foreign.Storable
@@ -40,24 +40,13 @@ newtype Game a = Game
              , MonadIO
              , MSS.MonadState GameState
              , N.MonadMouse G.MouseButton
-             , N.MonadKeyboard G.Key )
-
-instance MonadThrow m => SE.MonadThrow (N.GLFWInputT m) where
-  throwM = lift . MC.throwM
-
-instance MonadCatch m => SE.MonadCatch (N.GLFWInputT m) where
-  catch x f = lift $ MC.catch x f
+             , N.MonadKeyboard G.Key
+             , MC.MonadThrow
+             , MC.MonadCatch
+             , MC.MonadMask )
 
 instance ML.MonadLogger Game where
   monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
-
-instance SE.MonadThrow Game where
-  throwM = Game . lift . MC.throwM
-
-instance SE.MonadCatch Game where
-  catch x f = lift $ MC.catch (_unGame x) (_unGame . f)
-
-instance SE.MonadMask Game
 
 runGame :: G.Window -> GameState -> Game a -> IO ((a, N.GLFWInputState), GameState)
 runGame w s g = do
