@@ -40,7 +40,7 @@ rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
 camera :: GameWire s a Camera
-camera = rotCam . N.mouseMickies
+camera = rotCam <<< N.mouseMickies
   where
     rotCam = N.mkGen_ (\micky -> Right <$> (gameStateCamera <%= rotateCamera micky))
 

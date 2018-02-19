@@ -54,6 +54,7 @@ runGame s ic g = do
 newtype EventRegister = EventRegister
   { _unEventRegister :: MS.Map EventName ()
   }
+
 newtype EndoRegister  = EndoRegister
   { _unEndoRegister :: MS.Map EndoName ()
   }

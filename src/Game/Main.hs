@@ -16,8 +16,8 @@ import           Game.Graphics.Model.Loader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import qualified Graphics.UI.GLFW as G
-import qualified Linear                       as L
+import qualified Graphics.UI.GLFW            as G
+import qualified Linear                      as L
 import           Text.Printf
 import           Game.Graphics.Binding
 
@@ -28,7 +28,7 @@ printContextVersion win = liftIO $ do
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min_ rev
 
-gameMain :: IO (((), N.GLFWInputState), GameState)
+gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
            . withWindow defaultWindowConfig
            $ \win -> do
@@ -58,28 +58,18 @@ gameMain = withGraphicsContext defaultGraphicsContext
   --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
   let mainWire = printOut
 
-  let someFunc' :: Game ()
-      someFunc' = do
-        let sess = N.countSession_ 1
-        loop win sess mainWire
-        liftIO $ deleteObjectName vao
-        liftIO $ deleteObjectName prog
-        liftIO $ G.terminate
-          where
-            loop :: G.Window
-                 -> (N.Session Game (N.Timed Integer ()))
-                 -> GameWire (N.Timed Integer ()) () b
-                 -> Game ()
-            loop w sess_ wire = do
-              sc <- liftIO $ G.windowShouldClose w
-              (s, sess_') <- N.stepSession sess_
-              (_, newWire) <- N.stepWire wire s (Right ())
-              unless sc $ loop w sess_' newWire
-
   ic <- N.mkInputControl win
-  runGame initGameState ic someFunc'
-{-
-game :: Game ( NamedHandler ()
-             , IO ()
-             , ThreadId )
--}
+  let sess = N.countSession_ 1
+  input <- liftIO $ N.getInput ic
+  let doGame :: N.GLFWInputState
+             -> N.Session IO (N.Timed Integer ())
+             -> GameWire (N.Timed Integer ()) () b
+             -> GameState
+             -> IO ((b, N.GLFWInputState), GameState)
+      doGame input_ sess_ wire gs = do
+        input' <- N.pollGLFW input_ ic
+        (timeState, sess') <- N.stepSession sess
+        let game = N.stepWire wire timeState (Right ())
+        (((result, wire), input''), gs') <- runGame gs ic game
+        doGame input'' sess' wire gs'
+  void $ doGame input sess mainWire initGameState
