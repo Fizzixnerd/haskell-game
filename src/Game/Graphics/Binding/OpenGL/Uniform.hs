@@ -4,30 +4,22 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Game.Graphics.Binding.OpenGL.Uniform where
 
 import Data.StateVar
-import Game.Graphics.Binding.OpenGL.Utils
-import Game.Graphics.Binding.OpenGL.Shader
-import Game.Graphics.Binding.OpenGL.PrimUniform
-import Graphics.GL.Types
-
-newtype UniformBlock = UniformBlock
-  { uniformBlockInternal :: GLuint
-  } deriving (Eq, Ord, Show, Storable)
-
+import Game.Graphics.Binding.OpenGL.BufferObject
+import Game.Graphics.Binding.OpenGL.ObjectName
+import Foreign.Storable
 -- Row major!
 
-type DefaultBlock = Program
+newtype UniformBlock = UniformBlock
+  { getUniformBufferObject :: BufferObject
+  } deriving (Eq, Show, Ord, Storable, ObjectName, GeneratableObjectName)
 
-class Uniform a where
+class UniformBlockLike a where
+
+
+class HasUniformVariable a b where
   type (UniformContents a)
-  type (UniformLocationType a)
-  uniformLocation :: a -> GettableStateVar UniformLocation
-  uniform :: Storable (UniformContents a) => UniformLocationType a -> a -> SettableStateVar (UniformContents a)
---  uniformBlock :: Storable (UniformContents a) => UniformBlock -> a -> GettableStateVar (UniformContents a)
-
-class (Uniform a, Storable b) => HasUniformComponent a b where
-  uniformComponentDefault :: Program -> a -> SettableStateVar b
---  uniformComponentBlock :: UniformBlock -> a -> SettableStateVar b
+  uniform :: a -> b -> SettableStateVar (UniformContents a)

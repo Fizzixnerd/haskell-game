@@ -100,7 +100,7 @@ instance ObjectName BufferObject where
       len = fromIntegral $ VS.length ns
 
 instance GeneratableObjectName BufferObject where
-  genObjectNames n = VS.map BufferObject <$> withForeignBufferVec n (glCreateBuffers (fromIntegral n))
+  genObjectNames_ n = VS.map BufferObject <$> withForeignBufferVec n (glCreateBuffers (fromIntegral n))
 
 -----------------------------
 
@@ -179,3 +179,4 @@ clearBufferSubData (BufferObject obj) internalForm offset size form typ
 copyBufferSubData :: MonadIO m => BufferObject -> BufferObject -> BufferObjectOffset -> BufferObjectOffset -> BufferObjectSize -> m ()
 copyBufferSubData (BufferObject readB) (BufferObject writeB) readOff writeOff size
   = glCopyNamedBufferSubData readB writeB (fromIntegral readOff) (fromIntegral writeOff) (fromIntegral size)
+

@@ -13,9 +13,14 @@ class Storable a => ObjectName a where
   deleteObjectNames = VS.mapM_ deleteObjectName
 
 class ObjectName a => GeneratableObjectName a where
-  genObjectName :: MonadIO m => m a
-  genObjectNames :: MonadIO m => Int -> m (Vector a)
+  genObjectName_ :: IO a
+  genObjectNames_ :: Int -> IO (Vector a)
 
-  genObjectName = VS.head <$> genObjectNames 1
-  genObjectNames n = replicateM n genObjectName
+  genObjectName_ = VS.head <$> genObjectNames_ 1
+  genObjectNames_ n = replicateM n genObjectName_
+
+genObjectName :: (GeneratableObjectName a, MonadIO m) => m a
+genObjectName = liftIO genObjectName_
+genObjectNames :: (GeneratableObjectName a, MonadIO m) => Int -> m (Vector a)
+genObjectNames n = liftIO (genObjectNames_ n)
 

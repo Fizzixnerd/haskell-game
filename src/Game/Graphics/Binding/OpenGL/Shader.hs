@@ -16,35 +16,35 @@ instance ObjectName VertexShader where
   isObjectName (VertexShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (VertexShader n) = glDeleteShader n
 instance GeneratableObjectName VertexShader where
-  genObjectName = VertexShader <$> glCreateShader GL_VERTEX_SHADER
+  genObjectName_ = VertexShader <$> glCreateShader GL_VERTEX_SHADER
 
 newtype FragmentShader = FragmentShader { _fragmentShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName FragmentShader where
   isObjectName (FragmentShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (FragmentShader n) = glDeleteShader n
 instance GeneratableObjectName FragmentShader where
-  genObjectName = FragmentShader <$> glCreateShader GL_FRAGMENT_SHADER
+  genObjectName_ = FragmentShader <$> glCreateShader GL_FRAGMENT_SHADER
 
 newtype TessControlShader = TessControlShader { _tessControlShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName TessControlShader where
   isObjectName (TessControlShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (TessControlShader n) = glDeleteShader n
 instance GeneratableObjectName TessControlShader where
-  genObjectName = TessControlShader <$> glCreateShader GL_TESS_CONTROL_SHADER
+  genObjectName_ = TessControlShader <$> glCreateShader GL_TESS_CONTROL_SHADER
 
 newtype TessEvalShader = TessEvalShader { _tessEvalShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName TessEvalShader where
   isObjectName (TessEvalShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (TessEvalShader n) = glDeleteShader n
 instance GeneratableObjectName TessEvalShader where
-  genObjectName = TessEvalShader <$> glCreateShader GL_TESS_EVALUATION_SHADER
+  genObjectName_ = TessEvalShader <$> glCreateShader GL_TESS_EVALUATION_SHADER
 
 newtype ComputeShader = ComputeShader { _computeShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName ComputeShader where
   isObjectName (ComputeShader n) = unmarshallGLboolean <$> glIsShader n
   deleteObjectName (ComputeShader n) = glDeleteShader n
 instance GeneratableObjectName ComputeShader where
-  genObjectName = ComputeShader <$> glCreateShader GL_COMPUTE_SHADER
+  genObjectName_ = ComputeShader <$> glCreateShader GL_COMPUTE_SHADER
 
 class GeneratableObjectName t => Shader t where
   marshallShaderType :: t -> GLuint
@@ -94,45 +94,3 @@ shaderSource shader = makeStateVar getSource setSource
         with srcPtr $ \srcPtrBuf ->
                         with srcLength $ \srcLengthBuf ->
                                            glShaderSource n 1 srcPtrBuf srcLengthBuf
-
-newtype Program = Program { getProgramGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
-instance ObjectName Program where
-  isObjectName (Program n) = unmarshallGLboolean <$> glIsProgram n
-  deleteObjectName (Program n) = glDeleteProgram n
-
-instance GeneratableObjectName Program where
-  genObjectName = Program <$> glCreateProgram
-
-programDeleteStatus :: MonadIO m => Program -> m Bool
-programDeleteStatus (Program n) = unmarshallGLboolean <$> foreignPoke (glGetProgramiv n GL_DELETE_STATUS)
-
-attachShader :: (MonadIO m, Shader t) => Program -> t -> m ()
-attachShader (Program n) t = glAttachShader n (marshallShaderObject t)
-
-linkProgram :: MonadIO m => Program -> m (Maybe ByteString)
-linkProgram (Program n) = liftIO $ do
-  glLinkProgram n
-  status <- unmarshallGLboolean <$> foreignPoke (glGetProgramiv n GL_LINK_STATUS)
-  if status
-    then return Nothing
-    else Just <$> withForeignBufferBS (glGetProgramiv n GL_INFO_LOG_LENGTH) (glGetProgramInfoLog n)
-
-validateProgram :: MonadIO m => Program -> m (Maybe ByteString)
-validateProgram (Program n) = liftIO $ do
-  glValidateProgram n
-  status <- unmarshallGLboolean <$> foreignPoke (glGetProgramiv n GL_VALIDATE_STATUS)
-  if status
-    then return Nothing
-    else Just <$> withForeignBufferBS (glGetProgramiv n GL_INFO_LOG_LENGTH) (glGetProgramInfoLog n)
-
-currentProgram :: StateVar (Maybe Program)
-currentProgram = makeStateVar getP setP
-  where
-    getP = do
-      n <- foreignPoke (glGetInteger64v GL_CURRENT_PROGRAM)
-      if n == 0
-        then return Nothing
-        else return . Just . Program . fromIntegral $ n
-    setP = \case
-      Nothing -> return ()
-      Just (Program n) -> glUseProgram n

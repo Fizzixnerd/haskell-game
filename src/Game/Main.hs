@@ -16,17 +16,18 @@ import           Game.Graphics.Model.Loader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import           Text.Printf
 import           Game.Graphics.Binding
 
+{-
 printContextVersion :: MonadIO m => G.Window -> m ()
 printContextVersion win = liftIO $ do
   maj <- G.getWindowContextVersionMajor win
   min_ <- G.getWindowContextVersionMinor win
   rev <- G.getWindowContextVersionRevision win
   printf "%i.%i.%i\n" maj min_ rev
+-}
 
 gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
@@ -38,7 +39,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
   depthFunc $= Just DepthLess
 --- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just simpleDebugFunc
-  printContextVersion win
+--  printContextVersion win
 
   prog <- compileShaders
 

@@ -24,7 +24,7 @@ instance ObjectName VertexArrayObject where
       len = fromIntegral $ VS.length ns
 
 instance GeneratableObjectName VertexArrayObject where
-  genObjectNames n = VS.map VertexArrayObject <$> withForeignBufferVec n (glCreateVertexArrays(fromIntegral n))
+  genObjectNames_ n = VS.map VertexArrayObject <$> withForeignBufferVec n (glCreateVertexArrays(fromIntegral n))
 
 newtype AttribLocation = AttribLocation { getAttribLocationGLuint :: GLuint } deriving (Eq, Ord, Show)
 

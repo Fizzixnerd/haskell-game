@@ -27,7 +27,7 @@ import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
-
+import qualified Control.Monad.Fix           as Fix
 type GameWire s a b = N.Wire s () Game a b
 
 newtype Game a = Game
@@ -40,7 +40,12 @@ newtype Game a = Game
              , MC.MonadThrow
              , MC.MonadCatch
              , MC.MonadMask
-             , N.MonadGLFWInput )
+             , N.MonadGLFWInput
+             , Fix.MonadFix
+             )
+
+instance Fix.MonadFix m => Fix.MonadFix (ML.LoggingT m) where
+  mfix f = ML.LoggingT $ \r -> Fix.mfix $ \a -> ML.runLoggingT (f a) r
 
 instance ML.MonadLogger Game where
   monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
