@@ -54,8 +54,7 @@ instance Fix.MonadFix m => Fix.MonadFix (ML.LoggingT m) where
 runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputState), GameState s)
 runGame s ic g = do
   input <- N.getInput ic
-  ML.runStderrLoggingT $
-    MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
+  ML.runStderrLoggingT $ MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
 
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
@@ -104,7 +103,7 @@ cameraMVP = to go
         vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
         camModel = L.identity
         camView = L.lookAt vpos (vpos + vdir) vup
-      -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+        -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
         camPerspective = L.perspective cfov (16/9) 0.1 100
 
 data ExpandObjVTN = ExpandObjVTN

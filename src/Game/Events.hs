@@ -10,7 +10,6 @@ import           Control.Arrow
 import           Control.Wire
 import           FRP.Netwire
 import qualified FRP.Netwire.Input as N
-import qualified FRP.Netwire.Input.GLFW as N
 import qualified Graphics.UI.GLFW as G
 import           ClassyPrelude
 import           Control.Lens
@@ -25,12 +24,10 @@ import qualified Linear                       as L
 import           GHC.Float (double2Float)
 
 mousePosToRot :: Float -> MousePos -> MousePos -> Double -> (Float, Float)
-mousePosToRot mouseSpeed (MousePos (L.V2 newx newy)) (MousePos (L.V2 oldx oldy)) dt = if abs xrot > 0.1 || abs yrot > 0.1
-  then trace (show (xrot, yrot, dt) <> "\n") (xrot, yrot)
-  else (xrot,yrot)
+mousePosToRot mouseSpeed (MousePos (L.V2 newx newy)) (MousePos (L.V2 oldx oldy)) dt =
+  (xrot, yrot)
   where
     notTooSmall x = if abs x < 0.01 then 0 else x
-    clampy a b = max a . min b
     xrot = mouseSpeed * double2Float (dt * notTooSmall (oldx - newx))
     yrot = mouseSpeed * double2Float (dt * notTooSmall (oldy - newy))
 
@@ -39,10 +36,34 @@ rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
   where
     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
 
-camera :: GameWire s a Camera
+camera :: GameWire s a ()
 camera = N.cursorMode N.CursorMode'Disabled <<< rotCam <<< N.mouseDelta
   where
-    rotCam = mkGen_ (\(x, y) -> Right <$> (gameStateCamera <%= rotateCamera (-x, -y)))
+    rotCam = mkGen_ (\(x, y) -> Right <$> (gameStateCamera %= rotateCamera (-x, -y)))
+
+moveForward :: GameWire s a ()
+moveForward = mvFwd <<< key'w
+  where
+    mvFwd = mkGen_ $ const $ Right <$> 
+            (gameStateCamera . cameraPosition += L.V3 0 0 (-0.1))
+
+moveBackward :: GameWire s a ()
+moveBackward = mvBwd <<< key's
+  where
+    mvBwd = mkGen_ $ const $ Right <$> 
+            (gameStateCamera . cameraPosition += L.V3 0 0 0.1)
+
+moveLeft :: GameWire s a ()
+moveLeft = mvLft <<< key'a
+  where
+    mvLft = mkGen_ $ const $ Right <$> 
+            (gameStateCamera . cameraPosition += L.V3 (-0.1) 0 0)
+
+moveRight :: GameWire s a ()
+moveRight = mvRgt <<< key'd
+  where
+    mvRgt = mkGen_ $ const $ Right <$> 
+            (gameStateCamera . cameraPosition += L.V3 0.1 0 0)
 
 mouse'L :: GameWire s a a
 mouse'L = N.mousePressed G.MouseButton'1
@@ -61,14 +82,6 @@ key's = N.keyPressed G.Key'S
 
 key'd :: GameWire s a a
 key'd = N.keyPressed G.Key'D
-
-printShit :: GameWire s a ()
-printShit = mkGen_ printIt
-  where
-    printIt _ = Right <$> liftIO (print ("fuck" :: String))
-
-printOut :: GameWire s a ()
-printOut = printShit <<< key'w
 
 -- compileGameNetwork ::
 --   MonadIO m =>

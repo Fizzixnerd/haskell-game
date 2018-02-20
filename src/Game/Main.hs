@@ -34,7 +34,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
 
   cullFace $= Just Back
   depthFunc $= Just DepthLess
---- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
+  -- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just simpleDebugFunc
   printContextVersion win
 
@@ -50,16 +50,20 @@ gameMain = withGraphicsContext defaultGraphicsContext
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
   clearColor $= color4 0 0 0.4 0
---  GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
+  -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
   let texSampleLoc = TextureUnit 0
-  --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
   
   let renderWire :: TextureTarget t => GameWire s (Program, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
       renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> do
                               gs <- use simple
                               Right <$> (render gs p tu vao_ n tex_))
-  let mainWire = renderWire >>> camera
+  let mainWire = renderWire <+>
+                 moveForward <+>
+                 moveBackward <+>
+                 moveLeft <+>
+                 moveRight <+>
+                 camera
 
   ic <- N.mkInputControl win
   let sess = countSession_ 1
@@ -70,10 +74,10 @@ gameMain = withGraphicsContext defaultGraphicsContext
              -> GameState (Timed Integer ())
              -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
       doGame input_ sess_ wire gs = do
-        _ <- N.pollGLFW input_ ic
+        void $ N.pollGLFW input_ ic
         (timeState, sess') <- stepSession sess_
         let game = stepWire wire timeState (Right (prog, texSampleLoc, vao, snd ebuf, tex))
-        (((_, wire_), input''), gs') <- runGame gs ic game
-        liftIO $ G.swapBuffers win
-        doGame input'' sess' wire_ gs'
+        (((_, wire'), input'), gs') <- runGame gs ic game
+        G.swapBuffers win
+        doGame input' sess' wire' gs'
   void $ doGame input sess mainWire initGameState
