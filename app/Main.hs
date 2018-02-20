@@ -3,4 +3,4 @@ module Main where
 import Game.Main
 
 main :: IO ()
-main = someFunc
+main = gameMain

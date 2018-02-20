@@ -8,6 +8,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Game.Types where
 
@@ -20,106 +21,90 @@ import qualified Control.Monad.Catch         as MC
 import qualified Data.Map.Strict             as MS
 import           Foreign.C.Types
 import           Foreign.Storable
-import qualified FRP.Netwire                 as N
-import qualified FRP.Netwire.Input           as N
+import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import qualified Graphics.UI.GLFW            as G
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
-import qualified Control.Monad.Fix           as Fix
-type GameWire s a b = N.Wire s () Game a b
+import           Data.Dynamic
+import           Control.Monad.Fix           as Fix
 
-newtype Game a = Game
-  { _unGame :: N.GLFWInputT (MSS.StateT GameState (ML.LoggingT IO)) a
+type GameWire s a b = Wire s () (Game s) a b
+
+newtype Game s a = Game
+  { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT IO)) a
   } deriving ( Functor
              , Applicative
              , Monad
              , MonadIO
-             , MSS.MonadState GameState
+             , MSS.MonadState (GameState s)
              , MC.MonadThrow
              , MC.MonadCatch
              , MC.MonadMask
              , N.MonadGLFWInput
-             , Fix.MonadFix
-             )
+             , Fix.MonadFix )
+
+instance ML.MonadLogger (Game s) where
+  monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
 
 instance Fix.MonadFix m => Fix.MonadFix (ML.LoggingT m) where
   mfix f = ML.LoggingT $ \r -> Fix.mfix $ \a -> ML.runLoggingT (f a) r
 
-instance ML.MonadLogger Game where
-  monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
-
-runGame :: GameState -> N.GLFWInputControl -> Game a -> IO ((a, N.GLFWInputState), GameState)
+runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputState), GameState s)
 runGame s ic g = do
   input <- N.getInput ic
-  ML.runStderrLoggingT $
-    MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
+  ML.runStderrLoggingT $ MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
 
-newtype EventRegister = EventRegister
-  { _unEventRegister :: MS.Map EventName ()
-  }
-
-newtype EndoRegister  = EndoRegister
-  { _unEndoRegister :: MS.Map EndoName ()
+newtype EventRegister s = EventRegister
+  { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
   }
 
 type ScanCode = Int
 
-data GameState = GameState
+data GameState s = GameState
   { _gameStateCamera        :: Camera
-  , _gameStateActiveScripts :: Vector Script
-  , _gameStateEventRegister :: EventRegister
-  , _gameStateEndoRegister  :: EndoRegister
-  , _gameStateKeyEvent      :: ()
-  , _gameStateMousePosEvent :: ()
+  , _gameStateActiveScripts :: Vector (Script s)
+  , _gameStateEventRegister :: EventRegister s
+  , _gameStateKeyEvent      :: GameWire s () (Event G.Key)
+  , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
   , _gameStateMouseSpeed    :: Float
-  , _gameStateMousePos      :: MousePos
-  , _gameStateCurrentTime   :: Double
   }
 
-initGameState :: GameState
+initGameState :: GameState s
 initGameState = GameState
-  { _gameStateCamera = error "camera not set."
+  { _gameStateCamera = Camera (L.V3 0 0 3) (0, 0) (pi/2) undefined undefined undefined
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
-  , _gameStateEndoRegister  = EndoRegister mempty
   , _gameStateMousePosEvent = error "mousePosEvent not set."
   , _gameStateKeyEvent      = error "keyEvent not set."
   , _gameStatePhysicsWorld  = error "physicsWorld not set."
   , _gameStatePlayer        = error "player not set."
   , _gameStateMouseSpeed    = 0.01
-  , _gameStateMousePos      = MousePos (L.V2 0 0)
-  , _gameStateCurrentTime   = 0
   }
-
--- -- | Camera exists in physics world to deal with collisions.  It also
--- --   always looks at a target.
--- data Camera = Camera
---   { _cameraController     :: P.CollisionObject
---   , _cameraTarget         :: P.CollisionObject
---   , _cameraPreferredDistance :: CFloat
---   }
 
 data Camera = Camera
   { _cameraPosition :: L.V3 Float
   , _cameraOrientation :: (Float, Float)
   , _cameraFOV :: Float
-  } deriving (Eq, Show, Ord)
+  , _cameraController     :: P.CollisionObject
+  , _cameraTarget         :: P.CollisionObject
+  , _cameraPreferredDistance :: CFloat
+  }
 
--- cameraMVP :: Getter Camera (L.M44 Float)
--- cameraMVP = to go
---   where
---     go (Camera vpos (vangh, vangv) cfov) = camPerspective L.!*! camView L.!*! camModel
---       where
---         vup  = L.V3 0 1 0
---         vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
---         camModel = L.identity
---         camView = L.lookAt vpos (vpos + vdir) vup
---       -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
---         camPerspective = L.perspective cfov (16/9) 0.1 100
+cameraMVP :: Getter Camera (L.M44 Float)
+cameraMVP = to go
+  where
+    go (Camera vpos (vangh, vangv) cfov _ _ _) = camPerspective L.!*! camView L.!*! camModel
+      where
+        vup  = L.V3 0 1 0
+        vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
+        camModel = L.identity
+        camView = L.lookAt vpos (vpos + vdir) vup
+        -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+        camPerspective = L.perspective cfov (16/9) 0.1 100
 
 data ExpandObjVTN = ExpandObjVTN
   { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
@@ -140,38 +125,46 @@ data ScriptName = ScriptName
   , _scriptNameMainModule :: ModuleName
   } deriving (Eq, Ord, Show)
 
-data Script = Script
+data Script s = Script
   { _scriptSuperScripts :: Vector ScriptName
   , _scriptName :: ScriptName
-  , _scriptOnInit :: GameState -> Game GameState
-  , _scriptOnLoad :: GameState -> Game GameState
-  , _scriptOnEvent :: Vector (EventName, EndoName, GameState -> Game GameState)
-  , _scriptOnUnload :: GameState -> Game GameState
-  , _scriptOnExit :: GameState -> Game GameState
+  , _scriptOnInit :: Game s ()
+  , _scriptOnLoad :: Game s ()
+  , _scriptOnEvent :: Vector (EventName, Dynamic -> Game s ())
+  , _scriptOnUnload :: Game s ()
+  , _scriptOnExit :: Game s ()
   }
 
-instance Eq Script where
+instance Eq (Script s) where
   Script { _scriptName = sn1 } == Script { _scriptName = sn2 } = sn1 == sn2
 
-instance Ord Script where
+instance Ord (Script s) where
   compare Script { _scriptName = sn1 } Script { _scriptName = sn2 } = compare sn1 sn2
 
-instance Show Script where
+instance Show (Script s) where
   show Script {..} = printf "<<Script \"%s\">>" (show _scriptName)
 
-defaultScript :: Script
+defaultScript :: Script s
 defaultScript = Script
   { _scriptSuperScripts = empty
   , _scriptName = error "Don't change this."
-  , _scriptOnInit = return
-  , _scriptOnLoad = return
+  , _scriptOnInit = return ()
+  , _scriptOnLoad = return ()
   , _scriptOnEvent = empty
-  , _scriptOnUnload = return
-  , _scriptOnExit = return
+  , _scriptOnUnload = return ()
+  , _scriptOnExit = return ()
   }
 
-lookupEventByName :: EventName -> EventRegister -> Maybe ()
+lookupEventByName :: EventName
+                  -> EventRegister s
+                  -> Maybe (GameWire s () (Event Dynamic))
 lookupEventByName en (EventRegister er) = lookup en er
+
+registerEventByName :: EventName
+                    -> GameWire s () (Event Dynamic)
+                    -> EventRegister s
+                    -> Map EventName (GameWire s () (Event Dynamic))
+registerEventByName en e (EventRegister er) = MS.insert en e er
 
 -- You can't really deregister events...
 -- deregisterEventByName :: EventName -> EventRegister -> EventRegister
@@ -260,7 +253,6 @@ mconcat <$> mapM makeLenses
   , ''Script
   , ''ScriptName
   , ''EventRegister
-  , ''EndoRegister
   , ''Player
   , ''PhysicsWorld
   , ''VTNPoint

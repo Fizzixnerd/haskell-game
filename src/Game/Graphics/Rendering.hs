@@ -23,7 +23,7 @@ instance Uniform UniformMVP where
     \mat -> primMarshall prg (UniformLocation 0) mat
 
 render :: (TextureTarget t, MonadIO m)
-       => GameState
+       => GameState s
        -> Program
        -> TextureUnit
        -> VertexArrayObject
@@ -39,10 +39,6 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
 --  cameraMatrix <- getPlayerOpenGLMatrix $ (gs ^. gameStatePlayer)
   let cameraMatrix = gs ^. gameStateCamera . cameraMVP
   uniform prog UniformMVP $= cameraMatrix
---  uniform prog UniformMVP $= (unsafeCoerce cameraMatrix) -- coercing
-                                                         -- from
-                                                         -- cfloat ->
-                                                         -- float
   drawElements Triangles (fromIntegral n) UnsignedInt 
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b

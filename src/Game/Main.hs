@@ -5,20 +5,18 @@
 module Game.Main where
 
 import           ClassyPrelude
-import           Control.Concurrent
-import qualified Control.Wire.Core           as N
-import qualified FRP.Netwire                 as N
-import qualified FRP.Netwire.Input           as N
+import           Control.Wire.Core
+import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import           Game.Events
 import           Game.Types
 import           Game.Graphics.Model.Loader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import qualified Linear                      as L
+import           Game.Events
 import           Text.Printf
 import           Game.Graphics.Binding
+import           Control.Lens
 
 {-
 printContextVersion :: MonadIO m => G.Window -> m ()
@@ -37,7 +35,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
 
   cullFace $= Just Back
   depthFunc $= Just DepthLess
---- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
+  -- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just simpleDebugFunc
 --  printContextVersion win
 
@@ -53,24 +51,34 @@ gameMain = withGraphicsContext defaultGraphicsContext
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
 
   clearColor $= color4 0 0 0.4 0
---  GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
+  -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
   let texSampleLoc = TextureUnit 0
-  --(hello, shouldClose, key, mouseData, tick) <- compileGameNetwork prog texSampleLoc vao ebuf tex
-  let mainWire = printOut
+  
+  let renderWire :: TextureTarget t => GameWire s (Program, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
+      renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> do
+                              gs <- use simple
+                              Right <$> (render gs p tu vao_ n tex_))
+  let mainWire = renderWire <+>
+                 moveForward <+>
+                 moveBackward <+>
+                 moveLeft <+>
+                 moveRight <+>
+                 camera
 
   ic <- N.mkInputControl win
-  let sess = N.countSession_ 1
+  let sess = countSession_ 1
   input <- liftIO $ N.getInput ic
   let doGame :: N.GLFWInputState
-             -> N.Session IO (N.Timed Integer ())
-             -> GameWire (N.Timed Integer ()) () b
-             -> GameState
-             -> IO ((b, N.GLFWInputState), GameState)
+             -> Session IO (Timed Integer ())
+             -> GameWire (Timed Integer ()) (Program, TextureUnit, VertexArrayObject, Int, TextureObject TextureTarget2D) b
+             -> GameState (Timed Integer ())
+             -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
       doGame input_ sess_ wire gs = do
-        input' <- N.pollGLFW input_ ic
-        (timeState, sess') <- N.stepSession sess
-        let game = N.stepWire wire timeState (Right ())
-        (((result, wire), input''), gs') <- runGame gs ic game
-        doGame input'' sess' wire gs'
+        void $ N.pollGLFW input_ ic
+        (timeState, sess') <- stepSession sess_
+        let game = stepWire wire timeState (Right (prog, texSampleLoc, vao, snd ebuf, tex))
+        (((_, wire'), input'), gs') <- runGame gs ic game
+        G.swapBuffers win
+        doGame input' sess' wire' gs'
   void $ doGame input sess mainWire initGameState
