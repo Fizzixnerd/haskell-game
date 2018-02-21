@@ -1,15 +1,15 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Game.Graphics.Binding.OpenGL.VertexArray where
+module Graphics.Binding.OpenGL.VertexArray where
 
 import Data.StateVar
-import Data.Vector.Storable as VS
-import Game.Graphics.Binding.OpenGL.Boolean
-import Game.Graphics.Binding.OpenGL.BufferObject
-import Game.Graphics.Binding.OpenGL.DataType
-import Game.Graphics.Binding.OpenGL.ObjectName
-import Game.Graphics.Binding.OpenGL.Utils
+import Graphics.Binding.OpenGL.Boolean
+import Graphics.Binding.OpenGL.BufferObject
+import Graphics.Binding.OpenGL.DataType
+import Data.ObjectName
+import Foreign
+import Graphics.Binding.OpenGL.Utils
 import Graphics.GL.Types
 import Graphics.GL.Core45
 
@@ -18,13 +18,11 @@ newtype VertexArrayObject = VertexArrayObject
   } deriving (Eq, Ord, Show, Storable)
 
 instance ObjectName VertexArrayObject where
-  isObjectName (VertexArrayObject n) = unmarshallGLboolean <$> glIsVertexArray n
-  deleteObjectNames ns = liftIO . VS.unsafeWith ns $ \ptr -> glDeleteVertexArrays len (castPtr ptr)
-    where
-      len = fromIntegral $ VS.length ns
+  isObjectName (VertexArrayObject n) = unmarshalGLboolean <$> glIsBuffer n
+  deleteObjectNames ns = liftIO . withArrayLen ns $ \len ptr -> glDeleteVertexArrays (fromIntegral len) (castPtr ptr)
 
 instance GeneratableObjectName VertexArrayObject where
-  genObjectNames_ n = VS.map VertexArrayObject <$> withForeignBufferVec n (glCreateVertexArrays(fromIntegral n))
+  genObjectNames n = fmap VertexArrayObject <$> (liftIO . allocaArray n $ \ptr -> glCreateVertexArrays (fromIntegral n) ptr >> peekArray n ptr)
 
 newtype AttribLocation = AttribLocation { getAttribLocationGLuint :: GLuint } deriving (Eq, Ord, Show)
 
@@ -51,7 +49,7 @@ vertexArrayVertexBuffer (VertexArrayObject n) (AttribLocation bindindx) (BufferO
 
 vertexArrayAttribFormat :: MonadIO m => VertexArrayObject -> AttribLocation -> BufferObjectComponentSize -> GLDataType -> IntegerHandling -> BufferObjectRelOffset -> m ()
 vertexArrayAttribFormat (VertexArrayObject vaobj) (AttribLocation attribindx) size typ integerHandling relOffset
-  = glVertexArrayAttribFormat vaobj attribindx (fromIntegral size) (marshallGLDataType typ) handleFlag (fromIntegral relOffset)
+  = glVertexArrayAttribFormat vaobj attribindx (fromIntegral size) (marshalGLDataType typ) handleFlag (fromIntegral relOffset)
   where
     handleFlag = case integerHandling of
       Normalized -> GL_TRUE

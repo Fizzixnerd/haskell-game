@@ -2,11 +2,11 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Game.Graphics.Binding.OpenGL.Rendering where
+module Graphics.Binding.OpenGL.Rendering where
 
 import Graphics.GL.Core45
 import Graphics.GL.Types
-import Game.Graphics.Binding.OpenGL.Utils
+import Graphics.Binding.OpenGL.Utils
 import Control.Lens
 import Data.Bits ((.|.))
 
@@ -19,8 +19,8 @@ data ClearBuffer = ClearBuffer
 defaultClearBuffer :: ClearBuffer
 defaultClearBuffer = ClearBuffer False False False
 
-marshallClearBuffer :: ClearBuffer -> GLbitfield
-marshallClearBuffer ClearBuffer {..}
+marshalClearBuffer :: ClearBuffer -> GLbitfield
+marshalClearBuffer ClearBuffer {..}
   = cbit .|. sbit .|. dbit
   where
     cbit = GL_COLOR_BUFFER_BIT
@@ -28,7 +28,7 @@ marshallClearBuffer ClearBuffer {..}
     dbit = GL_DEPTH_BUFFER_BIT
 
 clear :: MonadIO m => ClearBuffer -> m ()
-clear = liftIO . glClear . marshallClearBuffer
+clear = liftIO . glClear . marshalClearBuffer
 
 data PrimitiveMode
   = Points
@@ -45,8 +45,8 @@ data PrimitiveMode
   | Patches
   deriving (Eq, Ord, Show)
 
-marshallPrimitiveMode :: PrimitiveMode -> GLenum
-marshallPrimitiveMode = \case
+marshalPrimitiveMode :: PrimitiveMode -> GLenum
+marshalPrimitiveMode = \case
   Points                 -> GL_POINTS
   LineStrip              -> GL_LINE_STRIP
   LineLoop               -> GL_LINE_LOOP
@@ -66,14 +66,14 @@ data IndexType
   | UnsignedInt
   deriving (Eq, Ord, Show)
 
-marshallIndexType :: IndexType -> GLenum
-marshallIndexType = \case
+marshalIndexType :: IndexType -> GLenum
+marshalIndexType = \case
   UnsignedByte  -> GL_UNSIGNED_BYTE
   UnsignedShort -> GL_UNSIGNED_SHORT
   UnsignedInt   -> GL_UNSIGNED_INT
 
 drawElements :: MonadIO m => PrimitiveMode -> GLsizei -> IndexType -> m ()
-drawElements mode count typ = glDrawElements (marshallPrimitiveMode mode) count (marshallIndexType typ) nullPtr
+drawElements mode count typ = glDrawElements (marshalPrimitiveMode mode) count (marshalIndexType typ) nullPtr
 
 mconcat <$> mapM makeLenses
   [ ''ClearBuffer ]

@@ -17,7 +17,7 @@ import           Game.Graphics.Rendering
 import           Game.Types
 import           Game.Script.Loader
 import           Game.Script.Installer
-import           Game.Graphics.Binding
+import           Graphics.Binding
 import           Game.Entity.Player
 import           Game.World.Physics
 import qualified Linear                       as L

@@ -1,4 +1,4 @@
-module Game.Graphics.Binding (module X) where
+module Graphics.Binding (module X) where
 
 import Graphics.GL.Types as X
   ( GLfloat
@@ -8,7 +8,7 @@ import Graphics.GL.Types as X
   , GLdouble
   )
 
-import Game.Graphics.Binding.OpenGL.BufferObject as X
+import Graphics.Binding.OpenGL.BufferObject as X
   ( BufferObjectMapType(..)
   , BufferObjectSize(..)
   , BufferObjectOffset(..)
@@ -36,25 +36,34 @@ import Game.Graphics.Binding.OpenGL.BufferObject as X
   , copyBufferSubData
   , mapBufferRange
   )
-import Game.Graphics.Binding.OpenGL.ObjectName as X
-import Game.Graphics.Binding.OpenGL.Shader as X
+import Graphics.Binding.OpenGL.Shader as X
   ( VertexShader
   , TessEvalShader
   , TessControlShader
   , FragmentShader
   , ComputeShader
   , Shader
-  , Program
   , compileShader
   , shaderDeleteStatus
   , shaderSource
-  , programDeleteStatus
+  )
+import Graphics.Binding.OpenGL.Program as X
+  ( programDeleteStatus
   , attachShader
   , linkProgram
   , validateProgram
   , currentProgram
+  , Program
   )
-import Game.Graphics.Binding.OpenGL.Texture as X
+
+import Graphics.Binding.OpenGL.UniformBlock as X
+  ( Uniform(..)
+  , HasUniformComponent(..)
+  , UniformBlock(..)
+  , DefaultBlock
+  )
+
+import Graphics.Binding.OpenGL.Texture as X
   ( TextureTarget(..)
   , createTexture
   , TextureTarget1D(..)
@@ -82,7 +91,7 @@ import Game.Graphics.Binding.OpenGL.Texture as X
   , textureParameterf
   , textureParameteri
   )
-import Game.Graphics.Binding.OpenGL.VertexArray as X
+import Graphics.Binding.OpenGL.VertexArray as X
   ( VertexArrayObject
   , AttribLocation(..)
   , currentVertexArrayObject
@@ -93,25 +102,18 @@ import Game.Graphics.Binding.OpenGL.VertexArray as X
   , bindElementBuffer
   )
 
-import Game.Graphics.Binding.OpenGL.DataType as X
+import Graphics.Binding.OpenGL.DataType as X
   ( SizedFormat(..)
   , GLDataType(..)
   , Capability(..)
   )
 
-import Game.Graphics.Binding.OpenGL.PrimUniform as X
+import Graphics.Binding.OpenGL.PrimUniform as X
   ( UniformLocation(..)
   , PrimUniform(..)
   )
 
-import Game.Graphics.Binding.OpenGL.Uniform as X
-  ( Uniform(..)
-  , HasUniformComponent(..)
-  , UniformBlock(..)
-  , DefaultBlock
-  )
-
-import Game.Graphics.Binding.OpenGL.Window as X
+import Graphics.Binding.OpenGL.Window as X
   ( DepthFunc(..)
   , depthFunc
   , Color4(..)
@@ -128,7 +130,7 @@ import Game.Graphics.Binding.OpenGL.Window as X
   , simpleDebugFunc
   )
 
-import Game.Graphics.Binding.OpenGL.Rendering as X
+import Graphics.Binding.OpenGL.Rendering as X
   ( IndexType(..)
   , drawElements
   , PrimitiveMode(..)
@@ -139,8 +141,7 @@ import Game.Graphics.Binding.OpenGL.Rendering as X
   , clearBufferDepth
   , defaultClearBuffer
   )
-import Game.Graphics.Binding.GLFW.Window as X
+import Graphics.Binding.GLFW.Window as X
 
 import Data.StateVar as X
-
-import Linear.OpenGL as X ()
+import Data.ObjectName as X

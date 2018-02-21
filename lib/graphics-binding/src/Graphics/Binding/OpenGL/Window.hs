@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Game.Graphics.Binding.OpenGL.Window where
+module Graphics.Binding.OpenGL.Window where
 
 import Data.ByteString
 import Data.StateVar

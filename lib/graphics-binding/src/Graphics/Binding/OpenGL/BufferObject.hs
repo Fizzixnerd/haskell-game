@@ -4,15 +4,15 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Game.Graphics.Binding.OpenGL.BufferObject where
+module Graphics.Binding.OpenGL.BufferObject where
 
 import           Control.Lens
 import           Data.Bits ((.|.))
-import qualified Data.Vector.Storable as VS
-import           Game.Graphics.Binding.OpenGL.Boolean
-import           Game.Graphics.Binding.OpenGL.DataType
-import           Game.Graphics.Binding.OpenGL.ObjectName
-import           Game.Graphics.Binding.OpenGL.Utils
+import           Graphics.Binding.OpenGL.Boolean
+import           Graphics.Binding.OpenGL.DataType
+import           Data.ObjectName
+import           Foreign
+import           Graphics.Binding.OpenGL.Utils
 import           Graphics.GL.Core45
 import           Graphics.GL.Types
 
@@ -94,18 +94,16 @@ makeFields ''BufferObjectAttribFlags
 makeFields ''BufferObjectMapFlags
 
 instance ObjectName BufferObject where
-  isObjectName (BufferObject n) = unmarshallGLboolean <$> glIsBuffer n
-  deleteObjectNames ns = liftIO . VS.unsafeWith ns $ \ptr -> glDeleteBuffers len (castPtr ptr)
-    where
-      len = fromIntegral $ VS.length ns
+  isObjectName (BufferObject n) = unmarshalGLboolean <$> glIsBuffer n
+  deleteObjectNames ns = liftIO . withArrayLen ns $ \len ptr -> glDeleteBuffers (fromIntegral len) (castPtr ptr)
 
 instance GeneratableObjectName BufferObject where
-  genObjectNames_ n = VS.map BufferObject <$> withForeignBufferVec n (glCreateBuffers (fromIntegral n))
+  genObjectNames n = fmap BufferObject <$> (liftIO . allocaArray n $ \ptr -> glCreateBuffers (fromIntegral n) ptr >> peekArray n ptr)
 
 -----------------------------
 
-marshallBufferObjectAttribFlags :: BufferObjectAttribFlags -> GLbitfield
-marshallBufferObjectAttribFlags BufferObjectAttribFlags {..}
+marshalBufferObjectAttribFlags :: BufferObjectAttribFlags -> GLbitfield
+marshalBufferObjectAttribFlags BufferObjectAttribFlags {..}
   = getBitOr . mconcat . fmap BitOr $
     [bdyna, brewr, bpers, bcohe, bclie]
   where
@@ -119,8 +117,8 @@ marshallBufferObjectAttribFlags BufferObjectAttribFlags {..}
     bdyna = if _bufferObjectAttribFlagsMapDynamic then GL_DYNAMIC_STORAGE_BIT else 0
     bclie = if _bufferObjectAttribFlagsClientStorage then GL_CLIENT_STORAGE_BIT else 0
 
-marshallBufferObjectMapFlags :: BufferObjectMapFlags -> GLbitfield
-marshallBufferObjectMapFlags BufferObjectMapFlags {..}
+marshalBufferObjectMapFlags :: BufferObjectMapFlags -> GLbitfield
+marshalBufferObjectMapFlags BufferObjectMapFlags {..}
   = getBitOr . mconcat . fmap BitOr $
   [brewr, bpers, bcohe, bira, bibu, bfle, bmun]
   where
@@ -142,7 +140,7 @@ genBufferObject size attrib@BufferObjectAttribFlags {..} = do
   glNamedBufferStorage n (bufferObjectSizeInternal size) nullPtr bitF
   return bufo
   where
-    bitF = marshallBufferObjectAttribFlags attrib
+    bitF = marshalBufferObjectAttribFlags attrib
 
 initBufferObject :: MonadIO m
                  => BufferObjectSize
@@ -154,7 +152,7 @@ initBufferObject size attrib@BufferObjectAttribFlags {..} ptr = do
   glNamedBufferStorage n (bufferObjectSizeInternal size) ptr bitF
   return bufo
   where
-    bitF = marshallBufferObjectAttribFlags attrib
+    bitF = marshalBufferObjectAttribFlags attrib
 
 bufferSubData :: MonadIO m => BufferObject -> BufferObjectSize -> BufferObjectOffset -> Ptr () -> m ()
 bufferSubData (BufferObject n) (BufferObjectSize size) (BufferObjectOffset m) = glNamedBufferSubData n m size
@@ -163,18 +161,18 @@ mapBuffer :: MonadIO m => BufferObject -> BufferAccess -> m (Maybe (Ptr ()))
 mapBuffer t = fmap (maybeNullPtr Nothing Just) . mapBuffer_ t
 
 mapBuffer_ :: MonadIO m => BufferObject -> BufferAccess -> m (Ptr ())
-mapBuffer_ (BufferObject n) = glMapNamedBuffer n . marshallBufferAccess
+mapBuffer_ (BufferObject n) = glMapNamedBuffer n . marshalBufferAccess
 
 unmapBuffer :: MonadIO m => BufferObject -> m Bool
-unmapBuffer (BufferObject n) = fmap unmarshallGLboolean . glUnmapNamedBuffer $ n
+unmapBuffer (BufferObject n) = fmap unmarshalGLboolean . glUnmapNamedBuffer $ n
 
 mapBufferRange :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
 mapBufferRange (BufferObject obj) offset leng flags
-  = glMapNamedBufferRange obj (fromIntegral offset) (fromIntegral leng) (marshallBufferObjectMapFlags flags)
+  = glMapNamedBufferRange obj (fromIntegral offset) (fromIntegral leng) (marshalBufferObjectMapFlags flags)
 
 clearBufferSubData :: MonadIO m => BufferObject -> SizedFormat -> BufferObjectOffset -> BufferObjectSize -> SizedFormat -> GLDataType -> Ptr () -> m ()
 clearBufferSubData (BufferObject obj) internalForm offset size form typ
-  = glClearNamedBufferSubData obj (marshallSizedFormat internalForm) (fromIntegral offset) (fromIntegral size) (marshallSizedFormat form) (marshallGLDataType typ)
+  = glClearNamedBufferSubData obj (marshalSizedFormat internalForm) (fromIntegral offset) (fromIntegral size) (marshalSizedFormat form) (marshalGLDataType typ)
 
 copyBufferSubData :: MonadIO m => BufferObject -> BufferObject -> BufferObjectOffset -> BufferObjectOffset -> BufferObjectSize -> m ()
 copyBufferSubData (BufferObject readB) (BufferObject writeB) readOff writeOff size

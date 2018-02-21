@@ -7,14 +7,14 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Game.Graphics.Binding.OpenGL.Texture where
+module Graphics.Binding.OpenGL.Texture where
 
 import Control.Lens
-import Data.Vector.Storable as VS
-import Game.Graphics.Binding.OpenGL.Boolean
-import Game.Graphics.Binding.OpenGL.DataType
-import Game.Graphics.Binding.OpenGL.ObjectName
-import Game.Graphics.Binding.OpenGL.Utils
+import Graphics.Binding.OpenGL.Boolean
+import Graphics.Binding.OpenGL.DataType
+import Data.ObjectName
+import Foreign.Marshal.Array
+import Graphics.Binding.OpenGL.Utils
 import Graphics.GL.Core45
 import Graphics.GL.Types
 
@@ -71,10 +71,8 @@ newtype TextureObject t = TextureObject
   } deriving (Eq, Ord, Show, Storable)
 
 instance ObjectName (TextureObject t) where
-  isObjectName (TextureObject n) = unmarshallGLboolean <$> glIsTexture n
-  deleteObjectNames ns = liftIO . VS.unsafeWith ns $ \ptr -> glDeleteTextures len (castPtr ptr)
-    where
-      len = fromIntegral $ VS.length ns
+  isObjectName (TextureObject n) = unmarshalGLboolean <$> glIsTexture n
+  deleteObjectNames ns = liftIO . withArrayLen ns $ \len ptr -> glDeleteTextures (fromIntegral len) (castPtr ptr)
 
 data PixelFormat
    = PixelStencilIndex
@@ -133,8 +131,8 @@ makeFields ''Pixel1DAttrib
 makeFields ''Pixel2DAttrib
 makeFields ''Pixel3DAttrib
 
-marshallPixelFormat :: PixelFormat -> GLenum
-marshallPixelFormat = \case
+marshalPixelFormat :: PixelFormat -> GLenum
+marshalPixelFormat = \case
   PixelStencilIndex -> GL_STENCIL_INDEX
   PixelDepthComponent -> GL_DEPTH_COMPONENT
   PixelDepthStencil  -> GL_DEPTH_STENCIL
@@ -175,36 +173,37 @@ data TextureParameter =
 class TextureTarget t where
   type TextureConfig t
   type PixelConfig t
-  marshallTextureTarget :: t -> GLenum
+  marshalTextureTarget :: t -> GLenum
   createTexture  :: MonadIO m => t -> TextureConfig t -> m (TextureObject t)
   textureSubMap :: MonadIO m => TextureObject t -> Int -> PixelConfig t -> Ptr () -> m ()
 
-genTextureNames :: (MonadIO m, TextureTarget t) => Int -> t -> m (VS.Vector (TextureObject t))
-genTextureNames n t = VS.map TextureObject <$> withForeignBufferVec n (glCreateTextures targ (fromIntegral n))
+
+genTextureNames :: (MonadIO m, TextureTarget t) => Int -> t -> m [TextureObject t]
+genTextureNames n t = fmap TextureObject <$> (liftIO . allocaArray n $ \ptr -> glCreateTextures targ (fromIntegral n) ptr >> peekArray n ptr)
   where
-    targ = marshallTextureTarget t
+    targ = marshalTextureTarget t
 
 genTextureName :: (MonadIO m, TextureTarget t) => t -> m (TextureObject t)
-genTextureName t = VS.head <$> genTextureNames 1 t
+genTextureName t = head <$> genTextureNames 1 t
 
 instance TextureTarget TextureTarget1D where
   type TextureConfig TextureTarget1D = Texture1DAttrib
 
   type PixelConfig TextureTarget1D = Pixel1DAttrib
 
-  marshallTextureTarget _ = GL_TEXTURE_1D
+  marshalTextureTarget _ = GL_TEXTURE_1D
 
   createTexture t Texture1DAttrib {..} = do
     tobj@(TextureObject n) <- genTextureName t
-    glTextureStorage1D n (fromIntegral _texture1DAttribMipmapLevel) (marshallSizedFormat _texture1DAttribBufferFormat) (fromIntegral _texture1DAttribBufferWidth)
+    glTextureStorage1D n (fromIntegral _texture1DAttribMipmapLevel) (marshalSizedFormat _texture1DAttribBufferFormat) (fromIntegral _texture1DAttribBufferWidth)
     return tobj
 
   textureSubMap (TextureObject tobj) level Pixel1DAttrib {..} = glTextureSubImage1D tobj lev xo width pixForm datType
     where
       xo = maybe 0 fromIntegral _pixel1DAttribPixelXOffset
       lev = fromIntegral level
-      pixForm = marshallPixelFormat _pixel1DAttribPixelFormat
-      datType = marshallGLDataType _pixel1DAttribPixelType
+      pixForm = marshalPixelFormat _pixel1DAttribPixelFormat
+      datType = marshalGLDataType _pixel1DAttribPixelType
       width  = fromIntegral _pixel1DAttribPixelWidth
 
 instance TextureTarget TextureTarget2D where
@@ -212,7 +211,7 @@ instance TextureTarget TextureTarget2D where
 
   type PixelConfig TextureTarget2D = Pixel2DAttrib
 
-  marshallTextureTarget = \case
+  marshalTextureTarget = \case
     Texture2D        -> GL_TEXTURE_2D
     TextureRectangle -> GL_TEXTURE_RECTANGLE
     TextureCubeMap   -> GL_TEXTURE_CUBE_MAP
@@ -220,7 +219,7 @@ instance TextureTarget TextureTarget2D where
 
   createTexture t Texture2DAttrib {..} = do
     tobj@(TextureObject n) <- genTextureName t
-    glTextureStorage2D n (fromIntegral _texture2DAttribMipmapLevel) (marshallSizedFormat _texture2DAttribBufferFormat) (fromIntegral _texture2DAttribBufferWidth) (fromIntegral _texture2DAttribBufferHeight)
+    glTextureStorage2D n (fromIntegral _texture2DAttribMipmapLevel) (marshalSizedFormat _texture2DAttribBufferFormat) (fromIntegral _texture2DAttribBufferWidth) (fromIntegral _texture2DAttribBufferHeight)
     return tobj
 
   textureSubMap (TextureObject tobj) level Pixel2DAttrib {..} =  glTextureSubImage2D tobj lev xo yo width height pixForm datType
@@ -228,8 +227,8 @@ instance TextureTarget TextureTarget2D where
       xo = maybe 0 fromIntegral _pixel2DAttribPixelXOffset
       yo = maybe 0 fromIntegral _pixel2DAttribPixelYOffset
       lev = fromIntegral level
-      pixForm = marshallPixelFormat _pixel2DAttribPixelFormat
-      datType = marshallGLDataType _pixel2DAttribPixelType
+      pixForm = marshalPixelFormat _pixel2DAttribPixelFormat
+      datType = marshalGLDataType _pixel2DAttribPixelType
       width  = fromIntegral _pixel2DAttribPixelWidth
       height = fromIntegral _pixel2DAttribPixelHeight
 
@@ -238,14 +237,14 @@ instance TextureTarget TextureTarget3D where
 
   type PixelConfig TextureTarget3D = Pixel3DAttrib
 
-  marshallTextureTarget = \case
+  marshalTextureTarget = \case
     Texture3D           -> GL_TEXTURE_3D
     Texture2DArray      -> GL_TEXTURE_2D_ARRAY
     TextureCubeMapArray -> GL_TEXTURE_CUBE_MAP_ARRAY
 
   createTexture t Texture3DAttrib {..} = do
     tobj@(TextureObject n) <- genTextureName t
-    glTextureStorage3D n (fromIntegral _texture3DAttribMipmapLevel) (marshallSizedFormat _texture3DAttribBufferFormat) (fromIntegral _texture3DAttribBufferWidth) (fromIntegral _texture3DAttribBufferHeight) (fromIntegral _texture3DAttribBufferDepth)
+    glTextureStorage3D n (fromIntegral _texture3DAttribMipmapLevel) (marshalSizedFormat _texture3DAttribBufferFormat) (fromIntegral _texture3DAttribBufferWidth) (fromIntegral _texture3DAttribBufferHeight) (fromIntegral _texture3DAttribBufferDepth)
     return tobj
 
   textureSubMap (TextureObject tobj) level Pixel3DAttrib {..} = glTextureSubImage3D tobj lev xo yo zo width height depth pixForm datType
@@ -254,19 +253,17 @@ instance TextureTarget TextureTarget3D where
       yo = maybe 0 fromIntegral _pixel3DAttribPixelYOffset
       zo = maybe 0 fromIntegral _pixel3DAttribPixelZOffset
       lev = fromIntegral level
-      pixForm = marshallPixelFormat _pixel3DAttribPixelFormat
-      datType = marshallGLDataType _pixel3DAttribPixelType
+      pixForm = marshalPixelFormat _pixel3DAttribPixelFormat
+      datType = marshalGLDataType _pixel3DAttribPixelType
       width  = fromIntegral _pixel3DAttribPixelWidth
       height = fromIntegral _pixel3DAttribPixelHeight
       depth  = fromIntegral _pixel3DAttribPixelDepth
 
-
-bindTextureUnit :: MonadIO m => TextureUnit -> (TextureObject t) -> m ()
+bindTextureUnit :: MonadIO m => TextureUnit -> TextureObject t -> m ()
 bindTextureUnit (TextureUnit n) (TextureObject m) = glBindTextureUnit n m
 
-
-marshallTextureParameter :: TextureParameter -> GLenum
-marshallTextureParameter = \case
+marshalTextureParameter :: TextureParameter -> GLenum
+marshalTextureParameter = \case
   TextureMinFilter -> GL_TEXTURE_MIN_FILTER
   TextureMagFilter -> GL_TEXTURE_MAG_FILTER
   TextureWrapS -> GL_TEXTURE_WRAP_S
@@ -283,8 +280,8 @@ marshallTextureParameter = \case
 
 textureParameterf :: MonadIO m => TextureObject t -> TextureParameter -> GLfloat -> m ()
 textureParameterf (TextureObject tobj) param =
-  glTextureParameterf tobj (marshallTextureParameter param)
+  glTextureParameterf tobj (marshalTextureParameter param)
 
 textureParameteri :: MonadIO m => TextureObject t -> TextureParameter -> GLint -> m ()
 textureParameteri (TextureObject tobj) param =
-  glTextureParameteri tobj (marshallTextureParameter param)
+  glTextureParameteri tobj (marshalTextureParameter param)

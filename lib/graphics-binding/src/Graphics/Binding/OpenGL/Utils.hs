@@ -1,8 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Game.Graphics.Binding.OpenGL.Utils
+module Graphics.Binding.OpenGL.Utils
   ( module X
-  , withForeignBufferVec
   , withForeignBufferBS
   , withByteString
   , BitAnd(..)
@@ -35,12 +34,6 @@ import           Foreign                      hiding (void)
 import           Foreign.C.Types
 import           Graphics.GL.Types
 import           Linear                              (M44)
-
-withForeignBufferVec :: (Storable a, MonadIO m) => Int -> (Ptr a -> IO ()) -> m (VS.Vector a)
-withForeignBufferVec n f = liftIO $ do
-  mems <- mallocForeignPtrArray n
-  withForeignPtr mems f
-  return $ VS.unsafeFromForeignPtr0 mems n
 
 withForeignBufferBS :: (Storable n, Storable p, Integral n, Integral p, MonadIO m)
                     => (Ptr n -> IO ())

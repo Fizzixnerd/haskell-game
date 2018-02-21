@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Game.Graphics.Binding.OpenGL.DataType where
+module Graphics.Binding.OpenGL.DataType where
 
 import Graphics.GL.Types
 import Graphics.GL.Core45
@@ -33,8 +33,8 @@ data GLDataType
   | GLFloat32UnsignedInt248Rev
   deriving (Eq, Ord, Show)
 
-marshallGLDataType :: GLDataType -> GLenum
-marshallGLDataType = \case
+marshalGLDataType :: GLDataType -> GLenum
+marshalGLDataType = \case
   GLUnsignedByte -> GL_UNSIGNED_BYTE
   GLByte -> GL_BYTE
   GLUnsignedShort -> GL_UNSIGNED_SHORT
@@ -99,8 +99,8 @@ data SizedFormat
   | SizedRGBA32UI
   deriving (Eq, Ord, Show)
 
-marshallSizedFormat :: SizedFormat -> GLenum
-marshallSizedFormat = \case
+marshalSizedFormat :: SizedFormat -> GLenum
+marshalSizedFormat = \case
   SizedR8       -> GL_R8
   SizedR16      -> GL_R16
   SizedR16F     -> GL_R16F
@@ -139,8 +139,8 @@ marshallSizedFormat = \case
 
 data BufferAccess = ReadOnly | WriteOnly | ReadWrite deriving (Eq, Ord, Show)
 
-marshallBufferAccess :: BufferAccess -> GLenum
-marshallBufferAccess = \case
+marshalBufferAccess :: BufferAccess -> GLenum
+marshalBufferAccess = \case
    ReadOnly -> GL_READ_ONLY
    WriteOnly -> GL_WRITE_ONLY
    ReadWrite -> GL_READ_WRITE

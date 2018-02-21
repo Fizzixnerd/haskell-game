@@ -9,7 +9,7 @@ import qualified Data.Vector.Storable         as VS
 import           Foreign
 import           Foreign.C.Types
 import           Game.Types
-import           Game.Graphics.Binding
+import           Graphics.Binding
 import           Game.Entity.Player
 import           Linear
 
@@ -20,7 +20,7 @@ instance Uniform UniformMVP where
   type UniformLocationType UniformMVP = DefaultBlock
   uniformLocation _    = makeGettableStateVar (return (UniformLocation 0))
   uniform prg _ = makeSettableStateVar $
-    \mat -> primMarshall prg (UniformLocation 0) mat
+    \mat -> primMarshal prg (UniformLocation 0) mat
 
 render :: (TextureTarget t, MonadIO m)
        => GameState s
@@ -39,7 +39,7 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
 --  cameraMatrix <- getPlayerOpenGLMatrix $ (gs ^. gameStatePlayer)
   let cameraMatrix = gs ^. gameStateCamera . cameraMVP
   uniform prog UniformMVP $= cameraMatrix
-  drawElements Triangles (fromIntegral n) UnsignedInt 
+  drawElements Triangles (fromIntegral n) UnsignedInt
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
 unsafeWithVecLen vec f = liftIO $ do

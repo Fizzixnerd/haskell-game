@@ -14,8 +14,9 @@ import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Events
+import qualified Graphics.UI.GLFW            as G
 import           Text.Printf
-import           Game.Graphics.Binding
+import           Graphics.Binding
 import           Control.Lens
 
 {-

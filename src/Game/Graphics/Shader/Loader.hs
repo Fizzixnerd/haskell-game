@@ -4,7 +4,7 @@
 module Game.Graphics.Shader.Loader where
 
 import           ClassyPrelude
-import           Game.Graphics.Binding
+import           Graphics.Binding
 import           Text.Printf
 
 makeShader :: (Shader t, MonadIO m) => FilePath -> m t

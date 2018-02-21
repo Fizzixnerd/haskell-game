@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Game.Graphics.Binding.GLFW.Window
+module Graphics.Binding.GLFW.Window
   ( module X
   , contextVersion
   , GLContextVersion(..)
@@ -46,7 +46,6 @@ import Graphics.UI.GLFW as X
   ( Window
   , OpenGLProfile(..)
   , ContextRobustness(..)
-  , KeyCallback
   , WindowCloseCallback
   , CursorInputMode(..)
   , WindowHint(..)
