@@ -94,17 +94,7 @@ data Camera = Camera
   , _cameraPreferredDistance :: CFloat
   }
 
-cameraMVP :: Getter Camera (L.M44 Float)
-cameraMVP = to go
-  where
-    go (Camera vpos (vangh, vangv) cfov _ _ _) = camPerspective L.!*! camView L.!*! camModel
-      where
-        vup  = L.V3 0 1 0
-        vdir = L.rotate (L.axisAngle (L.V3 0 1 0) vangh * L.axisAngle (L.V3 1 0 0) vangv) (L.V3 0 0 (negate 1))
-        camModel = L.identity
-        camView = L.lookAt vpos (vpos + vdir) vup
-        -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
-        camPerspective = L.perspective cfov (16/9) 0.1 100
+newtype GiantFeaturelessPlane = GiantFeaturelessPlane { _unGiantFeauturelessPlane :: P.RigidBody }
 
 data ExpandObjVTN = ExpandObjVTN
   { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
@@ -194,6 +184,8 @@ data Player = Player
 data PhysicsWorld = PhysicsWorld
   { _physicsWorldDynamicsWorld :: P.DynamicsWorld
   , _physicsWorldPlayers :: Vector Player
+  , _physicsWorldGiantFeaturelessPlanes :: Vector GiantFeaturelessPlane
+  , _physicsWorldCameras :: Vector Camera
   , _physicsWorldBroadphaseInterface :: P.BroadphaseInterface
   , _physicsWorldGhostPairCallback :: P.GhostPairCallback
   , _physicsWorldCollisionConfiguration :: P.CollisionConfiguration
@@ -255,6 +247,7 @@ mconcat <$> mapM makeLenses
   , ''EventRegister
   , ''Player
   , ''PhysicsWorld
+  , ''GiantFeaturelessPlane
   , ''VTNPoint
   , ''VTNIndex
   , ''MousePos

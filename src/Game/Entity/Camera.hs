@@ -1,4 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Game.Entity.Camera where
 
@@ -7,6 +9,7 @@ import Game.Types
 import Foreign.C.Types
 import qualified Linear as L
 import qualified Physics.Bullet as P
+import Unsafe.Coerce
 import Control.Lens
 
 -- | The CollisionObject passed to this function is not freed upon
@@ -16,6 +19,9 @@ newCamera :: (MonadIO m, P.IsCollisionObject co) => co -> CFloat -> m Camera
 newCamera target _cameraPreferredDistance = liftIO $ do
   let _cameraTarget = P.toCollisionObject target
   _cameraController <- P.newCollisionObject
+  sphereShape :: P.SphereShape <- P.new 1
+  P.setCollisionShape _cameraController sphereShape
+  let _cameraFOV = pi/2
   return Camera {..}
 
 destroyCamera :: MonadIO m => Camera -> m ()
@@ -129,13 +135,36 @@ setCameraAzimuthalSpeed cam av = do
 
 -- | Useful after switching targets.
 
--- cameraLookAtTarget :: MonadIO m => Camera -> m ()
--- cameraLookAtTarget cam = do
---   rhat <- getCameraRHat cam
---   let L.V3 x y z = negate rhat
---       controller = cam ^. cameraController
---   t <- P.coAllocateWorldTransform controller
-  
---   liftIO $ P.setRotation controller x y z 0
+cameraLookAtTarget :: MonadIO m => Camera -> m ()
+cameraLookAtTarget cam = do
+  rhat <- getCameraRHat cam
+  let L.V3 x y z = negate rhat
+      controller = cam ^. cameraController
+  t <- liftIO $ P.coAllocateWorldTransform controller
+  liftIO $ P.setRotation t x y z 0
+  liftIO $ P.coSetWorldTransform controller t
+  liftIO $ P.del t
 
--- cameraAttach :: (MonadIO m, P.IsCollisionObject co) => Camera -> co -> m ()
+cameraAttach :: (MonadIO m, P.IsCollisionObject co) => Camera -> co -> m Camera
+cameraAttach cam co = return $ cam & cameraTarget .~ (P.toCollisionObject co)
+
+getCameraOpenGLMatrix :: MonadIO m => Camera -> m (L.M44 CFloat)
+getCameraOpenGLMatrix cam = liftIO $ bracket
+                            (P.coAllocateWorldTransform $ cam ^. cameraController)
+                            P.del
+                            P.getOpenGLMatrix
+
+cameraMVP :: MonadIO m => Camera -> m (L.M44 Float)
+cameraMVP cam = do
+  pos <- getCameraPosition cam
+  (L.Quaternion _ dir) <- getCameraOrientation cam
+  let camView = L.lookAt pos (pos + dir) vup
+
+  --  camModel <- getCameraOpenGLMatrix cam
+  let camModel = L.identity
+  return $ camPerspective L.!*! (unsafeCoerce camView :: L.M44 Float) L.!*! camModel
+    where
+        -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+      vup = L.V3 0 1 0
+      cfov = cam ^. cameraFOV
+      camPerspective = L.perspective cfov (16/9) 0.1 100

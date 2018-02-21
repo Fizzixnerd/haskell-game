@@ -34,16 +34,6 @@ newPhysicsWorld = liftIO $ do
   let _physicsWorldPlayers = empty
   return $ PhysicsWorld {..}
 
-addPlayerToPhysicsWorld :: MonadIO m => Player -> PhysicsWorld -> m PhysicsWorld
-addPlayerToPhysicsWorld p w = liftIO $ do
-  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) =<< 
-    P.getGhostObject (p ^. playerPhysicsController)
-  P.addAction (w ^. physicsWorldDynamicsWorld) (p ^. playerPhysicsController)
-  return $ w & physicsWorldPlayers %~ cons p
-
-physicsWorldSetGravity :: MonadIO m => PhysicsWorld -> L.V3 CFloat -> m ()
-physicsWorldSetGravity p (L.V3 x y z) = liftIO $ P.dwSetGravity (p ^. physicsWorldDynamicsWorld) x y z
-
 destroyPhysicsWorld :: MonadIO m => PhysicsWorld -> m ()
 destroyPhysicsWorld PhysicsWorld {..} = liftIO $ do
   -- TODO: This will double free the ghost object!
@@ -53,3 +43,24 @@ destroyPhysicsWorld PhysicsWorld {..} = liftIO $ do
   P.del _physicsWorldCollisionConfiguration
   P.del _physicsWorldBroadphaseInterface
   P.del _physicsWorldGhostPairCallback
+
+addPlayerToPhysicsWorld :: MonadIO m => Player -> PhysicsWorld -> m PhysicsWorld
+addPlayerToPhysicsWorld p w = liftIO $ do
+  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) =<< 
+    P.getGhostObject (p ^. playerPhysicsController)
+  P.addAction (w ^. physicsWorldDynamicsWorld) (p ^. playerPhysicsController)
+  return $ w & physicsWorldPlayers %~ cons p
+
+addGiantFeaturelessPlaneToPhysicsWorld :: MonadIO m => GiantFeaturelessPlane -> PhysicsWorld -> m PhysicsWorld
+addGiantFeaturelessPlaneToPhysicsWorld g@(GiantFeaturelessPlane gfp) w = liftIO $ do
+  P.addRigidBody (w ^. physicsWorldDynamicsWorld) gfp
+  return $ w & physicsWorldGiantFeaturelessPlanes %~ cons g
+
+addCameraToPhysicsWorld :: MonadIO m => Camera -> PhysicsWorld -> m PhysicsWorld
+addCameraToPhysicsWorld cam w = liftIO $ do
+  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
+  return $ w & physicsWorldCameras %~ cons cam
+
+setGravityPhysicsWorld :: MonadIO m => L.V3 CFloat -> PhysicsWorld -> m ()
+setGravityPhysicsWorld (L.V3 x y z) p = liftIO $ P.dwSetGravity (p ^. physicsWorldDynamicsWorld) x y z
+
