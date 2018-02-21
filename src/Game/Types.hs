@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -15,6 +16,7 @@ module Game.Types where
 import           ClassyPrelude
 import qualified Codec.Wavefront             as W
 import           Control.Lens
+import           Control.Lens.Action
 import qualified Control.Monad.Logger        as ML
 import qualified Control.Monad.State.Strict  as MSS
 import qualified Control.Monad.Catch         as MC
@@ -245,6 +247,9 @@ type WindowHeight = Int
 data MousePos = MousePos
   { _mousePos :: !(L.V2 Double)
   } deriving (Eq, Ord, Show)
+
+type MSetter s a = forall m. MonadIO m => Setter s (m s) a (m a)
+type MGetter s a = forall m. MonadIO m => Action m s a
 
 mconcat <$> mapM makeLenses
   [ ''Camera

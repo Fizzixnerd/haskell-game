@@ -26,6 +26,7 @@ dependencies:
 - OpenGL
 - Rasterific
 - StateVar
+- ObjectName
 - base >= 4.7 && < 5
 - bullet-hs
 - bytestring
