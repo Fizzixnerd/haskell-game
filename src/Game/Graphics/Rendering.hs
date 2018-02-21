@@ -6,26 +6,19 @@ import Unsafe.Coerce
 import           ClassyPrelude
 import           Control.Lens
 import qualified Data.Vector.Storable         as VS
-import           Foreign
+import           Foreign hiding (void)
 import           Foreign.C.Types
 import           Game.Types
 import           Graphics.Binding
 import           Game.Entity.Player
+import           Game.Graphics.HighLevel.Types
+import           Game.Graphics.Shader.Loader
 import           Game.Entity.Camera
 import           Linear
 
-data UniformMVP = UniformMVP deriving (Eq, Ord, Show)
-
-instance Uniform UniformMVP where
-  type UniformContents UniformMVP = M44 GLfloat
-  type UniformLocationType UniformMVP = DefaultBlock
-  uniformLocation _    = makeGettableStateVar (return (UniformLocation 0))
-  uniform prg _ = makeSettableStateVar $
-    \mat -> primMarshal prg (UniformLocation 0) mat
-
 render :: (TextureTarget t, MonadIO m)
        => GameState s
-       -> Program
+       -> SimpleShader
        -> TextureUnit
        -> VertexArrayObject
        -> Int -- ^ How much of the VAO we want to draw
@@ -34,12 +27,12 @@ render :: (TextureTarget t, MonadIO m)
 render gs prog texSampleLoc vao n tex = liftIO $ do
   clear $ defaultClearBuffer & clearBufferColor .~ True
                              & clearBufferDepth .~ True
-  currentProgram $= Just prog
+  useProgram prog
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
   cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
   traceM $ show cameraMatrix
-  uniform prog UniformMVP $= cameraMatrix
+  void $ prog & uniform UniformMVP .~ cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b

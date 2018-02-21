@@ -5,7 +5,7 @@ module Graphics.Binding.OpenGL.Shader where
 import Data.ByteString
 import Data.StateVar
 import Graphics.Binding.OpenGL.Boolean
-import Data.ObjectName
+import Graphics.Binding.OpenGL.ObjectName
 import Graphics.Binding.OpenGL.Utils
 import Graphics.GL.Core45
 import Graphics.GL.Types
@@ -15,35 +15,35 @@ instance ObjectName VertexShader where
   isObjectName (VertexShader n) = unmarshalGLboolean <$> glIsShader n
   deleteObjectName (VertexShader n) = glDeleteShader n
 instance GeneratableObjectName VertexShader where
-  genObjectName = VertexShader <$> glCreateShader GL_VERTEX_SHADER
+  genObjectName_ = VertexShader <$> glCreateShader GL_VERTEX_SHADER
 
 newtype FragmentShader = FragmentShader { _fragmentShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName FragmentShader where
   isObjectName (FragmentShader n) = unmarshalGLboolean <$> glIsShader n
   deleteObjectName (FragmentShader n) = glDeleteShader n
 instance GeneratableObjectName FragmentShader where
-  genObjectName = FragmentShader <$> glCreateShader GL_FRAGMENT_SHADER
+  genObjectName_ = FragmentShader <$> glCreateShader GL_FRAGMENT_SHADER
 
 newtype TessControlShader = TessControlShader { _tessControlShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName TessControlShader where
   isObjectName (TessControlShader n) = unmarshalGLboolean <$> glIsShader n
   deleteObjectName (TessControlShader n) = glDeleteShader n
 instance GeneratableObjectName TessControlShader where
-  genObjectName = TessControlShader <$> glCreateShader GL_TESS_CONTROL_SHADER
+  genObjectName_ = TessControlShader <$> glCreateShader GL_TESS_CONTROL_SHADER
 
 newtype TessEvalShader = TessEvalShader { _tessEvalShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName TessEvalShader where
   isObjectName (TessEvalShader n) = unmarshalGLboolean <$> glIsShader n
   deleteObjectName (TessEvalShader n) = glDeleteShader n
 instance GeneratableObjectName TessEvalShader where
-  genObjectName = TessEvalShader <$> glCreateShader GL_TESS_EVALUATION_SHADER
+  genObjectName_ = TessEvalShader <$> glCreateShader GL_TESS_EVALUATION_SHADER
 
 newtype ComputeShader = ComputeShader { _computeShaderGLuint :: GLuint } deriving (Eq, Ord, Show, Storable)
 instance ObjectName ComputeShader where
   isObjectName (ComputeShader n) = unmarshalGLboolean <$> glIsShader n
   deleteObjectName (ComputeShader n) = glDeleteShader n
 instance GeneratableObjectName ComputeShader where
-  genObjectName = ComputeShader <$> glCreateShader GL_COMPUTE_SHADER
+  genObjectName_ = ComputeShader <$> glCreateShader GL_COMPUTE_SHADER
 
 class GeneratableObjectName t => Shader t where
   marshalShaderType :: t -> GLuint
