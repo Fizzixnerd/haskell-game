@@ -32,8 +32,7 @@ zoomCamera = mkGen_ $ const $ Right <$>
                  c <- use gameStateCamera
                  d <- getCameraDisplacementFromTarget c
                  rhat <- getCameraRHat c
-                 let cs = L.norm d - (c ^. cameraPreferredDistance)
-                     cv = rhat L.^* cs
+                 let cv = - d + (rhat L.^* (c ^. cameraPreferredDistance))
                  setCameraLinearVelocity cv c)
 
 -- rotateCamera :: (Float, Float) -> Camera -> Camera

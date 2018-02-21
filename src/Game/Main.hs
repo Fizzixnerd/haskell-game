@@ -39,7 +39,7 @@ setupPhysics = do
   pw <- newPhysicsWorld
   pl <- newPlayer
   go <- P.getGhostObject $ pl ^. playerController
-  cam <- newCamera go 2
+  cam <- newCamera go 10
   cameraLookAtTarget cam
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
@@ -115,8 +115,10 @@ gameMain = withGraphicsContext defaultGraphicsContext
                  moveRight <+>
                  physicsWire <+>
                  close <+>
-                 jump
---                 zoomCamera
+                 jump <+>
+--                 camera <+>
+--                 reloadPlugins
+                 zoomCamera
 
   ic <- N.mkInputControl win
   let sess = countSession_ 1
