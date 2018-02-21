@@ -14,8 +14,6 @@ import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Events
-import qualified Graphics.UI.GLFW            as G
-import           Text.Printf
 import           Graphics.Binding
 import           Control.Lens
 
@@ -80,6 +78,6 @@ gameMain = withGraphicsContext defaultGraphicsContext
         (timeState, sess') <- stepSession sess_
         let game = stepWire wire timeState (Right (prog, texSampleLoc, vao, snd ebuf, tex))
         (((_, wire'), input'), gs') <- runGame gs ic game
-        G.swapBuffers win
+        swapBuffers win
         doGame input' sess' wire' gs'
   void $ doGame input sess mainWire initGameState

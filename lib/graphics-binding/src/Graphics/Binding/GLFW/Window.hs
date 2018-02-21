@@ -49,6 +49,9 @@ import Graphics.UI.GLFW as X
   , WindowCloseCallback
   , CursorInputMode(..)
   , WindowHint(..)
+  , swapBuffers
+  , MouseButton(..)
+  , Key(..)
   )
 
 import qualified Graphics.UI.GLFW             as G

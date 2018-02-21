@@ -10,7 +10,6 @@ import           Control.Arrow
 import           Control.Wire
 import           FRP.Netwire
 import qualified FRP.Netwire.Input as N
-import qualified Graphics.UI.GLFW as G
 import           ClassyPrelude
 import           Control.Lens
 import           Game.Graphics.Rendering
@@ -66,22 +65,22 @@ moveRight = mvRgt <<< key'd
             (gameStateCamera . cameraPosition += L.V3 0.1 0 0)
 
 mouse'L :: GameWire s a a
-mouse'L = N.mousePressed G.MouseButton'1
+mouse'L = N.mousePressed MouseButton'1
 
 mouse'R :: GameWire s a a
-mouse'R = N.mousePressed G.MouseButton'2
+mouse'R = N.mousePressed MouseButton'2
 
 key'w :: GameWire s a a
-key'w = N.keyPressed G.Key'W
+key'w = N.keyPressed Key'W
 
 key'a :: GameWire s a a
-key'a = N.keyPressed G.Key'A
+key'a = N.keyPressed Key'A
 
 key's :: GameWire s a a
-key's = N.keyPressed G.Key'S
+key's = N.keyPressed Key'S
 
 key'd :: GameWire s a a
-key'd = N.keyPressed G.Key'D
+key'd = N.keyPressed Key'D
 
 -- compileGameNetwork ::
 --   MonadIO m =>

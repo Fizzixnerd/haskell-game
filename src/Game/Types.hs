@@ -23,7 +23,7 @@ import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import qualified Graphics.UI.GLFW            as G
+import           Graphics.Binding
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
@@ -66,7 +66,7 @@ data GameState s = GameState
   { _gameStateCamera        :: Camera
   , _gameStateActiveScripts :: Vector (Script s)
   , _gameStateEventRegister :: EventRegister s
-  , _gameStateKeyEvent      :: GameWire s () (Event G.Key)
+  , _gameStateKeyEvent      :: GameWire s () (Event Key)
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
