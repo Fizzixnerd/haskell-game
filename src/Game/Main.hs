@@ -59,7 +59,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
   let renderWire :: TextureTarget t => GameWire s (Program, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
       renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> do
                               gs <- use simple
-                              Right <$> (render gs p tu vao_ n tex_))
+                              Right <$> render gs p tu vao_ n tex_)
   let mainWire = renderWire <+>
                  moveForward <+>
                  moveBackward <+>
