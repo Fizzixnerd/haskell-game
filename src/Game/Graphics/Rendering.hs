@@ -11,6 +11,7 @@ import           Foreign.C.Types
 import           Game.Types
 import           Graphics.Binding
 import           Game.Entity.Player
+import           Game.Entity.Camera
 import           Linear
 
 data UniformMVP = UniformMVP deriving (Eq, Ord, Show)
@@ -36,8 +37,8 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   currentProgram $= Just prog
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
---  cameraMatrix <- getPlayerOpenGLMatrix $ (gs ^. gameStatePlayer)
-  let cameraMatrix = gs ^. gameStateCamera . cameraMVP
+  cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
+  traceM $ show cameraMatrix
   uniform prog UniformMVP $= cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
 
