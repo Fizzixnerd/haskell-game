@@ -1,8 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RecursiveDo #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE Arrows #-}
 
 module Game.Events where
 
@@ -64,20 +61,20 @@ moveRight = mvRgt <<< key'd
     mvRgt = mkGen_ $ const $ Right <$>
             (gameStateCamera . cameraPosition += L.V3 0.1 0 0)
 
-mouse'L :: GameWire s a a
-mouse'L = N.mousePressed MouseButton'1
+mouseL :: GameWire s a a
+mouseL = N.mousePressed MouseButton'1
 
-mouse'R :: GameWire s a a
-mouse'R = N.mousePressed MouseButton'2
+mouseR :: GameWire s a a
+mouseR = N.mousePressed MouseButton'2
 
-key'w :: GameWire s a a
-key'w = N.keyPressed Key'W
+keyW :: GameWire s a a
+keyW = N.keyPressed Key'W
 
-key'a :: GameWire s a a
-key'a = N.keyPressed Key'A
+keyA :: GameWire s a a
+keyA = N.keyPressed Key'A
 
-key's :: GameWire s a a
-key's = N.keyPressed Key'S
+keyS :: GameWire s a a
+keyS = N.keyPressed Key'S
 
-key'd :: GameWire s a a
-key'd = N.keyPressed Key'D
+keyD :: GameWire s a a
+keyD = N.keyPressed Key'D
