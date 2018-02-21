@@ -5,7 +5,6 @@ module Game.Events where
 
 import           Control.Arrow
 import           Control.Wire
-import           FRP.Netwire
 import qualified FRP.Netwire.Input as N
 import           ClassyPrelude
 import           Control.Lens
@@ -38,25 +37,25 @@ camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Disabled)
     rotCam = mkGen_ $ \(x, y) -> Right <$> (gameStateCamera %= rotateCamera (-x, -y))
 
 moveForward :: GameWire s a ()
-moveForward = mvFwd <<< key'w
+moveForward = mvFwd <<< keyW
   where
     mvFwd = mkGen_ $ const $ Right <$>
             (gameStateCamera . cameraPosition += L.V3 0 0 (-0.1))
 
 moveBackward :: GameWire s a ()
-moveBackward = mvBwd <<< key's
+moveBackward = mvBwd <<< keyS
   where
     mvBwd = mkGen_ $ const $ Right <$>
             (gameStateCamera . cameraPosition += L.V3 0 0 0.1)
 
 moveLeft :: GameWire s a ()
-moveLeft = mvLft <<< key'a
+moveLeft = mvLft <<< keyA
   where
     mvLft = mkGen_ $ const $ Right <$>
             (gameStateCamera . cameraPosition += L.V3 (-0.1) 0 0)
 
 moveRight :: GameWire s a ()
-moveRight = mvRgt <<< key'd
+moveRight = mvRgt <<< keyD
   where
     mvRgt = mkGen_ $ const $ Right <$>
             (gameStateCamera . cameraPosition += L.V3 0.1 0 0)
