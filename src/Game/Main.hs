@@ -5,6 +5,7 @@
 module Game.Main where
 
 import           ClassyPrelude
+import           Control.Lens
 import           Control.Wire.Core
 import           FRP.Netwire hiding (when)
 import qualified FRP.Netwire.Input.GLFW      as N
@@ -14,15 +15,15 @@ import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Events
-import           Graphics.Binding
 import           Game.World.Physics
 import           Game.Entity.Camera
 import           Game.Entity.Player
 import           Game.Entity.GiantFeaturelessPlane
-import           Control.Lens
+import           Graphics.Binding
 import           Linear                      as L
 import qualified Physics.Bullet as P
-import System.Exit
+import qualified Plugin.Load as PL
+import           System.Exit
 
 {-
 printContextVersion :: MonadIO m => G.Window -> m ()
@@ -40,11 +41,8 @@ setupPhysics = do
   go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 2
   cameraLookAtTarget cam
-  traceM "Looked at target."
   pw' <- addPlayerToPhysicsWorld pl pw
-  traceM "Added Player to PhysicsWorld."
   pw'' <- addCameraToPhysicsWorld cam pw'
-  traceM "Added Camera to PhysicsWorld."
   withCameraTransform cam
     (\t -> do
         P.setIdentity t
@@ -55,7 +53,6 @@ setupPhysics = do
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
-  traceM "physics is setup."
   return (pw''', pl, cam)
 
 gameMain :: IO ()
@@ -106,7 +103,12 @@ gameMain = withGraphicsContext defaultGraphicsContext
         print =<< getPlayerPosition p
         print =<< getCameraPosition c
 
-      mainWire = renderWire <+>
+  -- proof of concept.
+  moveForward <- PL.loadPlugin "scripts/" "Movement" "moveForward"
+  -- proof of double-loading.
+  moveBackward <- PL.loadPlugin "scripts/" "Movement" "moveBackward"
+
+  let mainWire = renderWire <+>
                  moveForward <+>
                  moveBackward <+>
                  moveLeft <+>

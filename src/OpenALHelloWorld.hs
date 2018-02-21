@@ -29,4 +29,3 @@ doItSoundman = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           buf <- AL.createBuffer (File "res/sound/a2002011001-e02.wav")
           AL.buffer src AL.$= Just buf
           AL.play [src]
-          AL.sleep 5
