@@ -8,17 +8,14 @@ module Game.Events where
 
 import           Control.Arrow
 import           Control.Wire
-import           FRP.Netwire
 import qualified FRP.Netwire.Input as N
 import           ClassyPrelude
 import           Control.Lens
-import           Game.Graphics.Rendering
 import           Game.Types
-import           Game.Script.Loader
-import           Game.Script.Installer
-import           Graphics.Binding
 import           Game.Entity.Player
-import           Game.World.Physics
+import           Game.Entity.Camera
+import qualified Physics.Bullet as P
+import           Graphics.Binding
 import qualified Linear                       as L
 import           GHC.Float (double2Float)
 
@@ -29,46 +26,72 @@ mousePosToRot mouseSpeed (MousePos (L.V2 newx newy)) (MousePos (L.V2 oldx oldy))
     xrot = mouseSpeed * double2Float (dt * (oldx - newx))
     yrot = mouseSpeed * double2Float (dt * (oldy - newy))
 
-rotateCamera :: (Float, Float) -> Camera -> Camera
-rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
-  where
-    go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
+zoomCamera :: GameWire s a ()
+zoomCamera = mkGen_ $ const $ Right <$> 
+             (do
+                 c <- use gameStateCamera
+                 d <- getCameraDisplacementFromTarget c
+                 rhat <- getCameraRHat c
+                 let cs = L.norm d - (c ^. cameraPreferredDistance)
+                     cv = rhat L.^* cs
+                 setCameraLinearVelocity cv c)
 
-camera :: GameWire s a ()
-camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Disabled)
-         --> (rotCam <<< N.mouseDelta)
-  where
-    rotCam = mkGen_ $ \(x, y) -> Right <$> (gameStateCamera %= rotateCamera (-x, -y))
+-- rotateCamera :: (Float, Float) -> Camera -> Camera
+-- rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
+--   where
+--     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
+
+-- camera :: GameWire s a ()
+-- camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Disabled)
+--          --> (rotCam <<< N.mouseDelta)
+--   where
+--     rotCam = mkGen_ $ \(x, y) -> Right <$> (gameStateCamera %= rotateCamera (-x, -y))
 
 moveForward :: GameWire s a ()
 moveForward = mvFwd <<< key'w
   where
     mvFwd = mkGen_ $ const $ Right <$>
-            (gameStateCamera . cameraPosition += L.V3 0 0 (-0.1))
+            (do
+                p <- use gameStatePlayer
+                setPlayerLinearVelocity p $ L.V3 0 0 0.1)
 
 moveBackward :: GameWire s a ()
 moveBackward = mvBwd <<< key's
   where
     mvBwd = mkGen_ $ const $ Right <$>
-            (gameStateCamera . cameraPosition += L.V3 0 0 0.1)
+            (do
+                p <- use gameStatePlayer
+                setPlayerLinearVelocity p $ L.V3 0 0 (-0.1))
 
 moveLeft :: GameWire s a ()
 moveLeft = mvLft <<< key'a
   where
     mvLft = mkGen_ $ const $ Right <$>
-            (gameStateCamera . cameraPosition += L.V3 (-0.1) 0 0)
+            (do
+                p <- use gameStatePlayer
+                setPlayerLinearVelocity p $ L.V3 0.1 0 0)
 
 moveRight :: GameWire s a ()
 moveRight = mvRgt <<< key'd
   where
     mvRgt = mkGen_ $ const $ Right <$>
-            (gameStateCamera . cameraPosition += L.V3 0.1 0 0)
+            (do
+                p <- use gameStatePlayer
+                setPlayerLinearVelocity p $ L.V3 (-0.1) 0 0)
 
 close :: GameWire s a ()
 close = cls <<< keyEsc
   where
     cls = mkGen_ $ const $ Right <$>
           (gameStateShouldClose .= True)
+
+jump :: GameWire s a ()
+jump = jmp <<< keySpace
+  where
+    jmp = mkGen_ $ const $ Right <$>
+          (do
+              p <- use $ gameStatePlayer . playerController
+              liftIO $ P.jump p)
 
 mouse'L :: GameWire s a a
 mouse'L = N.mousePressed MouseButton'1
@@ -90,3 +113,6 @@ key'd = N.keyPressed Key'D
 
 keyEsc :: GameWire s a a 
 keyEsc = N.keyPressed Key'Escape
+
+keySpace :: GameWire s a a
+keySpace = N.keyPressed Key'Space

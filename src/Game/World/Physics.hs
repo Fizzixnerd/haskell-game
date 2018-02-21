@@ -32,6 +32,8 @@ newPhysicsWorld = liftIO $ do
     , _physicsWorldConstraintSolver
     , _physicsWorldCollisionConfiguration )
   let _physicsWorldPlayers = empty
+      _physicsWorldGiantFeaturelessPlanes = empty
+      _physicsWorldCameras = empty
   return $ PhysicsWorld {..}
 
 destroyPhysicsWorld :: MonadIO m => PhysicsWorld -> m ()
@@ -47,8 +49,8 @@ destroyPhysicsWorld PhysicsWorld {..} = liftIO $ do
 addPlayerToPhysicsWorld :: MonadIO m => Player -> PhysicsWorld -> m PhysicsWorld
 addPlayerToPhysicsWorld p w = liftIO $ do
   P.addCollisionObject (w ^. physicsWorldDynamicsWorld) =<< 
-    P.getGhostObject (p ^. playerPhysicsController)
-  P.addAction (w ^. physicsWorldDynamicsWorld) (p ^. playerPhysicsController)
+    P.getGhostObject (p ^. playerController)
+  P.addAction (w ^. physicsWorldDynamicsWorld) (p ^. playerController)
   return $ w & physicsWorldPlayers %~ cons p
 
 addGiantFeaturelessPlaneToPhysicsWorld :: MonadIO m => GiantFeaturelessPlane -> PhysicsWorld -> m PhysicsWorld
@@ -58,7 +60,11 @@ addGiantFeaturelessPlaneToPhysicsWorld g@(GiantFeaturelessPlane gfp) w = liftIO 
 
 addCameraToPhysicsWorld :: MonadIO m => Camera -> PhysicsWorld -> m PhysicsWorld
 addCameraToPhysicsWorld cam w = liftIO $ do
-  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
+  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) =<<
+    P.getGhostObject (cam ^. cameraController)
+  traceM "Added Camera CollisionObject to PhysicsWorld."
+  P.addAction (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
+  traceM "Added Camera Controller to PhysicsWorld."
   return $ w & physicsWorldCameras %~ cons cam
 
 setGravityPhysicsWorld :: MonadIO m => L.V3 CFloat -> PhysicsWorld -> m ()

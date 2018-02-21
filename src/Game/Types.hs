@@ -90,10 +90,8 @@ initGameState = GameState
   }
 
 data Camera = Camera
-  { _cameraPosition :: L.V3 Float
-  , _cameraOrientation :: (Float, Float)
-  , _cameraFOV :: Float
-  , _cameraController     :: P.CollisionObject
+  { _cameraFOV :: Float
+  , _cameraController     :: P.KinematicCharacterController
   , _cameraTarget         :: P.CollisionObject
   , _cameraPreferredDistance :: CFloat
   }
@@ -182,7 +180,7 @@ registerEventByName en e (EventRegister er) = MS.insert en e er
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
 data Player = Player
-  { _playerPhysicsController :: P.KinematicCharacterController
+  { _playerController :: P.KinematicCharacterController
   }
 
 data PhysicsWorld = PhysicsWorld

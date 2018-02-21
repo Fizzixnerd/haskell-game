@@ -19,7 +19,6 @@ import           Game.World.Physics
 import           Game.Entity.Camera
 import           Game.Entity.Player
 import           Game.Entity.GiantFeaturelessPlane
-import           Text.Printf
 import           Control.Lens
 import           Linear                      as L
 import qualified Physics.Bullet as P
@@ -38,25 +37,26 @@ setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
   pw <- newPhysicsWorld
   pl <- newPlayer
-  go <- P.getGhostObject $ pl ^. playerPhysicsController
+  go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 2
-  cam' <- cameraAttach cam go
-  cameraLookAtTarget cam'
-  traceM "looked at target"
+  cameraLookAtTarget cam
+  traceM "Looked at target."
   pw' <- addPlayerToPhysicsWorld pl pw
-  traceM "added player to physics world."
-  pw'' <- addCameraToPhysicsWorld cam' pw'
-  bracket (P.coAllocateWorldTransform (cam' ^. cameraController)) P.del
+  traceM "Added Player to PhysicsWorld."
+  pw'' <- addCameraToPhysicsWorld cam pw'
+  traceM "Added Camera to PhysicsWorld."
+  withCameraTransform cam
     (\t -> do
         P.setIdentity t
         P.setOrigin t 0 0 (-5)
-        P.coSetWorldTransform (cam' ^. cameraController) t)
-  cameraLookAtTarget cam'
-  traceM "added camera to physics world."
+        setCameraTransform cam t)
+  cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-10) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
-  return (pw''', pl, cam')
+  P.kccSetGravity (cam ^. cameraController) 0 0 0
+  traceM "physics is setup."
+  return (pw''', pl, cam)
 
 gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
@@ -86,9 +86,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
 
   let texSampleLoc = TextureUnit 0
 
-  traceM "prephysics"
   (physicsWorld, player, cam) <- setupPhysics
-  traceM "postphysics"
   let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                 & gameStatePlayer .~ player
                                 & gameStateCamera .~ cam
@@ -105,6 +103,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
         c  <- use gameStateCamera
         void $ stepPhysicsWorld pw
         cameraLookAtTarget c
+        print =<< getPlayerPosition p
         print =<< getCameraPosition c
 
       mainWire = renderWire <+>
@@ -112,9 +111,11 @@ gameMain = withGraphicsContext defaultGraphicsContext
                  moveBackward <+>
                  moveLeft <+>
                  moveRight <+>
-                 camera <+>
                  physicsWire <+>
-                 close
+                 close <+>
+                 jump
+--                 zoomCamera
+
   ic <- N.mkInputControl win
   let sess = countSession_ 1
   input <- liftIO $ N.getInput ic

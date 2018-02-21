@@ -23,6 +23,7 @@ newPlayer = liftIO $ do
   playerShape <- P.newCapsuleShape 1 1
   let stepHeight = 0.35
   controller <- P.newKinematicCharacterController pcgo playerShape stepHeight
+  P.setLinearDamping controller 0.5
   go <- P.getGhostObject controller
   P.setCollisionShape go playerShape
   P.setUp controller 0 1 0
@@ -30,12 +31,12 @@ newPlayer = liftIO $ do
 
 destroyPlayer :: MonadIO m => Player -> m ()
 destroyPlayer Player {..} = liftIO $ do
-  P.del =<< P.getGhostObject _playerPhysicsController
-  P.del _playerPhysicsController
+  P.del =<< P.getGhostObject _playerController
+  P.del _playerController
 
 allocatePlayerTransform :: MonadIO m => Player -> m P.Transform
 allocatePlayerTransform p = liftIO $
-                            P.getGhostObject (p ^. playerPhysicsController) >>=
+                            P.getGhostObject (p ^. playerController) >>=
                             P.coAllocateWorldTransform
 
 getPlayerOrientation :: MonadIO m => Player -> m (L.Quaternion CFloat)
@@ -47,7 +48,7 @@ setPlayerOrientation :: MonadIO m => Player -> L.Quaternion CFloat -> m ()
 setPlayerOrientation p (L.Quaternion r (L.V3 i j k)) = liftIO $ 
   withPlayerTransform p (\t -> do
                             P.setRotation t i j k r
-                            pcgo <- P.getGhostObject $ p ^. playerPhysicsController
+                            pcgo <- P.getGhostObject $ p ^. playerController
                             P.coSetWorldTransform pcgo t)
 
 withPlayerTransform :: MonadIO m => Player -> (P.Transform -> IO b) -> m b
@@ -63,24 +64,24 @@ getPlayerOpenGLMatrix p = withPlayerTransform p P.getOpenGLMatrix
 
 getPlayerLinearVelocity :: MonadIO m => Player -> m (L.V3 CFloat)
 getPlayerLinearVelocity p = liftIO $ do
-  (x, y, z) <- P.getLinearVelocity $ p ^. playerPhysicsController
+  (x, y, z) <- P.getLinearVelocity $ p ^. playerController
   return $ L.V3 x y z
 
 setPlayerLinearVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
 setPlayerLinearVelocity p v = liftIO $ P.setLinearVelocity
-                              (p ^. playerPhysicsController)
+                              (p ^. playerController)
                               (v ^. L._x)
                               (v ^. L._y)
                               (v ^. L._z)
 
 getPlayerAngularVelocity :: MonadIO m => Player -> m (L.V3 CFloat)
 getPlayerAngularVelocity p = liftIO $ do
-  (alpha, beta, gamma) <- P.getAngularVelocity $ p ^. playerPhysicsController
+  (alpha, beta, gamma) <- P.getAngularVelocity $ p ^. playerController
   return $ L.V3 alpha beta gamma
 
 setPlayerAngularVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
 setPlayerAngularVelocity p omega = liftIO $ P.setAngularVelocity
-                                   (p ^. playerPhysicsController)
+                                   (p ^. playerController)
                                    (omega ^. L._x)
                                    (omega ^. L._y)
                                    (omega ^. L._z)
