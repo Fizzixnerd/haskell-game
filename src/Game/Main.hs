@@ -6,7 +6,7 @@ module Game.Main where
 
 import           ClassyPrelude
 import           Control.Wire.Core
-import           FRP.Netwire
+import           FRP.Netwire hiding (when)
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Types
 import           Game.Graphics.Model.Loader
@@ -23,6 +23,7 @@ import           Text.Printf
 import           Control.Lens
 import           Linear                      as L
 import qualified Physics.Bullet as P
+import System.Exit
 
 {-
 printContextVersion :: MonadIO m => G.Window -> m ()
@@ -112,7 +113,8 @@ gameMain = withGraphicsContext defaultGraphicsContext
                  moveLeft <+>
                  moveRight <+>
                  camera <+>
-                 physicsWire
+                 physicsWire <+>
+                 close
   ic <- N.mkInputControl win
   let sess = countSession_ 1
   input <- liftIO $ N.getInput ic
@@ -132,5 +134,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
                    (Right (prog, texSampleLoc, vao, snd ebuf, tex))
         (((_, wire'), input'), gs') <- runGame gs ic game
         swapBuffers win
+        when (gs ^. gameStateShouldClose) $
+          exitSuccess
         doGame input' sess' wire' gs'
   void $ doGame input sess mainWire gameState

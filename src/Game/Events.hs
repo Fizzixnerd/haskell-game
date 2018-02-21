@@ -64,6 +64,12 @@ moveRight = mvRgt <<< key'd
     mvRgt = mkGen_ $ const $ Right <$>
             (gameStateCamera . cameraPosition += L.V3 0.1 0 0)
 
+close :: GameWire s a ()
+close = cls <<< keyEsc
+  where
+    cls = mkGen_ $ const $ Right <$>
+          (gameStateShouldClose .= True)
+
 mouse'L :: GameWire s a a
 mouse'L = N.mousePressed MouseButton'1
 
@@ -81,3 +87,6 @@ key's = N.keyPressed Key'S
 
 key'd :: GameWire s a a
 key'd = N.keyPressed Key'D
+
+keyEsc :: GameWire s a a 
+keyEsc = N.keyPressed Key'Escape
