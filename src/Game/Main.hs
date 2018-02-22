@@ -5,8 +5,9 @@
 module Game.Main where
 
 import           ClassyPrelude
+import           Control.Lens
 import           Control.Wire.Core
-import           FRP.Netwire
+import           FRP.Netwire hiding (when)
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Types
 import           Game.Graphics.Model.Loader
@@ -14,15 +15,15 @@ import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Events
-import           Graphics.Binding
 import           Game.World.Physics
 import           Game.Entity.Camera
 import           Game.Entity.Player
 import           Game.Entity.GiantFeaturelessPlane
-import           Text.Printf
-import           Control.Lens
+import           Graphics.Binding
 import           Linear                      as L
 import qualified Physics.Bullet as P
+import qualified Plugin.Load as PL
+import           System.Exit
 
 {-
 printContextVersion :: MonadIO m => G.Window -> m ()
@@ -37,25 +38,22 @@ setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
   pw <- newPhysicsWorld
   pl <- newPlayer
-  go <- P.getGhostObject $ pl ^. playerPhysicsController
-  cam <- newCamera go 2
-  cam' <- cameraAttach cam go
-  cameraLookAtTarget cam'
-  traceM "looked at target"
+  go <- P.getGhostObject $ pl ^. playerController
+  cam <- newCamera go 10
+  cameraLookAtTarget cam
   pw' <- addPlayerToPhysicsWorld pl pw
-  traceM "added player to physics world."
-  pw'' <- addCameraToPhysicsWorld cam' pw'
-  bracket (P.coAllocateWorldTransform (cam' ^. cameraController)) P.del
+  pw'' <- addCameraToPhysicsWorld cam pw'
+  withCameraTransform cam
     (\t -> do
         P.setIdentity t
         P.setOrigin t 0 0 (-5)
-        P.coSetWorldTransform (cam' ^. cameraController) t)
-  cameraLookAtTarget cam'
-  traceM "added camera to physics world."
+        setCameraTransform cam t)
+  cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-10) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
-  return (pw''', pl, cam')
+  P.kccSetGravity (cam ^. cameraController) 0 0 0
+  return (pw''', pl, cam)
 
 gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
@@ -85,9 +83,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
 
   let texSampleLoc = TextureUnit 0
 
-  traceM "prephysics"
   (physicsWorld, player, cam) <- setupPhysics
-  traceM "postphysics"
   let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                 & gameStatePlayer .~ player
                                 & gameStateCamera .~ cam
@@ -104,15 +100,26 @@ gameMain = withGraphicsContext defaultGraphicsContext
         c  <- use gameStateCamera
         void $ stepPhysicsWorld pw
         cameraLookAtTarget c
+        print =<< getPlayerPosition p
         print =<< getCameraPosition c
 
-      mainWire = renderWire <+>
+  -- proof of concept.
+  moveForward <- PL.loadPlugin "scripts/" "Movement" "moveForward"
+  -- proof of double-loading.
+  moveBackward <- PL.loadPlugin "scripts/" "Movement" "moveBackward"
+
+  let mainWire = renderWire <+>
                  moveForward <+>
                  moveBackward <+>
                  moveLeft <+>
                  moveRight <+>
-                 camera <+>
-                 physicsWire
+                 physicsWire <+>
+                 close <+>
+                 jump <+>
+--                 camera <+>
+--                 reloadPlugins
+                 zoomCamera
+
   ic <- N.mkInputControl win
   let sess = countSession_ 1
   input <- liftIO $ N.getInput ic
@@ -132,5 +139,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
                    (Right (prog, texSampleLoc, vao, snd ebuf, tex))
         (((_, wire'), input'), gs') <- runGame gs ic game
         swapBuffers win
+        when (gs ^. gameStateShouldClose) $
+          exitSuccess
         doGame input' sess' wire' gs'
   void $ doGame input sess mainWire gameState

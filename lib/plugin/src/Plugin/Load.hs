@@ -16,13 +16,13 @@ loadPlugin :: FilePath -> ModName -> ValName -> IO a
 loadPlugin dir modName value = do
   withCurrentDirectory dir $
     defaultErrorHandler defaultFatalMessager defaultFlushOut $
-    runGhc (Just libdir) $ do
+    runGhc (Just libdir) $ withCleanupSession $ do
 
     dynFlags <- getSessionDynFlags
     setSessionDynFlags $ dynamicTooMkDynamicDynFlags $ dynFlags 
       { importPaths = [modName] ++ importPaths dynFlags
       , hscTarget = HscAsm
-      , ghcLink = LinkInMemory
+      , ghcLink = LinkBinary
       , ghcMode = CompManager
       }
     sequence [guessTarget modName Nothing] >>= setTargets

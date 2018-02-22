@@ -24,6 +24,7 @@ packages:
   - ./lib/plugin
   - ./lib/bullet-hs
   - ./lib/graphics-binding
+  - ./lib/netwire-input-glfw
   - location:
       git: https://github.com/Fizzixnerd/netwire-input-glfw
       commit: HEAD
@@ -52,7 +53,7 @@ extra-deps:
 - lib/plugin
 - lib/bullet-hs
 - lib/graphics-binding
-- ../netwire-input-glfw/
+- lib/netwire-input-glfw
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

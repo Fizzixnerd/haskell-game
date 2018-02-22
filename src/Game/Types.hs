@@ -72,11 +72,12 @@ data GameState s = GameState
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
   , _gameStateMouseSpeed    :: Float
+  , _gameStateShouldClose   :: Bool
   }
 
 initGameState :: GameState s
 initGameState = GameState
-  { _gameStateCamera = Camera (L.V3 0 0 3) (0, 0) (pi/2) undefined undefined undefined
+  { _gameStateCamera = error "camera not set."
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateMousePosEvent = error "mousePosEvent not set."
@@ -84,13 +85,12 @@ initGameState = GameState
   , _gameStatePhysicsWorld  = error "physicsWorld not set."
   , _gameStatePlayer        = error "player not set."
   , _gameStateMouseSpeed    = 0.01
+  , _gameStateShouldClose   = False
   }
 
 data Camera = Camera
-  { _cameraPosition :: L.V3 Float
-  , _cameraOrientation :: (Float, Float)
-  , _cameraFOV :: Float
-  , _cameraController     :: P.CollisionObject
+  { _cameraFOV :: Float
+  , _cameraController     :: P.KinematicCharacterController
   , _cameraTarget         :: P.CollisionObject
   , _cameraPreferredDistance :: CFloat
   }
@@ -179,7 +179,7 @@ registerEventByName en e (EventRegister er) = MS.insert en e er
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
 data Player = Player
-  { _playerPhysicsController :: P.KinematicCharacterController
+  { _playerController :: P.KinematicCharacterController
   }
 
 data PhysicsWorld = PhysicsWorld
