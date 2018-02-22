@@ -22,8 +22,6 @@ import           Game.Entity.GiantFeaturelessPlane
 import           Graphics.Binding
 import           Linear                      as L
 import qualified Physics.Bullet as P
-import qualified Plugin.Load as PL
-import qualified Plugin.Types as PL
 import           System.Exit
 
 {-
@@ -50,19 +48,19 @@ setupPhysics = do
         P.setOrigin t 0 0 (-5)
         setCameraTransform cam t)
   cameraLookAtTarget cam
-  giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-1) 0) 0
+  giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw''', pl, cam)
 
-plugins :: [PL.Plugin]
-plugins = [ PL.Plugin "scripts/" "Movement" "moveForward"
-          , PL.Plugin "scripts/" "Movement" "moveBackward"
-          , PL.Plugin "scripts/" "Movement" "moveLeft"
-          , PL.Plugin "scripts/" "Movement" "moveRight"
-          , PL.Plugin "scripts/" "Util"     "reloadPlugins"
-          ]
+-- plugins :: [PL.Plugin]
+-- plugins = [ PL.Plugin "scripts/" "Movement" "moveForward"
+--           , PL.Plugin "scripts/" "Movement" "moveBackward"
+--           , PL.Plugin "scripts/" "Movement" "moveLeft"
+--           , PL.Plugin "scripts/" "Movement" "moveRight"
+--           , PL.Plugin "scripts/" "Util"     "reloadPlugins"
+--           ]
 
 gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
@@ -105,12 +103,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
       physicsWire :: GameWire s a ()
       physicsWire = mkGen_ $ const $ Right <$> do
         pw <- use gameStatePhysicsWorld
-        p  <- use gameStatePlayer
-        c  <- use gameStateCamera
         void $ stepPhysicsWorld pw
-        cameraLookAtTarget c
-        print =<< getPlayerPosition p
-        print =<< getCameraPosition c
 
   -- -- proof of concept.
   -- moveForward   <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveForward"
@@ -131,7 +124,8 @@ gameMain = withGraphicsContext defaultGraphicsContext
                  close <+>
                  jump <+>
                  camera <+>
-                 zoomCamera
+                 zoomCamera <+>
+                 turnPlayer
 
   ic <- N.mkInputControl win
   let sess = countSession_ 1

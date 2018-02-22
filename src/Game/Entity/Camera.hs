@@ -9,7 +9,6 @@ import Game.Types
 import Foreign.C.Types
 import qualified Linear as L
 import qualified Physics.Bullet as P
-import Unsafe.Coerce
 import Control.Lens
 
 -- | The CollisionObject passed to this function is not freed upon
@@ -118,11 +117,26 @@ setCameraTransform c t = liftIO $ do
 
 -- | Polar unit vector points DOWN.
 
+-- theta = arccos z / r
+
+-- phi = arctan y / x
+
+-- sin theta = littleR / r
+-- cos theta = z / r
+
+-- cos phi = x / littleR
+-- sin phi = y / littleR
+
 getCameraThetaHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraThetaHat cam = do
-  rhat <- getCameraRHat cam
-  phihat <- getCameraPhiHat cam
-  return $ L.cross phihat rhat
+  v@(L.V3 x y z) <- getCameraDisplacementFromTarget cam
+  let r        = L.norm v
+      littleR  = L.norm $ L.V2 x z
+      cosTheta = y / r
+      sinTheta = littleR / r
+      cosPhi   = x / littleR
+      sinPhi   = z / littleR
+  return $ L.V3 (cosTheta * cosPhi) (-sinTheta) (cosTheta * sinPhi)
 
 getCameraPolarSpeed :: MonadIO m => Camera -> m CFloat
 getCameraPolarSpeed cam = do

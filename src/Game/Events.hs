@@ -15,33 +15,23 @@ import           Game.Entity.Camera
 import qualified Physics.Bullet as P
 import           Graphics.Binding
 import qualified Linear                       as L
-import           GHC.Float (double2Float)
-
-mousePosToRot :: Float -> MousePos -> MousePos -> Double -> (Float, Float)
-mousePosToRot mouseSpeed (MousePos (L.V2 newx newy)) (MousePos (L.V2 oldx oldy)) dt =
-  (xrot, yrot)
-  where
-    xrot = mouseSpeed * double2Float (dt * (oldx - newx))
-    yrot = mouseSpeed * double2Float (dt * (oldy - newy))
 
 zoomCamera :: GameWire s a ()
-zoomCamera = mkGen_ $ const $ Right <$>
-             (do
-                 cam <- use gameStateCamera
-                 disp <- getCameraDisplacementFromTarget cam
-                 let dist = L.norm disp
-                     rs   = (cam ^. cameraPreferredDistance) - dist
-                 setCameraRadialSpeed cam rs)
+zoomCamera = mkGen_ $ const $ Right <$> do
+  cam <- use gameStateCamera
+  disp <- getCameraDisplacementFromTarget cam
+  let dist = L.norm disp
+      rs   = (cam ^. cameraPreferredDistance) - dist
+  setCameraRadialSpeed cam rs
+  cameraLookAtTarget cam
 
--- zoomCamera :: GameWire s a ()
--- zoomCamera = mkGen_ $ const $ Right <$> 
---              (do
---                  c <- use gameStateCamera
---                  d <- getCameraDisplacementFromTarget c
---                  rhat <- getCameraRHat c
---                  let cv = - d + (rhat L.^* (c ^. cameraPreferredDistance))
---                  setCameraLinearVelocity cv c)
-
+turnPlayer :: GameWire s a ()
+turnPlayer = mkGen_ $ const $ Right <$> do
+  cam <- use gameStateCamera
+  target <- use $ gameStatePlayer
+  orientation <- getCameraOrientation cam
+  setPlayerOrientation target orientation
+  
 rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
 rotateCamera (dhor, dver) cam = do
   setCameraPolarSpeed cam (CFloat dver)
@@ -51,56 +41,49 @@ camera :: GameWire s a ()
 camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Reset)
          --> (rotCam <<< N.mouseMickies)
   where
-    rotCam = mkGen_ $ \(x, y) -> Right <$> 
-      (do
-          cam <- use gameStateCamera
-          rotateCamera (-x * 10, -y * 10)  cam)
+    rotCam = mkGen_ $ \(x, y) -> Right <$> do
+      cam <- use gameStateCamera
+      rotateCamera (-x * 10, -y * 10)  cam
 
 moveForward :: GameWire s a ()
 moveForward = mvFwd <<< keyW
   where
-    mvFwd = mkGen_ $ const $ Right <$>
-            (do
-                p <- use gameStatePlayer
-                setPlayerLinearVelocity p $ L.V3 0 0 0.1)
+    mvFwd = mkGen_ $ const $ Right <$> do
+      p <- use gameStatePlayer
+      setPlayerLinearVelocity p $ L.V3 0 0 0.1
 
 moveBackward :: GameWire s a ()
 moveBackward = mvBwd <<< keyS
   where
-    mvBwd = mkGen_ $ const $ Right <$>
-            (do
-                p <- use gameStatePlayer
-                setPlayerLinearVelocity p $ L.V3 0 0 (-0.1))
+    mvBwd = mkGen_ $ const $ Right <$> do
+      p <- use gameStatePlayer
+      setPlayerLinearVelocity p $ L.V3 0 0 (-0.1)
 
 moveLeft :: GameWire s a ()
 moveLeft = mvLft <<< keyA
   where
-    mvLft = mkGen_ $ const $ Right <$>
-            (do
-                p <- use gameStatePlayer
-                setPlayerLinearVelocity p $ L.V3 0.1 0 0)
+    mvLft = mkGen_ $ const $ Right <$> do
+      p <- use gameStatePlayer
+      setPlayerLinearVelocity p $ L.V3 0.1 0 0
 
 moveRight :: GameWire s a ()
 moveRight = mvRgt <<< keyD
   where
-    mvRgt = mkGen_ $ const $ Right <$>
-            (do
-                p <- use gameStatePlayer
-                setPlayerLinearVelocity p $ L.V3 (-0.1) 0 0)
+    mvRgt = mkGen_ $ const $ Right <$> do
+      p <- use gameStatePlayer
+      setPlayerLinearVelocity p $ L.V3 (-0.1) 0 0
 
 close :: GameWire s a ()
 close = cls <<< keyEsc
   where
-    cls = mkGen_ $ const $ Right <$>
-          (gameStateShouldClose .= True)
+    cls = mkGen_ $ const $ Right <$> (gameStateShouldClose .= True)
 
 jump :: GameWire s a ()
 jump = jmp <<< keySpace
   where
-    jmp = mkGen_ $ const $ Right <$>
-          (do
-              p <- use $ gameStatePlayer . playerController
-              liftIO $ P.jump p)
+    jmp = mkGen_ $ const $ Right <$> do
+      p <- use $ gameStatePlayer . playerController
+      liftIO $ P.jump p
 
 mouseL :: GameWire s a a
 mouseL = N.mousePressed MouseButton'1

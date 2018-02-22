@@ -49,8 +49,10 @@ dependencies:
 - plugin
 - graphics-binding
 - safe-exceptions
+- singletons
 - text
 - vector
+- vinyl
 - wavefront
 
 ghc-options:

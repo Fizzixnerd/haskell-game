@@ -1,14 +1,20 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Game.Types where
@@ -20,11 +26,14 @@ import qualified Control.Monad.Logger        as ML
 import qualified Control.Monad.State.Strict  as MSS
 import qualified Control.Monad.Catch         as MC
 import qualified Data.Map.Strict             as MS
+import           Data.Vinyl
+import           Data.Vinyl.Functor
+import           Data.Singletons.TH
 import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import           Graphics.Binding
+import           Graphics.Binding 
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
@@ -238,6 +247,20 @@ type WindowHeight = Int
 data MousePos = MousePos
   { _mousePos :: !(L.V2 Double)
   } deriving (Eq, Ord, Show)
+
+data EntityFields = Graphics | Sounds | Physics | Scripts
+type GSPSEntity = [ 'Graphics , 'Sounds , 'Physics , 'Scripts ]
+type family ElF (f :: EntityFields) :: * where
+  ElF 'Graphics = Text
+  ElF 'Sounds   = Text
+  ElF 'Physics  = Text
+  ElF 'Scripts  = Text
+newtype Attr f = Attr { _unAttr :: ElF f }
+makeLenses ''Attr
+genSingletons [''EntityFields]
+
+(=::) :: sing f -> ElF f -> Attr f
+_ =:: x = Attr x
 
 mconcat <$> mapM makeLenses
   [ ''Camera
