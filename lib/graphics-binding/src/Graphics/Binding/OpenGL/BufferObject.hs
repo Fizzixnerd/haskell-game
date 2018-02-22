@@ -10,7 +10,7 @@ import           Control.Lens
 import           Data.Bits ((.|.))
 import           Graphics.Binding.OpenGL.Boolean
 import           Graphics.Binding.OpenGL.DataType
-import           Data.ObjectName
+import           Graphics.Binding.OpenGL.ObjectName
 import           Foreign
 import           Graphics.Binding.OpenGL.Utils
 import           Graphics.GL.Core45
@@ -98,7 +98,7 @@ instance ObjectName BufferObject where
   deleteObjectNames ns = liftIO . withArrayLen ns $ \len ptr -> glDeleteBuffers (fromIntegral len) (castPtr ptr)
 
 instance GeneratableObjectName BufferObject where
-  genObjectNames n = fmap BufferObject <$> (liftIO . allocaArray n $ \ptr -> glCreateBuffers (fromIntegral n) ptr >> peekArray n ptr)
+  genObjectNames_ n = fmap BufferObject <$> (liftIO . allocaArray n $ \ptr -> glCreateBuffers (fromIntegral n) ptr >> peekArray n ptr)
 
 -----------------------------
 

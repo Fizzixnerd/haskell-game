@@ -7,7 +7,7 @@ import Data.StateVar
 import Graphics.Binding.OpenGL.Boolean
 import Graphics.Binding.OpenGL.BufferObject
 import Graphics.Binding.OpenGL.DataType
-import Data.ObjectName
+import Graphics.Binding.OpenGL.ObjectName
 import Foreign
 import Graphics.Binding.OpenGL.Utils
 import Graphics.GL.Types
@@ -22,7 +22,7 @@ instance ObjectName VertexArrayObject where
   deleteObjectNames ns = liftIO . withArrayLen ns $ \len ptr -> glDeleteVertexArrays (fromIntegral len) (castPtr ptr)
 
 instance GeneratableObjectName VertexArrayObject where
-  genObjectNames n = fmap VertexArrayObject <$> (liftIO . allocaArray n $ \ptr -> glCreateVertexArrays (fromIntegral n) ptr >> peekArray n ptr)
+  genObjectNames_ n = fmap VertexArrayObject <$> (liftIO . allocaArray n $ \ptr -> glCreateVertexArrays (fromIntegral n) ptr >> peekArray n ptr)
 
 newtype AttribLocation = AttribLocation { getAttribLocationGLuint :: GLuint } deriving (Eq, Ord, Show)
 

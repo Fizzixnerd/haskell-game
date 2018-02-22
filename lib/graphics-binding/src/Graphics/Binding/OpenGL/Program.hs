@@ -5,7 +5,7 @@ module Graphics.Binding.OpenGL.Program where
 import Graphics.GL.Core45
 import Graphics.GL.Types
 import Graphics.Binding.OpenGL.Shader
-import Data.ObjectName
+import Graphics.Binding.OpenGL.ObjectName
 import Data.StateVar
 import Graphics.Binding.OpenGL.Utils
 import Graphics.Binding.OpenGL.Boolean
@@ -18,32 +18,32 @@ instance ObjectName Program where
   deleteObjectName (Program n) = glDeleteProgram n
 
 instance GeneratableObjectName Program where
-  genObjectName = Program <$> glCreateProgram
+  genObjectName_ = Program <$> glCreateProgram
 
-programDeleteStatus :: MonadIO m => Program -> m Bool
-programDeleteStatus (Program n) = unmarshalGLboolean <$> foreignPoke (glGetProgramiv n GL_DELETE_STATUS)
+programDeleteStatus' :: MonadIO m => Program -> m Bool
+programDeleteStatus' (Program n) = unmarshalGLboolean <$> foreignPoke (glGetProgramiv n GL_DELETE_STATUS)
 
-attachShader :: (MonadIO m, Shader t) => Program -> t -> m ()
-attachShader (Program n) t = glAttachShader n (marshalShaderObject t)
+attachShader' :: (MonadIO m, Shader t) => Program -> t -> m ()
+attachShader' (Program n) t = glAttachShader n (marshalShaderObject t)
 
-linkProgram :: MonadIO m => Program -> m (Maybe ByteString)
-linkProgram (Program n) = liftIO $ do
+linkProgram' :: MonadIO m => Program -> m (Maybe ByteString)
+linkProgram' (Program n) = liftIO $ do
   glLinkProgram n
   status <- unmarshalGLboolean <$> foreignPoke (glGetProgramiv n GL_LINK_STATUS)
   if status
     then return Nothing
     else Just <$> withForeignBufferBS (glGetProgramiv n GL_INFO_LOG_LENGTH) (glGetProgramInfoLog n)
 
-validateProgram :: MonadIO m => Program -> m (Maybe ByteString)
-validateProgram (Program n) = liftIO $ do
+validateProgram' :: MonadIO m => Program -> m (Maybe ByteString)
+validateProgram' (Program n) = liftIO $ do
   glValidateProgram n
   status <- unmarshalGLboolean <$> foreignPoke (glGetProgramiv n GL_VALIDATE_STATUS)
   if status
     then return Nothing
     else Just <$> withForeignBufferBS (glGetProgramiv n GL_INFO_LOG_LENGTH) (glGetProgramInfoLog n)
 
-currentProgram :: StateVar (Maybe Program)
-currentProgram = makeStateVar getP setP
+currentProgram' :: StateVar (Maybe Program)
+currentProgram' = makeStateVar getP setP
   where
     getP = do
       n <- foreignPoke (glGetInteger64v GL_CURRENT_PROGRAM)
@@ -51,6 +51,8 @@ currentProgram = makeStateVar getP setP
         then return Nothing
         else return . Just . Program . fromIntegral $ n
     setP = \case
-      Nothing -> return ()
+      Nothing -> glUseProgram 0
       Just (Program n) -> glUseProgram n
 
+useProgram' :: MonadIO m => Program -> m ()
+useProgram' (Program n) = glUseProgram n

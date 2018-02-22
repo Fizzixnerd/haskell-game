@@ -12,7 +12,7 @@ module Graphics.Binding.OpenGL.Texture where
 import Control.Lens
 import Graphics.Binding.OpenGL.Boolean
 import Graphics.Binding.OpenGL.DataType
-import Data.ObjectName
+import Graphics.Binding.OpenGL.ObjectName
 import Foreign.Marshal.Array
 import Graphics.Binding.OpenGL.Utils
 import Graphics.GL.Core45

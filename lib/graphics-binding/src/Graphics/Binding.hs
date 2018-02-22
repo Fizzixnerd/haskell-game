@@ -48,19 +48,17 @@ import Graphics.Binding.OpenGL.Shader as X
   , shaderSource
   )
 import Graphics.Binding.OpenGL.Program as X
-  ( programDeleteStatus
-  , attachShader
-  , linkProgram
-  , validateProgram
-  , currentProgram
+  ( programDeleteStatus'
+  , attachShader'
+  , linkProgram'
+  , validateProgram'
+  , currentProgram'
+  , useProgram'
   , Program
   )
 
 import Graphics.Binding.OpenGL.UniformBlock as X
-  ( Uniform(..)
-  , HasUniformComponent(..)
-  , UniformBlock(..)
-  , DefaultBlock
+  ( UniformBlock(..)
   )
 
 import Graphics.Binding.OpenGL.Texture as X
@@ -141,7 +139,7 @@ import Graphics.Binding.OpenGL.Rendering as X
   , clearBufferDepth
   , defaultClearBuffer
   )
+import Graphics.Binding.OpenGL.ObjectName as X
 import Graphics.Binding.GLFW.Window as X
 
 import Data.StateVar as X
-import Data.ObjectName as X
