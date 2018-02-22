@@ -8,12 +8,10 @@ import GHC
 import GHC.Paths
 import DynFlags
 import Unsafe.Coerce
+import Plugin.Types
 
-type ModName = String
-type ValName = String
-
-loadPlugin :: FilePath -> ModName -> ValName -> IO a
-loadPlugin dir modName value = do
+loadPlugin :: Plugin -> IO a
+loadPlugin (Plugin dir modName value) = do
   withCurrentDirectory dir $
     defaultErrorHandler defaultFatalMessager defaultFlushOut $
     runGhc (Just libdir) $ withCleanupSession $ do

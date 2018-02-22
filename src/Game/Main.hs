@@ -23,6 +23,7 @@ import           Graphics.Binding
 import           Linear                      as L
 import qualified Physics.Bullet as P
 import qualified Plugin.Load as PL
+import qualified Plugin.Types as PL
 import           System.Exit
 
 {-
@@ -49,11 +50,19 @@ setupPhysics = do
         P.setOrigin t 0 0 (-5)
         setCameraTransform cam t)
   cameraLookAtTarget cam
-  giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-10) 0) 0
+  giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-1) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw''', pl, cam)
+
+plugins :: [PL.Plugin]
+plugins = [ PL.Plugin "scripts/" "Movement" "moveForward"
+          , PL.Plugin "scripts/" "Movement" "moveBackward"
+          , PL.Plugin "scripts/" "Movement" "moveLeft"
+          , PL.Plugin "scripts/" "Movement" "moveRight"
+          , PL.Plugin "scripts/" "Util"     "reloadPlugins"
+          ]
 
 gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
@@ -103,10 +112,15 @@ gameMain = withGraphicsContext defaultGraphicsContext
         print =<< getPlayerPosition p
         print =<< getCameraPosition c
 
-  -- proof of concept.
-  moveForward <- PL.loadPlugin "scripts/" "Movement" "moveForward"
-  -- proof of double-loading.
-  moveBackward <- PL.loadPlugin "scripts/" "Movement" "moveBackward"
+  -- -- proof of concept.
+  -- moveForward   <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveForward"
+  -- -- proof of double-loading.
+  -- moveBackward  <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveBackward"
+  -- moveLeft      <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveLeft"
+  -- moveRight     <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveRight"
+  -- holy shit I'm so fucking mad fuck this shit it doesn't work
+  -- sometimes wtf.
+  --  reloadPlugins <- PL.loadPlugin $ PL.Plugin "scripts/" "Util"     "reloadPlugins"
 
   let mainWire = renderWire <+>
                  moveForward <+>
@@ -116,8 +130,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
                  physicsWire <+>
                  close <+>
                  jump <+>
---                 camera <+>
---                 reloadPlugins
+                 camera <+>
                  zoomCamera
 
   ic <- N.mkInputControl win

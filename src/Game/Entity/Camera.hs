@@ -41,7 +41,7 @@ getCameraLinearVelocity Camera {..} = liftIO $ do
   (x, y, z) <- P.getLinearVelocity _cameraController
   return $ L.V3 x y z
 
-setCameraLinearVelocity :: MonadIO m => L.V3 CFloat ->  Camera -> m ()
+setCameraLinearVelocity :: MonadIO m => L.V3 CFloat -> Camera -> m ()
 setCameraLinearVelocity (L.V3 x y z) Camera {..} =
   liftIO $ P.setLinearVelocity _cameraController x y z
 
@@ -141,7 +141,7 @@ getCameraPhiHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraPhiHat cam = do
   (L.V3 x y _) <- getCameraDisplacementFromTarget cam
   let littleR = L.norm (L.V2 x y)
-      phihat = L.V3 (- y / littleR) (x / littleR) 0
+      phihat = L.V3 (- y / littleR) 0 (x / littleR) 
   return phihat
 
 getCameraAzimuthalSpeed :: MonadIO m => Camera -> m CFloat
@@ -186,9 +186,9 @@ cameraMVP cam = do
 
   --  camModel <- getCameraOpenGLMatrix cam
   let camModel = L.identity
-  return $ camPerspective L.!*! (unsafeCoerce camView :: L.M44 Float) L.!*! camModel
+  return $ camPerspective L.!*! fmap (fmap (\(CFloat x) -> x)) camView L.!*! camModel
     where
         -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
       vup = L.V3 0 1 0
       cfov = cam ^. cameraFOV
-      camPerspective = L.perspective cfov (16/9) 0.1 100
+      camPerspective = L.perspective cfov (16/9) 0.1 10000

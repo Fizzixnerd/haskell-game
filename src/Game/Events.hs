@@ -9,6 +9,7 @@ module Game.Events where
 import           Control.Arrow
 import           Control.Wire
 import qualified FRP.Netwire.Input as N
+import           Foreign.C.Types
 import           ClassyPrelude
 import           Control.Lens
 import           Game.Types
@@ -27,40 +28,52 @@ mousePosToRot mouseSpeed (MousePos (L.V2 newx newy)) (MousePos (L.V2 oldx oldy))
     yrot = mouseSpeed * double2Float (dt * (oldy - newy))
 
 zoomCamera :: GameWire s a ()
-zoomCamera = mkGen_ $ const $ Right <$> 
+zoomCamera = mkGen_ $ const $ Right <$>
              (do
-                 c <- use gameStateCamera
-                 d <- getCameraDisplacementFromTarget c
-                 rhat <- getCameraRHat c
-                 let cv = - d + (rhat L.^* (c ^. cameraPreferredDistance))
-                 setCameraLinearVelocity cv c)
+                 cam <- use gameStateCamera
+                 disp <- getCameraDisplacementFromTarget cam
+                 let dist = L.norm disp
+                     rs   = (cam ^. cameraPreferredDistance) - dist
+                 setCameraRadialSpeed cam rs)
 
--- rotateCamera :: (Float, Float) -> Camera -> Camera
--- rotateCamera (dhor, dver) cam = cam & cameraOrientation %~ go
---   where
---     go (hor, ver) = (hor + dhor, max (-pi/2) . min (pi/2) $ ver + dver)
+-- zoomCamera :: GameWire s a ()
+-- zoomCamera = mkGen_ $ const $ Right <$> 
+--              (do
+--                  c <- use gameStateCamera
+--                  d <- getCameraDisplacementFromTarget c
+--                  rhat <- getCameraRHat c
+--                  let cv = - d + (rhat L.^* (c ^. cameraPreferredDistance))
+--                  setCameraLinearVelocity cv c)
 
--- camera :: GameWire s a ()
--- camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Disabled)
---          --> (rotCam <<< N.mouseDelta)
---   where
---     rotCam = mkGen_ $ \(x, y) -> Right <$> (gameStateCamera %= rotateCamera (-x, -y))
+rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
+rotateCamera (dhor, dver) cam = do
+  setCameraPolarSpeed cam (CFloat dver)
+  setCameraAzimuthalSpeed cam (CFloat dhor)
 
--- moveForward :: GameWire s a ()
--- moveForward = mvFwd <<< key'w
---   where
---     mvFwd = mkGen_ $ const $ Right <$>
---             (do
---                 p <- use gameStatePlayer
---                 setPlayerLinearVelocity p $ L.V3 0 0 0.1)
+camera :: GameWire s a ()
+camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Reset)
+         --> (rotCam <<< N.mouseMickies)
+  where
+    rotCam = mkGen_ $ \(x, y) -> Right <$> 
+      (do
+          cam <- use gameStateCamera
+          rotateCamera (-x * 10, -y * 10)  cam)
 
--- moveBackward :: GameWire s a ()
--- moveBackward = mvBwd <<< key's
---   where
---     mvBwd = mkGen_ $ const $ Right <$>
---             (do
---                 p <- use gameStatePlayer
---                 setPlayerLinearVelocity p $ L.V3 0 0 (-0.1))
+moveForward :: GameWire s a ()
+moveForward = mvFwd <<< key'w
+  where
+    mvFwd = mkGen_ $ const $ Right <$>
+            (do
+                p <- use gameStatePlayer
+                setPlayerLinearVelocity p $ L.V3 0 0 0.1)
+
+moveBackward :: GameWire s a ()
+moveBackward = mvBwd <<< key's
+  where
+    mvBwd = mkGen_ $ const $ Right <$>
+            (do
+                p <- use gameStatePlayer
+                setPlayerLinearVelocity p $ L.V3 0 0 (-0.1))
 
 moveLeft :: GameWire s a ()
 moveLeft = mvLft <<< key'a
@@ -109,6 +122,9 @@ key's = N.keyPressed Key'S
 
 key'd :: GameWire s a a
 key'd = N.keyPressed Key'D
+
+keyP :: GameWire s a a
+keyP = N.keyPressed Key'P
 
 keyEsc :: GameWire s a a 
 keyEsc = N.keyPressed Key'Escape

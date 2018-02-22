@@ -24,6 +24,7 @@ dependencies:
 - ghc
 - ghc-paths
 - directory
+- lens
 
 library:
   source-dirs: src

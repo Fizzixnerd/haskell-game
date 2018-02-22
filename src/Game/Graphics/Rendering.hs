@@ -38,7 +38,6 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
   cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
-  traceM $ show cameraMatrix
   uniform prog UniformMVP $= cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
 
