@@ -30,13 +30,13 @@ instance ProgramLike Program where
 -- Block binding
 class HasUniformVariable a b where
   type UniformVariableContents a
-  uniform :: a -> ForSetter b (UniformVariableContents a)
+  uniform :: MonadIO m => a -> b -> UniformVariableContents a -> m ()
 
-primsetting :: (ProgramLike a, PrimUniform b) => UniformLocation -> ForSetter a b
-primsetting loc = forSetting $ \prg x -> primMarshal prg loc x
+primsetting :: (ProgramLike a, PrimUniform b, MonadIO m) => UniformLocation -> a -> b -> m ()
+primsetting = flip primMarshal
 
-primsettingArray :: (ProgramLike a, PrimUniform b) => UniformLocation -> ForSetter a (VS.Vector b)
-primsettingArray loc = forSetting $ \prg x -> primMarshalArray prg loc x
+primsettingArray :: (ProgramLike a, PrimUniform b, MonadIO m) => UniformLocation -> a -> VS.Vector b -> m ()
+primsettingArray = flip primMarshalArray
 
 {-
 class HasUniformBlock a b where

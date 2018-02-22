@@ -32,7 +32,7 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   bindTextureUnit texSampleLoc tex
   cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
   traceM $ show cameraMatrix
-  void $ prog & uniform UniformMVP .~ cameraMatrix
+  uniform UniformMVP prog cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b
