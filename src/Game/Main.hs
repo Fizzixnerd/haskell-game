@@ -40,7 +40,7 @@ setupPhysics = do
   pw <- newPhysicsWorld
   pl <- newPlayer
   go <- P.getGhostObject $ pl ^. playerController
-  cam <- newCamera go 10
+  cam <- newCamera go 4
   cameraLookAtTarget cam
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
@@ -70,7 +70,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
            $ \win -> do
   contextCurrent $= Just win
 
-  -- cullFace $= Just Back
+  --cullFace $= Just Back
   depthFunc $= Just DepthLess
   -- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just simpleDebugFunc

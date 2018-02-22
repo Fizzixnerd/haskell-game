@@ -57,7 +57,7 @@ camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Reset)
           rotateCamera (-x * 10, -y * 10)  cam)
 
 moveForward :: GameWire s a ()
-moveForward = mvFwd <<< key'w
+moveForward = mvFwd <<< keyW
   where
     mvFwd = mkGen_ $ const $ Right <$>
             (do
@@ -65,7 +65,7 @@ moveForward = mvFwd <<< key'w
                 setPlayerLinearVelocity p $ L.V3 0 0 0.1)
 
 moveBackward :: GameWire s a ()
-moveBackward = mvBwd <<< key's
+moveBackward = mvBwd <<< keyS
   where
     mvBwd = mkGen_ $ const $ Right <$>
             (do

@@ -139,7 +139,7 @@ setCameraPolarSpeed cam pv = do
 
 getCameraPhiHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraPhiHat cam = do
-  (L.V3 x y _) <- getCameraDisplacementFromTarget cam
+  (L.V3 x _ y) <- getCameraDisplacementFromTarget cam
   let littleR = L.norm (L.V2 x y)
       phihat = L.V3 (- y / littleR) 0 (x / littleR) 
   return phihat
@@ -181,8 +181,8 @@ cameraAttach cam co = return $ cam & cameraTarget .~ (P.toCollisionObject co)
 cameraMVP :: MonadIO m => Camera -> m (L.M44 Float)
 cameraMVP cam = do
   pos <- getCameraPosition cam
-  (L.Quaternion _ dir) <- getCameraOrientation cam
-  let camView = L.lookAt pos (pos + dir) vup
+  tar <- getCameraTargetPosition cam
+  let camView = L.lookAt pos tar vup
 
   --  camModel <- getCameraOpenGLMatrix cam
   let camModel = L.identity
