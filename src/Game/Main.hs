@@ -74,7 +74,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
   debugMessageCallback $= Just simpleDebugFunc
   --  printContextVersion win
 
-  prog <- compileSimpleShader
+  prog <- compileShaders
 
   (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
 
@@ -95,10 +95,10 @@ gameMain = withGraphicsContext defaultGraphicsContext
                                 & gameStatePlayer .~ player
                                 & gameStateCamera .~ cam
 
-  let renderWire :: TextureTarget t => GameWire s (SimpleShader, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
-      renderWire = mkGen_ \(p, tu, vao_, n, tex_) -> Right <$> do
-        gs <- use simple
-        render gs p tu vao_ n tex_)
+  let renderWire :: TextureTarget t => GameWire s (Program, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
+      renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> Right <$> do
+                              gs <- use simple
+                              render gs p tu vao_ n tex_)
 
       physicsWire :: GameWire s a ()
       physicsWire = mkGen_ $ const $ Right <$> do
@@ -132,7 +132,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
   input <- liftIO $ N.getInput ic
   let doGame :: N.GLFWInputState
              -> Session IO (Timed Integer ())
-             -> GameWire (Timed Integer ()) ( SimpleShader
+             -> GameWire (Timed Integer ()) ( Program
                                             , TextureUnit
                                             , VertexArrayObject
                                             , Int

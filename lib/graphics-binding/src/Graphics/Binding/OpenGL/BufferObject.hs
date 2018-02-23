@@ -40,6 +40,10 @@ newtype BufferObjectComponentSize = BufferObjectComponentSize
   { bufferObjectComponentSize :: GLint
   } deriving (Eq, Ord, Show, Num, Real, Enum, Integral)
 
+newtype BufferObjectIndex = BufferObjectIndex
+  { bufferObjectIndexInternal :: GLuint
+  } deriving (Eq, Ord, Show, Num, Real, Enum, Integral)
+
 data IntegerHandling
   = Normalized
   | NotNormalized
@@ -178,3 +182,12 @@ copyBufferSubData :: MonadIO m => BufferObject -> BufferObject -> BufferObjectOf
 copyBufferSubData (BufferObject readB) (BufferObject writeB) readOff writeOff size
   = glCopyNamedBufferSubData readB writeB (fromIntegral readOff) (fromIntegral writeOff) (fromIntegral size)
 
+-- void glBindBufferRange(GLenum target​, GLuint index​, GLuint buffer​, GLintptr offset​, GLsizeiptr size​ );
+
+--  void glBindBufferBase(GLenum target​, GLuint index​, GLuint buffer​);
+
+bindBufferRange :: MonadIO m => BufferBindPoint -> BufferObjectIndex -> BufferObject -> BufferObjectOffset -> BufferObjectSize -> m ()
+bindBufferRange pt (BufferObjectIndex n) (BufferObject m) (BufferObjectOffset l) (BufferObjectSize k) = glBindBufferRange (marshalBufferBindPoint pt) n m l k
+
+bindBufferBase :: MonadIO m => BufferBindPoint -> BufferObjectIndex -> BufferObject -> m ()
+bindBufferBase pt (BufferObjectIndex n) (BufferObject m) = glBindBufferBase (marshalBufferBindPoint pt) n m

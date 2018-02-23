@@ -48,17 +48,18 @@ import Graphics.Binding.OpenGL.Shader as X
   , shaderSource
   )
 import Graphics.Binding.OpenGL.Program as X
-  ( programDeleteStatus'
-  , attachShader'
-  , linkProgram'
-  , validateProgram'
-  , currentProgram'
-  , useProgram'
+  ( programDeleteStatus
+  , attachShader
+  , linkProgram
+  , validateProgram
+  , currentProgram
+  , useProgram
   , Program
   )
 
-import Graphics.Binding.OpenGL.UniformBlock as X
-  ( UniformBlock(..)
+import Graphics.Binding.OpenGL.Uniform as X
+  ( DefaultBlock
+  , Uniform(..)
   )
 
 import Graphics.Binding.OpenGL.Texture as X
@@ -109,6 +110,8 @@ import Graphics.Binding.OpenGL.DataType as X
 import Graphics.Binding.OpenGL.PrimUniform as X
   ( UniformLocation(..)
   , PrimUniform(..)
+  , primMarshal
+  , primMarshalArray
   )
 
 import Graphics.Binding.OpenGL.Window as X

@@ -8,7 +8,6 @@ module Game.Graphics.Shader.Loader where
 
 import           ClassyPrelude
 import           Graphics.Binding
-import           Game.Graphics.HighLevel.Types
 import           Text.Printf
 import           Linear
 
@@ -31,28 +30,23 @@ compileShaders = liftIO $ do
   (fragmentShader :: FragmentShader) <- makeShader "res/shaders/shader.fs"
 
   program <- genObjectName
-  attachShader' program vertexShader
+  attachShader program vertexShader
 --  G.attachShader program tessellationControlShader
 --  G.attachShader program tessellationEvaluationShader
 --  G.attachShader program geometryShader
-  attachShader' program fragmentShader
-  mlogL <- linkProgram' program
+  attachShader program fragmentShader
+  mlogL <- linkProgram program
   forM_ mlogL $ printf "%s\n\n" . show
-  mlogV <- validateProgram' program
+  mlogV <- validateProgram program
   forM_ mlogV $ printf "%s\n\n" . show
 
   deleteObjectName fragmentShader
   deleteObjectName vertexShader
   return program
 
-newtype SimpleShader = SimpleShader Program
-  deriving (Eq, Show, Ord, ObjectName, GeneratableObjectName, ProgramLike)
-
-compileSimpleShader :: MonadIO m => m SimpleShader
-compileSimpleShader = SimpleShader <$> compileShaders
-
 data UniformMVP = UniformMVP deriving (Eq, Show, Ord)
 
-instance HasUniformVariable UniformMVP SimpleShader where
-  type UniformVariableContents UniformMVP = M44 GLfloat
-  uniform _ = primsetting (UniformLocation 0)
+instance Uniform UniformMVP where
+  type UniformContents UniformMVP = M44 GLfloat
+  type UniformLocationType UniformMVP = DefaultBlock
+  uniform prg _ = primMarshal 0 prg
