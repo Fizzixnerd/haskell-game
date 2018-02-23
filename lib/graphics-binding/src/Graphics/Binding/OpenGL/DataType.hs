@@ -160,3 +160,15 @@ marshalBufferBindPoint = \case
   BufferTransformFeedback -> GL_TRANSFORM_FEEDBACK_BUFFER
   BufferUniform           -> GL_UNIFORM_BUFFER
   BufferShaderStorage     -> GL_SHADER_STORAGE_BUFFER
+
+data SamplerType
+  = SamplerFloat
+  | SamplerInt
+  | SamplerUnsignedInt
+  deriving (Eq, Ord, Show)
+
+marshalSamplerType :: SamplerType -> GLenum
+marshalSamplerType = \case
+  SamplerUnsignedInt -> GL_UNSIGNED_INT
+  SamplerInt         -> GL_INT
+  SamplerFloat       -> GL_FLOAT

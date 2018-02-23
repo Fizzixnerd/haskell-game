@@ -33,7 +33,7 @@ import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import           Graphics.Binding 
+import           Graphics.Binding
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf

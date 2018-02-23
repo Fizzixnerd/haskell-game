@@ -14,6 +14,6 @@ import Graphics.Binding.OpenGL.Program
 type DefaultBlock = Program
 
 class Uniform a where
-  type (UniformContents a)
-  type (UniformLocationType a)
+  type UniformContents a
+  type UniformLocationType a
   uniform :: (MonadIO m, Storable (UniformContents a)) => UniformLocationType a -> a -> UniformContents a -> m ()

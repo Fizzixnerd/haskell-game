@@ -86,9 +86,13 @@ import Graphics.Binding.OpenGL.Texture as X
   , genTextureName
   , genTextureNames
   , TextureUnit(..)
-  , bindTextureUnit
+  , primTextureUnitBind
   , textureParameterf
   , textureParameteri
+  , TextureSampler(..)
+  , texture
+  , primTextureUnitBind_
+  , primTextureUnitBind
   )
 import Graphics.Binding.OpenGL.VertexArray as X
   ( VertexArrayObject
@@ -105,6 +109,7 @@ import Graphics.Binding.OpenGL.DataType as X
   ( SizedFormat(..)
   , GLDataType(..)
   , Capability(..)
+  , SamplerType(..)
   )
 
 import Graphics.Binding.OpenGL.PrimUniform as X

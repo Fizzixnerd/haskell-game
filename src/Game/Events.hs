@@ -31,7 +31,7 @@ turnPlayer = mkGen_ $ const $ Right <$> do
   target <- use $ gameStatePlayer
   orientation <- getCameraOrientation cam
   setPlayerOrientation target orientation
-  
+
 rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
 rotateCamera (dhor, dver) cam = do
   setCameraPolarSpeed cam (CFloat dver)
@@ -106,7 +106,7 @@ keyD = N.keyPressed Key'D
 keyP :: GameWire s a a
 keyP = N.keyPressed Key'P
 
-keyEsc :: GameWire s a a 
+keyEsc :: GameWire s a a
 keyEsc = N.keyPressed Key'Escape
 
 keySpace :: GameWire s a a
