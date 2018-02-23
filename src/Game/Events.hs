@@ -16,14 +16,15 @@ import qualified Physics.Bullet as P
 import           Graphics.Binding
 import qualified Linear                       as L
 
-zoomCamera :: GameWire s a ()
-zoomCamera = mkGen_ $ const $ Right <$> do
+zoomCamera :: GameWire s a a
+zoomCamera = mkGen_ $ \x $ Right <$> do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
       rs   = (cam ^. cameraPreferredDistance) - dist
   setCameraRadialSpeed cam rs
   cameraLookAtTarget cam
+  return a
 
 turnPlayer :: GameWire s a ()
 turnPlayer = mkGen_ $ const $ Right <$> do

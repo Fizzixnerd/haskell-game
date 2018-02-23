@@ -26,14 +26,15 @@ import qualified Control.Monad.Logger        as ML
 import qualified Control.Monad.State.Strict  as MSS
 import qualified Control.Monad.Catch         as MC
 import qualified Data.Map.Strict             as MS
-import           Data.Vinyl
-import           Data.Vinyl.Functor
+import qualified Data.Vinyl                  as V
+import qualified Data.Vinyl.Functor          as V
 import           Data.Singletons.TH
 import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Graphics.Binding 
+import qualified Sound.OpenAL                as AL
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
@@ -80,6 +81,7 @@ data GameState s = GameState
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
+  , _gameStateEntities      :: Entity s
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
   }
@@ -248,32 +250,75 @@ data MousePos = MousePos
   { _mousePos :: !(L.V2 Double)
   } deriving (Eq, Ord, Show)
 
-data EntityFields = Graphics | Sounds | Physics | Scripts
-type GSPSEntity = [ 'Graphics , 'Sounds , 'Physics , 'Scripts ]
-type family ElF (f :: EntityFields) :: * where
-  ElF 'Graphics = Text
-  ElF 'Sounds   = Text
-  ElF 'Physics  = Text
-  ElF 'Scripts  = Text
-newtype Attr f = Attr { _unAttr :: ElF f }
-makeLenses ''Attr
-genSingletons [''EntityFields]
+data Entity s = Entity
+  { _entityGraphics :: Maybe (Gfx s)
+  , _entitySounds   :: Maybe (Sfx s)
+  , _entityPhysics  :: Maybe (Pfx s)
+  , _entityLogic    :: Maybe (Lfx s)
+  }
 
-(=::) :: sing f -> ElF f -> Attr f
-_ =:: x = Attr x
+-- | When an `Entity' is loaded, it's graphics data is stored here.
+-- Note that `gfxWire' is constructed from a `GameWire s (Gfx s) ()'.
+-- It is then combined with `arr (const <this Gfx s>)' to create the
+-- final `Wire' seen below, which is more flexible.  This means the
+-- `Wire' actually has speedy access to the `Gfx' object.
+data Gfx s = Gfx
+  { _gfxVaoData     :: Vector (VertexArrayObject, Program, PrimitiveMode, Word32)
+  , _gfx1DTextures  :: Vector Tex1D
+  , _gfx2DTextures  :: Vector Tex2D
+  , _gfx3DTextures  :: Vector Tex3D
+  , _gfxChildren    :: Vector (Gfx s)
+  , _gfxModelOffset :: Int
+  }
+
+drawGfx :: Gfx s -> Game s ()
+drawGfx gfx = do
+  mapM_ bindTexture1D $ gfx ^. gfx1DTextures
+  mapM_ bindTexture2D $ gfx ^. gfx2DTextures
+  mapM_ bindTexture3D $ gfx ^. gfx3DTextures
+  forM_ (gfx ^. gfxVaoData) $ \(vao, prog, mode, size) -> do
+    clear $ defaultClearBuffer & clearBufferColor .~ True
+                               & clearBufferDepth .~ True
+    useProgram prog
+    currentVertexArrayObject $= Just vao
+    mdl :: L.M44 Float <- getModel $ gfx ^. gfxModelOffset
+    uniform UniformModel prog mdl
+    drawElements mode (fromIntegral size) UnsignedInt
+  mapM_ drawGfx $ gfx ^. gfxChildren
+  
+data Sfx s = Sfx
+  { _sfxWire    :: forall a . GameWire s a ()
+  , _sfxSources :: Vector AL.Source
+  }
+
+data Pfx s = Pfx
+  { _pfxWires :: forall a . GameWire s a ()
+  }
+
+data Lfx s = Lfx
+  { _lfxWires :: forall a . GameWire s a ()
+  }
 
 mconcat <$> mapM makeLenses
-  [ ''Camera
-  , ''GameState
+  [ ''Attr
+  , ''Camera
+  , ''Entity
+  , ''EventRegister
   , ''ExpandObjVTN
+  , ''Game
+  , ''GameState
+  , ''Gfx
+  , ''GiantFeaturelessPlane
+  , ''Lfx
+  , ''MousePos
+  , ''Pfx
+  , ''PhysicsWorld
+  , ''Player
   , ''Script
   , ''ScriptName
-  , ''EventRegister
-  , ''Player
-  , ''PhysicsWorld
-  , ''GiantFeaturelessPlane
-  , ''VTNPoint
+  , ''Sfx
   , ''VTNIndex
-  , ''MousePos
-  , ''Game
+  , ''VTNPoint
   ]
+
+genSingletons [''EntityFields]

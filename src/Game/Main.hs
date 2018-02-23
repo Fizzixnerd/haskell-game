@@ -72,7 +72,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
   depthFunc $= Just DepthLess
   -- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just simpleDebugFunc
---  printContextVersion win
+  --  printContextVersion win
 
   prog <- compileSimpleShader
 
@@ -96,9 +96,9 @@ gameMain = withGraphicsContext defaultGraphicsContext
                                 & gameStateCamera .~ cam
 
   let renderWire :: TextureTarget t => GameWire s (SimpleShader, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
-      renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> Right <$> do
-                              gs <- use simple
-                              render gs p tu vao_ n tex_)
+      renderWire = mkGen_ \(p, tu, vao_, n, tex_) -> Right <$> do
+        gs <- use simple
+        render gs p tu vao_ n tex_)
 
       physicsWire :: GameWire s a ()
       physicsWire = mkGen_ $ const $ Right <$> do
