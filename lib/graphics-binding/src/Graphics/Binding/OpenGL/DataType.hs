@@ -147,3 +147,16 @@ marshalBufferAccess = \case
 
 data Capability = Enabled | Disabled deriving (Eq, Ord, Show)
 
+data BufferBindPoint
+  = BufferAtomicCounter
+  | BufferTransformFeedback
+  | BufferUniform
+  | BufferShaderStorage
+  deriving (Eq, Ord, Show)
+
+marshalBufferBindPoint :: BufferBindPoint -> GLenum
+marshalBufferBindPoint = \case
+  BufferAtomicCounter     -> GL_ATOMIC_COUNTER_BUFFER
+  BufferTransformFeedback -> GL_TRANSFORM_FEEDBACK_BUFFER
+  BufferUniform           -> GL_UNIFORM_BUFFER
+  BufferShaderStorage     -> GL_SHADER_STORAGE_BUFFER

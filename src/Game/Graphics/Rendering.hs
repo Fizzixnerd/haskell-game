@@ -11,14 +11,13 @@ import           Foreign.C.Types
 import           Game.Types
 import           Graphics.Binding
 import           Game.Entity.Player
-import           Game.Graphics.HighLevel.Types
 import           Game.Graphics.Shader.Loader
 import           Game.Entity.Camera
 import           Linear
 
 render :: (TextureTarget t, MonadIO m)
        => GameState s
-       -> SimpleShader
+       -> Program
        -> TextureUnit
        -> VertexArrayObject
        -> Int -- ^ How much of the VAO we want to draw
@@ -31,7 +30,7 @@ render gs prog texSampleLoc vao n tex = liftIO $ do
   currentVertexArrayObject $= Just vao
   bindTextureUnit texSampleLoc tex
   cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
-  uniform UniformMVP prog cameraMatrix
+  uniform prog UniformMVP cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
 
 unsafeWithVecLen :: (Storable a, MonadIO m) => VS.Vector a -> (Ptr a -> Int -> IO b) -> m b

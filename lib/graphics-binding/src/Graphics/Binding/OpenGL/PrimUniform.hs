@@ -21,6 +21,12 @@ class Storable a => PrimUniform a where
   primMarshal_ :: MonadIO m => Program -> UniformLocation -> a -> m ()
   primMarshalArray_ :: MonadIO m => Program -> UniformLocation -> VS.Vector a -> m ()
 
+primMarshal :: (PrimUniform a, MonadIO m) => UniformLocation -> Program -> a -> m ()
+primMarshal = flip primMarshal_
+
+primMarshalArray :: (PrimUniform a, MonadIO m) => UniformLocation -> Program -> VS.Vector a -> m ()
+primMarshalArray = flip primMarshalArray_
+
 instance PrimUniform GLint where
   primMarshal_ (Program n) (UniformLocation m) = glProgramUniform1i n m
   primMarshalArray_ (Program n) (UniformLocation m) vs = unsafeWithVecLen vs $ glProgramUniform1iv n m
