@@ -74,21 +74,47 @@ gameMain = withGraphicsContext defaultGraphicsContext
   debugMessageCallback $= Just simpleDebugFunc
   --  printContextVersion win
 
-  prog <- compileShaders
-
-  (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
-
-  tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
-
-  let posLocation = AttribLocation 0
-      texLocation = AttribLocation 1
-      nmlLocation = AttribLocation 2
-  (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
-
   clearColor $= color4 0 0 0.4 0
   -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
   let texSampleLoc = TextureUnit 0
+
+  let createTheCube :: IO (Entity s, P.CollisionObject)
+      createTheCube = do
+        cube <- P.newBoxShape 2 2 2
+        startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
+        P.setIdentity startXform
+        P.setOrigin startXform 0 1 0
+        ms <- P.new startXform
+        rbci <- P.newRigidBodyConstructionInfo 1 ms cube 0 1 0
+        rb   <- P.newRigidBody rbci
+        P.del startXform
+
+        prog <- compileShaders
+  
+        (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
+      
+        tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
+
+        let posLocation = AttribLocation 0
+            texLocation = AttribLocation 1
+            nmlLocation = AttribLocation 2
+        (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
+
+        let co = P.toCollisionObject rb
+            e  = Entity
+                 { _entityGraphics = Just Gfx
+                   { _gfxVaoData = singleton (vao, prog, Triangles, fromIntegral $ snd ebuf)
+                   , _gfx1DTextures = empty
+                   , _gfx2DTextures = singleton ()
+                   , _gfx3DTextures = empty
+                   , _gfxChildren   = empty
+                   , _gfxWorldXform = WorldTransform co
+                   }
+                 , _entitySounds = Nothing
+                 , _entityLogic = Nothing
+                 }
+        return (e, co)
 
   (physicsWorld, player, cam) <- setupPhysics
   let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld

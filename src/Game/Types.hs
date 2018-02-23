@@ -26,9 +26,6 @@ import qualified Control.Monad.Logger        as ML
 import qualified Control.Monad.State.Strict  as MSS
 import qualified Control.Monad.Catch         as MC
 import qualified Data.Map.Strict             as MS
-import qualified Data.Vinyl                  as V
-import qualified Data.Vinyl.Functor          as V
-import           Data.Singletons.TH
 import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
@@ -81,7 +78,7 @@ data GameState s = GameState
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
-  , _gameStateEntities      :: Entity s
+  , _gameStateEntities      :: Vector (Entity s)
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
   }
@@ -97,6 +94,7 @@ initGameState = GameState
   , _gameStatePlayer        = error "player not set."
   , _gameStateMouseSpeed    = 0.01
   , _gameStateShouldClose   = False
+  , _gameStateEntities      = empty
   }
 
 data Camera = Camera
@@ -253,9 +251,12 @@ data MousePos = MousePos
 data Entity s = Entity
   { _entityGraphics :: Maybe (Gfx s)
   , _entitySounds   :: Maybe (Sfx s)
-  , _entityPhysics  :: Maybe (Pfx s)
   , _entityLogic    :: Maybe (Lfx s)
   }
+
+type Tex1D = ()
+type Tex2D = ()
+type Tex3D = ()
 
 -- | When an `Entity' is loaded, it's graphics data is stored here.
 -- Note that `gfxWire' is constructed from a `GameWire s (Gfx s) ()'.
@@ -268,40 +269,21 @@ data Gfx s = Gfx
   , _gfx2DTextures  :: Vector Tex2D
   , _gfx3DTextures  :: Vector Tex3D
   , _gfxChildren    :: Vector (Gfx s)
-  , _gfxModelOffset :: Int
+  , _gfxWorldXform  :: WorldTransform
   }
 
-drawGfx :: Gfx s -> Game s ()
-drawGfx gfx = do
-  mapM_ bindTexture1D $ gfx ^. gfx1DTextures
-  mapM_ bindTexture2D $ gfx ^. gfx2DTextures
-  mapM_ bindTexture3D $ gfx ^. gfx3DTextures
-  forM_ (gfx ^. gfxVaoData) $ \(vao, prog, mode, size) -> do
-    clear $ defaultClearBuffer & clearBufferColor .~ True
-                               & clearBufferDepth .~ True
-    useProgram prog
-    currentVertexArrayObject $= Just vao
-    mdl :: L.M44 Float <- getModel $ gfx ^. gfxModelOffset
-    uniform UniformModel prog mdl
-    drawElements mode (fromIntegral size) UnsignedInt
-  mapM_ drawGfx $ gfx ^. gfxChildren
-  
+newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
+
 data Sfx s = Sfx
-  { _sfxWire    :: forall a . GameWire s a ()
-  , _sfxSources :: Vector AL.Source
-  }
-
-data Pfx s = Pfx
-  { _pfxWires :: forall a . GameWire s a ()
+  { _sfxSources :: Vector AL.Source
   }
 
 data Lfx s = Lfx
-  { _lfxWires :: forall a . GameWire s a ()
+  { _lfxWires :: GameWire s (Lfx s) ()
   }
 
 mconcat <$> mapM makeLenses
-  [ ''Attr
-  , ''Camera
+  [ ''Camera
   , ''Entity
   , ''EventRegister
   , ''ExpandObjVTN
@@ -310,8 +292,8 @@ mconcat <$> mapM makeLenses
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
+  , ''WorldTransform
   , ''MousePos
-  , ''Pfx
   , ''PhysicsWorld
   , ''Player
   , ''Script
@@ -320,5 +302,3 @@ mconcat <$> mapM makeLenses
   , ''VTNIndex
   , ''VTNPoint
   ]
-
-genSingletons [''EntityFields]
