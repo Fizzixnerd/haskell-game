@@ -113,17 +113,14 @@ gameMain = withGraphicsContext defaultGraphicsContext
   -- sometimes wtf.
   --  reloadPlugins <- PL.loadPlugin $ PL.Plugin "scripts/" "Util"     "reloadPlugins"
 
-  let mainWire = renderWire <+>
-                 moveForward <+>
-                 moveBackward <+>
-                 moveLeft <+>
-                 moveRight <+>
-                 physicsWire <+>
-                 close <+>
-                 jump <+>
-                 camera <+>
-                 zoomCamera <+>
-                 turnPlayer
+  let mainWire =     renderWire
+                 <+> (playerHorizontalMovement >>> movePlayer)
+                 <+> physicsWire
+                 <+> close
+                 <+> jump
+                 <+> camera
+                 <+> zoomCamera
+                 <+> turnPlayer
 
   ic <- N.mkInputControl win
   let sess = countSession_ 1

@@ -45,7 +45,7 @@ getPlayerOrientation p = liftIO $ do
   return $ L.Quaternion r (L.V3 i j k)
 
 setPlayerOrientation :: MonadIO m => Player -> L.Quaternion CFloat -> m ()
-setPlayerOrientation p (L.Quaternion r (L.V3 i j k)) = liftIO $ 
+setPlayerOrientation p (L.Quaternion r (L.V3 i j k)) = liftIO $
   withPlayerTransform p (\t -> do
                             P.setRotation t i j k r
                             pcgo <- P.getGhostObject $ p ^. playerController

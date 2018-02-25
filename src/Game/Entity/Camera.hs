@@ -45,7 +45,7 @@ setCameraLinearVelocity (L.V3 x y z) Camera {..} =
   liftIO $ P.setLinearVelocity _cameraController x y z
 
 allocateCameraTransform :: MonadIO m => Camera -> m P.Transform
-allocateCameraTransform c = liftIO $ 
+allocateCameraTransform c = liftIO $
                             P.getGhostObject (c ^. cameraController) >>=
                             P.coAllocateWorldTransform
 
@@ -177,7 +177,7 @@ cameraLookAtTarget :: MonadIO m => Camera -> m ()
 cameraLookAtTarget cam = do
   rhat <- getCameraRHat cam
   let L.V3 x y z = negate rhat
-  withCameraTransform cam 
+  withCameraTransform cam
     (\t -> do
         P.setRotation t x y z 0
         go <- P.getGhostObject (cam ^. cameraController)

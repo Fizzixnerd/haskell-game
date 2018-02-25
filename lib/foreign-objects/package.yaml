@@ -27,6 +27,10 @@ dependencies:
 - resourcet
 - classy-prelude
 - mtl
+- bullet-hs
 
 library:
   source-dirs: lib
+  exposed-modules:
+    - Data.StateVar
+    - ForeignObjects

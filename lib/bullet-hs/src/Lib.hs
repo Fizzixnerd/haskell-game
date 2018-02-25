@@ -12,7 +12,7 @@ someFunc = do
   bp :: BroadphaseInterface <- new ()
   traceM "made BroadphaseInterface"
   gpc  :: GhostPairCallback <- new ()
-  getOverlappingPairCache bp >>= (flip setInternalGhostPairCallback gpc)
+  getOverlappingPairCache bp >>= flip setInternalGhostPairCallback gpc
   cc :: CollisionConfiguration <- new ()
   traceM "made CollisionConfiguration"
   d  :: CollisionDispatcher  <- new cc

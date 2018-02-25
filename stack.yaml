@@ -25,6 +25,7 @@ packages:
   - ./lib/bullet-hs
   - ./lib/graphics-binding
   - ./lib/netwire-input-glfw
+  - ./lib/foreign-objects
   - location:
       git: https://github.com/Fizzixnerd/netwire-input-glfw
       commit: HEAD

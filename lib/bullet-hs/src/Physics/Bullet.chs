@@ -653,7 +653,7 @@ instance New Transform ((CFloat, CFloat, CFloat, CFloat), (CFloat, CFloat, CFloa
 
 allocaMatrix :: (Ptr CFloat -> IO b) -> IO b
 allocaMatrix = allocaBytes $ sizeOf (undefined :: L.M44 CFloat)
-  
+
 peekMatrix :: Ptr CFloat -> IO (L.M44 CFloat)
 peekMatrix p = peek $ castPtr p
 
