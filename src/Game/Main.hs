@@ -19,6 +19,7 @@ import           Game.World.Physics
 import           Game.Entity.Camera
 import           Game.Entity.Player
 import           Game.Entity.GiantFeaturelessPlane
+import           Game.Entity
 import           Graphics.Binding
 import           Linear                      as L
 import qualified Physics.Bullet as P
@@ -62,6 +63,45 @@ setupPhysics = do
 --           , PL.Plugin "scripts/" "Util"     "reloadPlugins"
 --           ]
 
+createTheCube :: IO (Entity s, P.RigidBody)
+createTheCube = do
+  cube <- P.newBoxShape 0.5 0.5 0.5
+  startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
+  P.setIdentity startXform
+  P.setOrigin startXform 0 1 0
+  -- Don't delete this!!  See below.
+  ms <- P.new startXform
+  rbci <- P.newRigidBodyConstructionInfo 1 ms cube 0 1 0
+  -- The ms now belongs to the cube.
+  rb   <- P.newRigidBody rbci
+  P.del startXform
+  P.del rbci
+  
+  prog <- compileShaders
+  
+  (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
+  
+  tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
+
+  let posLocation = AttribLocation 0
+      texLocation = AttribLocation 1
+      nmlLocation = AttribLocation 2
+  (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
+
+  let e = Entity
+          { _entityGraphics = Just Gfx
+            { _gfxVaoData = singleton (vao, prog, Triangles, fromIntegral $ snd ebuf)
+            , _gfx1DTextures = Nothing
+            , _gfx2DTextures = Just (Simple2DSampler, tex)
+            , _gfx3DTextures = Nothing
+            , _gfxChildren   = empty
+            , _gfxWorldXform = WorldTransform $ P.toCollisionObject rb
+            }
+          , _entitySounds = Nothing
+          , _entityLogic = Nothing
+          }
+  return (e, rb)
+
 gameMain :: IO ()
 gameMain = withGraphicsContext defaultGraphicsContext
            . withWindow defaultWindowConfig
@@ -70,33 +110,29 @@ gameMain = withGraphicsContext defaultGraphicsContext
 
   --cullFace $= Just Back
   depthFunc $= Just DepthLess
-  -- Remember: we will eventually have to free the function pointer that mkGLDEBUGPROC gives us!!!
+  -- Remember: we will eventually have to free the function pointer
+  -- that mkGLDEBUGPROC gives us!!!
   debugMessageCallback $= Just simpleDebugFunc
---  printContextVersion win
-
-  prog <- compileShaders
-
-  (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
-
-  tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
-
-  let posLocation = AttribLocation 0
-      texLocation = AttribLocation 1
-      nmlLocation = AttribLocation 2
-  (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
+  --  printContextVersion win
 
   clearColor $= color4 0 0 0.4 0
   -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
 
-  (physicsWorld, player, cam) <- setupPhysics
+  (physicsWorld', player, cam) <- setupPhysics
+  (theCubeE, theCubeRB) <- createTheCube
+  physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
+  
   let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                 & gameStatePlayer .~ player
                                 & gameStateCamera .~ cam
+                                & gameStateEntities .~ singleton theCubeE
 
-  let renderWire :: GameWire s (Program, VertexArrayObject, Int, TextureObject TextureTarget2D) ()
-      renderWire = mkGen_ (\(p, vao_, n, tex_) -> Right <$> do
-                              gs <- use simple
-                              render gs p vao_ n tex_)
+  let renderWire :: GameWire s a ()
+      renderWire = mkGen_ $ const $ Right <$> do
+        entities <- use gameStateEntities
+        cam_ <- use gameStateCamera
+        vp <- cameraVP cam_
+        mapM_ (drawEntity vp) entities
 
       physicsWire :: GameWire s a ()
       physicsWire = mkGen_ $ const $ Right <$> do
@@ -127,17 +163,13 @@ gameMain = withGraphicsContext defaultGraphicsContext
   input <- liftIO $ N.getInput ic
   let doGame :: N.GLFWInputState
              -> Session IO (Timed Integer ())
-             -> GameWire (Timed Integer ()) ( Program
-                                            , VertexArrayObject
-                                            , Int
-                                            , TextureObject TextureTarget2D ) b
+             -> GameWire (Timed Integer ()) () b
              -> GameState (Timed Integer ())
              -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
       doGame input_ sess_ wire gs = do
         void $ N.pollGLFW input_ ic
         (timeState, sess') <- stepSession sess_
-        let game = stepWire wire timeState
-                   (Right (prog, vao, snd ebuf, tex))
+        let game = stepWire wire timeState (Right ())
         (((_, wire'), input'), gs') <- runGame gs ic game
         swapBuffers win
         when (gs ^. gameStateShouldClose) $

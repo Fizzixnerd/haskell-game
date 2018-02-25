@@ -26,14 +26,13 @@ import qualified Control.Monad.Logger        as ML
 import qualified Control.Monad.State.Strict  as MSS
 import qualified Control.Monad.Catch         as MC
 import qualified Data.Map.Strict             as MS
-import           Data.Vinyl
-import           Data.Vinyl.Functor
-import           Data.Singletons.TH
 import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import           Graphics.Binding
+import           Graphics.Binding 
+import qualified Sound.OpenAL                as AL
+import           Game.Graphics.Texture.Loader
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
@@ -80,6 +79,7 @@ data GameState s = GameState
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
   , _gameStatePhysicsWorld  :: PhysicsWorld
   , _gameStatePlayer        :: Player
+  , _gameStateEntities      :: Vector (Entity s)
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
   }
@@ -95,6 +95,7 @@ initGameState = GameState
   , _gameStatePlayer        = error "player not set."
   , _gameStateMouseSpeed    = 0.01
   , _gameStateShouldClose   = False
+  , _gameStateEntities      = empty
   }
 
 data Camera = Camera
@@ -201,6 +202,8 @@ data PhysicsWorld = PhysicsWorld
   , _physicsWorldCollisionConfiguration :: P.CollisionConfiguration
   , _physicsWorldCollisionDispatcher :: P.CollisionDispatcher
   , _physicsWorldConstraintSolver :: P.ConstraintSolver
+  , _physicsWorldCollisionObjects :: Vector P.CollisionObject
+  , _physicsWorldRigidBodies :: Vector P.RigidBody
   }
 
 data VTNPoint = VTNPoint
@@ -248,32 +251,55 @@ data MousePos = MousePos
   { _mousePos :: !(L.V2 Double)
   } deriving (Eq, Ord, Show)
 
-data EntityFields = Graphics | Sounds | Physics | Scripts
-type GSPSEntity = [ 'Graphics , 'Sounds , 'Physics , 'Scripts ]
-type family ElF (f :: EntityFields) :: * where
-  ElF 'Graphics = Text
-  ElF 'Sounds   = Text
-  ElF 'Physics  = Text
-  ElF 'Scripts  = Text
-newtype Attr f = Attr { _unAttr :: ElF f }
-makeLenses ''Attr
-genSingletons [''EntityFields]
+data Entity s = Entity
+  { _entityGraphics :: Maybe (Gfx s)
+  , _entitySounds   :: Maybe (Sfx s)
+  , _entityLogic    :: Maybe (Lfx s)
+  }
 
-(=::) :: sing f -> ElF f -> Attr f
-_ =:: x = Attr x
+-- | When an `Entity' is loaded, it's graphics data is stored here.
+-- Note that `gfxWire' is constructed from a `GameWire s (Gfx s) ()'.
+-- It is then combined with `arr (const <this Gfx s>)' to create the
+-- final `Wire' seen below, which is more flexible.  This means the
+-- `Wire' actually has speedy access to the `Gfx' object.
+data Gfx s = Gfx
+  { _gfxVaoData     :: Vector (VertexArrayObject, Program, PrimitiveMode, Word32)
+  , _gfx1DTextures  :: forall a. Maybe a
+  , _gfx2DTextures  :: Maybe (Simple2DSampler, TextureObject TextureTarget2D)
+  , _gfx3DTextures  :: forall a. Maybe a
+  , _gfxChildren    :: Vector (Gfx s)
+  , _gfxWorldXform  :: WorldTransform
+  }
+
+newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
+
+type VPMatrix = L.M44 Float
+
+data Sfx s = Sfx
+  { _sfxSources :: Vector AL.Source
+  }
+
+data Lfx s = Lfx
+  { _lfxWires :: GameWire s (Lfx s) ()
+  }
 
 mconcat <$> mapM makeLenses
   [ ''Camera
-  , ''GameState
+  , ''Entity
+  , ''EventRegister
   , ''ExpandObjVTN
+  , ''Game
+  , ''GameState
+  , ''Gfx
+  , ''GiantFeaturelessPlane
+  , ''Lfx
+  , ''WorldTransform
+  , ''MousePos
+  , ''PhysicsWorld
+  , ''Player
   , ''Script
   , ''ScriptName
-  , ''EventRegister
-  , ''Player
-  , ''PhysicsWorld
-  , ''GiantFeaturelessPlane
-  , ''VTNPoint
+  , ''Sfx
   , ''VTNIndex
-  , ''MousePos
-  , ''Game
+  , ''VTNPoint
   ]
