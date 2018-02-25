@@ -171,8 +171,7 @@ setCameraAzimuthalSpeed cam av = do
   v <- getCameraLinearVelocity cam
   setCameraLinearVelocity (v + ((av - avOld) L.*^ phihat)) cam
 
--- | Useful after switching targets.
-
+-- | Useful after switching targets.  Also every tick.
 cameraLookAtTarget :: MonadIO m => Camera -> m ()
 cameraLookAtTarget cam = do
   rhat <- getCameraRHat cam
@@ -192,15 +191,14 @@ cameraAttach cam co = return $ cam & cameraTarget .~ (P.toCollisionObject co)
 --                             P.del
 --                             P.getOpenGLMatrix
 
-cameraMVP :: MonadIO m => Camera -> m (L.M44 Float)
-cameraMVP cam = do
+cameraVP :: MonadIO m => Camera -> m VPMatrix
+cameraVP cam = do
   pos <- getCameraPosition cam
   tar <- getCameraTargetPosition cam
   let camView = L.lookAt pos tar vup
 
   --  camModel <- getCameraOpenGLMatrix cam
-  let camModel = L.identity
-  return $ camPerspective L.!*! fmap (fmap (\(CFloat x) -> x)) camView L.!*! camModel
+  return $ camPerspective L.!*! fmap (fmap (\(CFloat x) -> x)) camView
     where
         -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
       vup = L.V3 0 1 0

@@ -34,6 +34,8 @@ newPhysicsWorld = liftIO $ do
   let _physicsWorldPlayers = empty
       _physicsWorldGiantFeaturelessPlanes = empty
       _physicsWorldCameras = empty
+      _physicsWorldRigidBodies = empty
+      _physicsWorldCollisionObjects = empty
   return $ PhysicsWorld {..}
 
 destroyPhysicsWorld :: MonadIO m => PhysicsWorld -> m ()
@@ -62,11 +64,24 @@ addCameraToPhysicsWorld :: MonadIO m => Camera -> PhysicsWorld -> m PhysicsWorld
 addCameraToPhysicsWorld cam w = liftIO $ do
   P.addCollisionObject (w ^. physicsWorldDynamicsWorld) =<<
     P.getGhostObject (cam ^. cameraController)
-  traceM "Added Camera CollisionObject to PhysicsWorld."
   P.addAction (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
-  traceM "Added Camera Controller to PhysicsWorld."
   return $ w & physicsWorldCameras %~ cons cam
 
 setGravityPhysicsWorld :: MonadIO m => L.V3 CFloat -> PhysicsWorld -> m ()
 setGravityPhysicsWorld (L.V3 x y z) p = liftIO $ P.dwSetGravity (p ^. physicsWorldDynamicsWorld) x y z
 
+addCollisionObjectToPhysicsWorld :: (MonadIO m, P.IsCollisionObject co)
+                                 => co
+                                 -> PhysicsWorld
+                                 -> m PhysicsWorld
+addCollisionObjectToPhysicsWorld co pw = do
+  liftIO $ P.addCollisionObject (pw ^. physicsWorldDynamicsWorld) co
+  return $ pw & physicsWorldCollisionObjects %~ cons (P.toCollisionObject co)
+
+addRigidBodyToPhysicsWorld :: MonadIO m
+                           => P.RigidBody
+                           -> PhysicsWorld
+                           -> m PhysicsWorld
+addRigidBodyToPhysicsWorld rb pw = do
+  liftIO $ P.addRigidBody (pw ^. physicsWorldDynamicsWorld) rb
+  return $ pw & physicsWorldRigidBodies %~ cons rb

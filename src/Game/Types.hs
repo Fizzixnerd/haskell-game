@@ -32,6 +32,7 @@ import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Graphics.Binding 
 import qualified Sound.OpenAL                as AL
+import           Game.Graphics.Texture.Loader
 import qualified Linear                      as L
 import qualified Physics.Bullet              as P
 import           Text.Printf
@@ -201,6 +202,8 @@ data PhysicsWorld = PhysicsWorld
   , _physicsWorldCollisionConfiguration :: P.CollisionConfiguration
   , _physicsWorldCollisionDispatcher :: P.CollisionDispatcher
   , _physicsWorldConstraintSolver :: P.ConstraintSolver
+  , _physicsWorldCollisionObjects :: Vector P.CollisionObject
+  , _physicsWorldRigidBodies :: Vector P.RigidBody
   }
 
 data VTNPoint = VTNPoint
@@ -254,10 +257,6 @@ data Entity s = Entity
   , _entityLogic    :: Maybe (Lfx s)
   }
 
-type Tex1D = ()
-type Tex2D = ()
-type Tex3D = ()
-
 -- | When an `Entity' is loaded, it's graphics data is stored here.
 -- Note that `gfxWire' is constructed from a `GameWire s (Gfx s) ()'.
 -- It is then combined with `arr (const <this Gfx s>)' to create the
@@ -265,14 +264,16 @@ type Tex3D = ()
 -- `Wire' actually has speedy access to the `Gfx' object.
 data Gfx s = Gfx
   { _gfxVaoData     :: Vector (VertexArrayObject, Program, PrimitiveMode, Word32)
-  , _gfx1DTextures  :: Vector Tex1D
-  , _gfx2DTextures  :: Vector Tex2D
-  , _gfx3DTextures  :: Vector Tex3D
+  , _gfx1DTextures  :: forall a. Maybe a
+  , _gfx2DTextures  :: Maybe (Simple2DSampler, TextureObject TextureTarget2D)
+  , _gfx3DTextures  :: forall a. Maybe a
   , _gfxChildren    :: Vector (Gfx s)
   , _gfxWorldXform  :: WorldTransform
   }
 
 newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
+
+type VPMatrix = L.M44 Float
 
 data Sfx s = Sfx
   { _sfxSources :: Vector AL.Source
