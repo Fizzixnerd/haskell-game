@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -20,7 +21,7 @@ import Graphics.GL.Types
 
 newtype TextureUnit = TextureUnit
   { getTextureUnitGLuint :: GLuint
-  } deriving (Eq, Ord, Show)
+  } deriving (Eq, Ord, Show, Num)
 
 data TextureTarget1D
   = Texture1D
@@ -259,9 +260,6 @@ instance TextureTarget TextureTarget3D where
       height = fromIntegral _pixel3DAttribPixelHeight
       depth  = fromIntegral _pixel3DAttribPixelDepth
 
-bindTextureUnit :: MonadIO m => TextureUnit -> TextureObject t -> m ()
-bindTextureUnit (TextureUnit n) (TextureObject m) = glBindTextureUnit n m
-
 marshalTextureParameter :: TextureParameter -> GLenum
 marshalTextureParameter = \case
   TextureMinFilter -> GL_TEXTURE_MIN_FILTER
@@ -285,3 +283,14 @@ textureParameterf (TextureObject tobj) param =
 textureParameteri :: MonadIO m => TextureObject t -> TextureParameter -> GLint -> m ()
 textureParameteri (TextureObject tobj) param =
   glTextureParameteri tobj (marshalTextureParameter param)
+
+class TextureSampler a where
+  type TextureSamplerTarget a
+  type TextureSamplerType a :: SamplerType
+  texture :: (MonadIO m, TextureTarget t, t ~ TextureSamplerTarget a) => TextureObject t -> a -> m ()
+
+primTextureUnitBind_ :: MonadIO m => TextureUnit -> TextureObject t -> m ()
+primTextureUnitBind_ (TextureUnit n) (TextureObject m) = glBindTextureUnit n m
+
+primTextureUnitBind :: (TextureTarget t, MonadIO m) => TextureObject t -> TextureUnit -> m ()
+primTextureUnitBind = flip primTextureUnitBind_

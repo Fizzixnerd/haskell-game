@@ -1,4 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 module Game.Graphics.Texture.Loader where
 
@@ -28,3 +30,9 @@ loadBMPTexture fp = liftIO $ do
   textureParameteri tobj TextureCompareFunc GL_LEQUAL
   return tobj
 
+data Simple2DSampler = Simple2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Simple2DSampler where
+  type TextureSamplerTarget Simple2DSampler = TextureTarget2D
+  type TextureSamplerType   Simple2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 0

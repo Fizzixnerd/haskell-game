@@ -10,14 +10,12 @@ import Data.Acquire
 import Control.Monad.Trans.Resource
 import Control.Monad.State.Strict
 
--- | StateVars are just Acquire a.
-
 -- Resource layer:
 --- Use Acquire a to get resource acquisition and freeing in one place, with mkAcquire
 --- Either do allocateAquire to get a persistent resource that can be freed, or
 --- with to do a local bracket-y thing.
 
---- 
+--- Outer monad is a type ResIO
 
 infixr 2 $=
 class HasSetter t a | t -> a where

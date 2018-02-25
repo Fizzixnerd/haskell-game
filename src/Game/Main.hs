@@ -121,10 +121,10 @@ gameMain = withGraphicsContext defaultGraphicsContext
                                 & gameStatePlayer .~ player
                                 & gameStateCamera .~ cam
 
-  let renderWire :: TextureTarget t => GameWire s (Program, TextureUnit, VertexArrayObject, Int, TextureObject t) ()
-      renderWire = mkGen_ (\(p, tu, vao_, n, tex_) -> Right <$> do
+  let renderWire :: GameWire s (Program, VertexArrayObject, Int, TextureObject TextureTarget2D) ()
+      renderWire = mkGen_ (\(p, vao_, n, tex_) -> Right <$> do
                               gs <- use simple
-                              render gs p tu vao_ n tex_)
+                              render gs p vao_ n tex_)
 
       physicsWire :: GameWire s a ()
       physicsWire = mkGen_ $ const $ Right <$> do
@@ -159,7 +159,6 @@ gameMain = withGraphicsContext defaultGraphicsContext
   let doGame :: N.GLFWInputState
              -> Session IO (Timed Integer ())
              -> GameWire (Timed Integer ()) ( Program
-                                            , TextureUnit
                                             , VertexArrayObject
                                             , Int
                                             , TextureObject TextureTarget2D ) b
@@ -169,7 +168,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
         void $ N.pollGLFW input_ ic
         (timeState, sess') <- stepSession sess_
         let game = stepWire wire timeState
-                   (Right (prog, texSampleLoc, vao, snd ebuf, tex))
+                   (Right (prog, vao, snd ebuf, tex))
         (((_, wire'), input'), gs') <- runGame gs ic game
         swapBuffers win
         when (gs ^. gameStateShouldClose) $

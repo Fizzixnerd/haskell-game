@@ -135,4 +135,4 @@ debugMessageCallback = makeSettableStateVar $ \case
           sev' = unmarshallDebugSeverity sever
 
 simpleDebugFunc :: DebugCallbackFun
-simpleDebugFunc src typ ident sever msg = printf "!!! OpenGL Error. Severity %s; ID: %s; Source: %s; Type: %s; Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)
+simpleDebugFunc src typ ident sever msg = printf "!!! OpenGL Error. %s; %s; %s; %s;\n Message: %s\n\n" (show sever) (show ident) (show src) (show typ) (show msg)

@@ -12,23 +12,23 @@ import           Game.Types
 import           Graphics.Binding
 import           Game.Entity.Player
 import           Game.Graphics.Shader.Loader
+import           Game.Graphics.Texture.Loader
 import           Game.Entity.Camera
 import           Linear
 
-render :: (TextureTarget t, MonadIO m)
+render :: MonadIO m
        => GameState s
        -> Program
-       -> TextureUnit
        -> VertexArrayObject
        -> Int -- ^ How much of the VAO we want to draw
-       -> TextureObject t
+       -> TextureObject TextureTarget2D
        -> m ()
-render gs prog texSampleLoc vao n tex = liftIO $ do
+render gs prog vao n tex = liftIO $ do
   clear $ defaultClearBuffer & clearBufferColor .~ True
                              & clearBufferDepth .~ True
   useProgram prog
   currentVertexArrayObject $= Just vao
-  bindTextureUnit texSampleLoc tex
+  texture tex Simple2DSampler
   cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
   uniform prog UniformMVP cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
