@@ -29,7 +29,7 @@ render gs prog vao n tex = liftIO $ do
   useProgram prog
   currentVertexArrayObject $= Just vao
   texture tex Simple2DSampler
-  cameraMatrix <- cameraMVP $ (gs ^. gameStateCamera)
+  cameraMatrix <- cameraVP $ (gs ^. gameStateCamera)
   uniform prog UniformMVP cameraMatrix
   drawElements Triangles (fromIntegral n) UnsignedInt
 

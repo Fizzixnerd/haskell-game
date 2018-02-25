@@ -76,11 +76,11 @@ createTheCube = do
   rb   <- P.newRigidBody rbci
   P.del startXform
   P.del rbci
-  
+
   prog <- compileShaders
-  
+
   (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
-  
+
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
   let posLocation = AttribLocation 0
@@ -91,9 +91,7 @@ createTheCube = do
   let e = Entity
           { _entityGraphics = Just Gfx
             { _gfxVaoData = singleton (vao, prog, Triangles, fromIntegral $ snd ebuf)
-            , _gfx1DTextures = Nothing
-            , _gfx2DTextures = Just (Simple2DSampler, tex)
-            , _gfx3DTextures = Nothing
+            , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
             , _gfxChildren   = empty
             , _gfxWorldXform = WorldTransform $ P.toCollisionObject rb
             }

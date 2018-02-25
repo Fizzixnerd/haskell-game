@@ -155,7 +155,7 @@ getCameraPhiHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraPhiHat cam = do
   (L.V3 x _ y) <- getCameraDisplacementFromTarget cam
   let littleR = L.norm (L.V2 x y)
-      phihat = L.V3 (- y / littleR) 0 (x / littleR) 
+      phihat = L.V3 (- y / littleR) 0 (x / littleR)
   return phihat
 
 getCameraAzimuthalSpeed :: MonadIO m => Camera -> m CFloat
