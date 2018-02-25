@@ -86,28 +86,6 @@ playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire 
     zwire = xorWire (keyW >>> fwd) (keyS >>> bwd)
     xwire = xorWire (keyA >>> lft) (keyD >>> rgt)
 
-{-
-moveForward :: GameWire s a ()
-moveForward = (movePlayer . fwd ) <<< keyW
-  where
-    fwd = pure $ L.V3 0 0 0.1
-
-moveBackward :: GameWire s a ()
-moveBackward = (movePlayer . bwd) <<< keyS
-  where
-    bwd = pure $ L.V3 0 0 (-0.1)
-
-moveLeft :: GameWire s a ()
-moveLeft = (movePlayer . lft) <<< keyA
-  where
-    lft = pure $ L.V3 0.1 0 0
-
-moveRight :: GameWire s a ()
-moveRight = (movePlayer . rgt) <<< keyD
-  where
-    rgt = pure $ L.V3 (-0.1) 0 0
--}
-
 close :: GameWire s a ()
 close = cls <<< keyEsc
   where

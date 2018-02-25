@@ -262,11 +262,16 @@ data Entity s = Entity
 -- It is then combined with `arr (const <this Gfx s>)' to create the
 -- final `Wire' seen below, which is more flexible.  This means the
 -- `Wire' actually has speedy access to the `Gfx' object.
+
+data GfxTexture = GfxTexture
+  { _gfxTexture1D  :: ()
+  , _gfxTexture2D  :: Maybe (Simple2DSampler, TextureObject TextureTarget2D)
+  , _gfxTexture3D  :: ()
+  } deriving (Eq, Ord, Show)
+
 data Gfx s = Gfx
   { _gfxVaoData     :: Vector (VertexArrayObject, Program, PrimitiveMode, Word32)
-  , _gfx1DTextures  :: forall a. Maybe a
-  , _gfx2DTextures  :: Maybe (Simple2DSampler, TextureObject TextureTarget2D)
-  , _gfx3DTextures  :: forall a. Maybe a
+  , _gfxTextureBlob :: GfxTexture
   , _gfxChildren    :: Vector (Gfx s)
   , _gfxWorldXform  :: WorldTransform
   }
@@ -290,6 +295,7 @@ mconcat <$> mapM makeLenses
   , ''ExpandObjVTN
   , ''Game
   , ''GameState
+  , ''GfxTexture
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
