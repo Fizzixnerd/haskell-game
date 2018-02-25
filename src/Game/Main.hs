@@ -160,7 +160,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
                  camera <+>
                  zoomCamera <+>
                  turnPlayer
-
+  
   ic <- N.mkInputControl win
   let sess = countSession_ 1
   input <- liftIO $ N.getInput ic

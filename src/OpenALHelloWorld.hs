@@ -1,7 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, NoImplicitPrelude #-}
 
 module OpenALHelloWorld where
 
+import ClassyPrelude
 import Sound.OpenAL as AL
 import Sound.ALUT as AL
 
@@ -29,3 +30,5 @@ doItSoundman = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           buf <- AL.createBuffer (File "res/sound/a2002011001-e02.wav")
           AL.buffer src AL.$= Just buf
           AL.play [src]
+          void $ forM [1..] $ \x -> do
+            AL.sourcePosition src AL.$= (AL.Vertex3 0 0 (1 + (x / 10)))
