@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-10.6
+resolver: lts-10.7
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -25,6 +25,7 @@ packages:
   - ./lib/bullet-hs
   - ./lib/graphics-binding
   - ./lib/netwire-input-glfw
+  - ./lib/foreign-objects
   - location:
       git: https://github.com/Fizzixnerd/netwire-input-glfw
       commit: HEAD

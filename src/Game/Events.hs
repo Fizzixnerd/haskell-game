@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE LambdaCase #-}
 module Game.Events where
 
 import           Control.Arrow
@@ -15,6 +15,32 @@ import           Game.Entity.Camera
 import qualified Physics.Bullet as P
 import           Graphics.Binding
 import qualified Linear                       as L
+
+
+-- Is the identity if only one wire is producing. If both are, it merges the results with merge.
+-- This steps both wires.
+solderWire :: (Monoid e, Monad m) => (b -> b -> b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
+solderWire merge' w1 w2 = WGen $ \s eea -> do
+  (eeb1, _) <- stepWire w1 s eea
+  (eeb2, _) <- stepWire w2 s eea
+  return (merger eeb1 eeb2, solderWire merge' w1 w2)
+  where
+    merger = \case
+      Left err -> left (mappend err)
+      Right x  -> const (Right x) ||| (Right . merge' x)
+
+-- If both are producing or both are inhibited, then it inhibits.
+-- Otherwise it acts like the producing one.
+-- This thing has to step both wires.
+xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
+xorWire w1 w2 = WGen $ \s eea -> do
+  (eeb1, _) <- stepWire w1 s eea
+  (eeb2, _) <- stepWire w2 s eea
+  return (inverter eeb1 eeb2, xorWire w1 w2)
+  where
+    inverter = \case
+      Left err -> left (mappend err)
+      Right x  -> const (Right x) ||| const (Left mempty)
 
 zoomCamera :: GameWire s a ()
 zoomCamera = mkGen_ $ const $ Right <$> do
@@ -45,33 +71,20 @@ camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Reset)
       cam <- use gameStateCamera
       rotateCamera (-x * 10, -y * 10)  cam
 
-moveForward :: GameWire s a ()
-moveForward = mvFwd <<< keyW
-  where
-    mvFwd = mkGen_ $ const $ Right <$> do
-      p <- use gameStatePlayer
-      setPlayerLinearVelocity p $ L.V3 0 0 0.1
+movePlayer :: GameWire s (L.V3 CFloat) ()
+movePlayer = mkGen_ $ \dir -> Right <$> do
+  p <- use gameStatePlayer
+  setPlayerLinearVelocity p dir
 
-moveBackward :: GameWire s a ()
-moveBackward = mvBwd <<< keyS
+playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
+playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
   where
-    mvBwd = mkGen_ $ const $ Right <$> do
-      p <- use gameStatePlayer
-      setPlayerLinearVelocity p $ L.V3 0 0 (-0.1)
-
-moveLeft :: GameWire s a ()
-moveLeft = mvLft <<< keyA
-  where
-    mvLft = mkGen_ $ const $ Right <$> do
-      p <- use gameStatePlayer
-      setPlayerLinearVelocity p $ L.V3 0.1 0 0
-
-moveRight :: GameWire s a ()
-moveRight = mvRgt <<< keyD
-  where
-    mvRgt = mkGen_ $ const $ Right <$> do
-      p <- use gameStatePlayer
-      setPlayerLinearVelocity p $ L.V3 (-0.1) 0 0
+    fwd = pure $ L.V3 0 0 1
+    bwd = pure $ L.V3 0 0 (-1)
+    lft = pure $ L.V3 1 0 0
+    rgt = pure $ L.V3 (-1) 0 0
+    zwire = xorWire (keyW >>> fwd) (keyS >>> bwd)
+    xwire = xorWire (keyA >>> lft) (keyD >>> rgt)
 
 close :: GameWire s a ()
 close = cls <<< keyEsc
