@@ -90,7 +90,7 @@ createTheCube = do
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
-  
+
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
@@ -124,7 +124,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
 
     clearColor $= color4 0 0 0.4 0
     -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-  
+
     mdev <- AL.openDevice Nothing
     let dev = case mdev of
           Nothing -> error "Couldn't open sound device."
@@ -135,28 +135,28 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           Just ctxt_ -> ctxt_
     AL.currentContext $= Just ctxt
     AL.distanceModel $= AL.InverseDistance
-  
+
     (physicsWorld', player, cam) <- setupPhysics
     (theCubeE, theCubeRB) <- createTheCube
     physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
-  
+
     let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                   & gameStatePlayer .~ player
                                   & gameStateCamera .~ cam
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
-  
+
     let renderWire :: GameWire s a ()
         renderWire = mkGen_ $ const $ Right <$> do
           entities <- use gameStateEntities
           mapM_ animateEntity entities
-  
+
         physicsWire :: GameWire s a ()
         physicsWire = mkGen_ $ const $ Right <$> do
           pw <- use gameStatePhysicsWorld
           void $ stepPhysicsWorld pw
-  
+
     -- -- proof of concept.
     -- moveForward   <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveForward"
     -- -- proof of double-loading.
@@ -166,7 +166,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     -- holy shit I'm so fucking mad fuck this shit it doesn't work
     -- sometimes wtf.
     --  reloadPlugins <- PL.loadPlugin $ PL.Plugin "scripts/" "Util"     "reloadPlugins
-  
+
     let mainWire =     renderWire
                    <+> (playerHorizontalMovement >>> movePlayer)
                    <+> physicsWire
@@ -175,7 +175,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                    <+> camera
                    <+> zoomCamera
                    <+> turnPlayer
-  
+
     ic <- N.mkInputControl win
     let sess = countSession_ 1
     input <- liftIO $ N.getInput ic
@@ -194,4 +194,4 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
             exitSuccess
           doGame input' sess' wire' gs'
     void $ doGame input sess mainWire gameState
-    
+

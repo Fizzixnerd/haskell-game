@@ -62,7 +62,6 @@ steppingWire = mkPureN $ \a -> (Right a, mkConst (Right a))
 -- Otherwise it acts like the producing one.
 -- This thing has to step both wires.
 
->>>>>>> 626f07ca5f16c61218d1ce87d7ce9cfe5d181cd6
 xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 xorWire w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
