@@ -55,6 +55,7 @@ dependencies:
 - vector
 - vinyl
 - wavefront
+- unliftio-core
 
 ghc-options:
   - -dynamic

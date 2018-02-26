@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -20,29 +21,46 @@
 module Game.Types where
 
 import           ClassyPrelude
-import qualified Codec.Wavefront             as W
+import qualified Codec.Wavefront              as W
 import           Control.Lens
-import qualified Control.Monad.Logger        as ML
-import qualified Control.Monad.State.Strict  as MSS
-import qualified Control.Monad.Catch         as MC
-import qualified Data.Map.Strict             as MS
+import qualified Control.Monad.Catch          as MC
+import           Control.Monad.Fix            as Fix
+import qualified Control.Monad.Logger         as ML
+import qualified Control.Monad.State.Strict   as MSS
+import qualified Control.Monad.Trans.Resource as RT
+import           Data.Acquire                 as RT
+import           Data.Dynamic
+import qualified Data.Map.Strict              as MS
+import           FRP.Netwire
+import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
 import           Foreign.Storable
-import           FRP.Netwire
-import qualified FRP.Netwire.Input.GLFW      as N
-import           Graphics.Binding
-import qualified Sound.OpenAL                as AL
 import           Game.Graphics.Texture.Loader
-import qualified Linear                      as L
-import qualified Physics.Bullet              as P
+import           Graphics.Binding
+import qualified Linear                       as L
+import qualified Physics.Bullet               as P
+import qualified Sound.OpenAL                 as AL
 import           Text.Printf
-import           Data.Dynamic
-import           Control.Monad.Fix           as Fix
-import           Data.Acquire
 
 type ForeignObject a = Acquire a
 
 data ForeignResources = ForeignResources
+
+newtype Foreign s a = Foreign
+  { _unForeign :: MSS.StateT s RT.ResIO a
+  } deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadThrow -- Do I need these?
+             , MonadIO
+             , RT.MonadResource
+             , MonadBase IO
+             , MonadBaseControl IO
+             )
+type GameResource s a = Foreign (GameState s) a
+
+runForeign :: s -> Foreign s a -> IO (a, s)
+runForeign s fr = RT.runResourceT . MSS.runStateT (_unForeign fr) $ s
 
 type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
@@ -70,6 +88,12 @@ runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputS
 runGame s ic g = do
   input <- N.getInput ic
   ML.runStderrLoggingT $ MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
+
+foreignInGame :: GameState s -> GameResource s a -> Game s a
+foreignInGame gs gr = do
+  (a, s) <- liftIO $ runForeign gs gr
+  MSS.put s
+  return a
 
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
