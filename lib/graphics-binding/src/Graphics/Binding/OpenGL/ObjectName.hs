@@ -23,4 +23,3 @@ genObjectName = liftIO genObjectName_
 
 genObjectNames :: (MonadIO m, GeneratableObjectName a) => Int -> m [a]
 genObjectNames n = liftIO $ genObjectNames_ n
-

@@ -35,6 +35,16 @@ newCamera target _cameraPreferredDistance = liftIO $ do
 destroyCamera :: MonadIO m => Camera -> m ()
 destroyCamera Camera {..} = liftIO $ P.del _cameraController
 
+bulletV3ToL :: (a,a,a) -> L.V3 a
+bulletV3ToL (x,y,z) = L.V3 x y z
+
+bulletV4ToL :: (a,a,a,a) -> L.V4 a
+bulletV4ToL (x,y,z,w) = L.V4 x y z w
+
+bulletQuatToL :: (a,a,a,a) -> L.Quaternion a
+bulletQuatToL (i,j,k,r) = L.Quaternion r (L.V3 i j k)
+
+
 getCameraLinearVelocity :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraLinearVelocity Camera {..} = liftIO $ do
   (x, y, z) <- P.getLinearVelocity _cameraController
@@ -64,13 +74,13 @@ getCameraPosition c = liftIO $ withCameraTransform c (\t -> do
                                                          return $ L.V3 x y z)
 
 getCameraTargetPosition :: MonadIO m => Camera -> m (L.V3 CFloat)
-getCameraTargetPosition c = liftIO $ withTargetTransform c 
+getCameraTargetPosition c = liftIO $ withTargetTransform c
                             (\t -> do
                                 (x, y, z) <- P.getOrigin t
                                 return $ L.V3 x y z)
 
 getCameraOrientation :: MonadIO m => Camera -> m (L.Quaternion CFloat)
-getCameraOrientation c = liftIO $ withCameraTransform c 
+getCameraOrientation c = liftIO $ withCameraTransform c
                          (\t -> do
                              (i, j, k, r) <- P.getRotation t
                              return $ L.Quaternion r (L.V3 i j k))
@@ -80,6 +90,13 @@ getCameraDisplacementFromTarget cam = do
   targetPos <- getCameraTargetPosition cam
   camPos <- getCameraPosition cam
   return $ camPos - targetPos
+
+-- Not normalized.
+getCameraForward :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraForward = fmap (negate . set L._y 0) . getCameraDisplacementFromTarget
+
+getCameraLeft :: MonadIO m => Camera -> m (L.V3 CFloat)
+getCameraLeft = fmap (over L._xz L.perp) . getCameraForward
 
 getCameraRHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraRHat = fmap L.normalize <$> getCameraDisplacementFromTarget
@@ -117,6 +134,7 @@ setCameraTransform c t = liftIO $ do
 
 -- | Polar unit vector points DOWN.
 
+-- This is z-up!
 -- theta = arccos z / r
 
 -- phi = arctan y / x
@@ -137,6 +155,14 @@ getCameraThetaHat cam = do
       cosPhi   = x / littleR
       sinPhi   = z / littleR
   return $ L.V3 (cosTheta * cosPhi) (-sinTheta) (cosTheta * sinPhi)
+
+-- i.e. arccos of this is the inclination
+-- this is INWARD
+getCameraInclinationCos :: MonadIO m => Camera -> m CFloat
+getCameraInclinationCos cam = do
+  v@(L.V3 _ y _) <- getCameraDisplacementFromTarget cam
+  let r = L.norm v
+  return $ negate y / r
 
 getCameraPolarSpeed :: MonadIO m => Camera -> m CFloat
 getCameraPolarSpeed cam = do
@@ -183,7 +209,7 @@ cameraLookAtTarget cam = do
         P.coSetWorldTransform go t)
 
 cameraAttach :: (MonadIO m, P.IsCollisionObject co) => Camera -> co -> m Camera
-cameraAttach cam co = return $ cam & cameraTarget .~ (P.toCollisionObject co)
+cameraAttach cam co = return $ cam & cameraTarget .~ P.toCollisionObject co
 
 -- getCameraOpenGLMatrix :: MonadIO m => Camera -> m (L.M44 CFloat)
 -- getCameraOpenGLMatrix cam = liftIO $ bracket
@@ -200,10 +226,10 @@ cameraVP cam = do
   --  camModel <- getCameraOpenGLMatrix cam
   return $ camPerspective L.!*! fmap (fmap (\(CFloat x) -> x)) camView
     where
-        -- Projection matrix : 90deg Field of View, 16:9 ratio, display range : 0.1 unit <-> 100 units
+        -- Projection matrix : custom fov, 16:9 ratio, display range : 0.1 unit <-> 10000 units
       vup = L.V3 0 1 0
       cfov = cam ^. cameraFOV
-      camPerspective = L.perspective cfov (16/9) 0.1 10000
+      camPerspective = L.perspective cfov (16/9) 0.1 100
 
 cameraV :: MonadIO m => Camera -> m VMatrix
 cameraV cam = do
@@ -211,4 +237,5 @@ cameraV cam = do
   tar <- getCameraTargetPosition cam
   let vup = L.V3 0 1 0
   return $ (fmap (\(CFloat x) -> x)) <$> L.lookAt pos tar vup
+
 
