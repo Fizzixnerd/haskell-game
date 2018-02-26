@@ -294,6 +294,17 @@ extern "C" {
     *z = g[2];
   }
 
+  void rb_set_linear_velocity(rigid_body* body, scalar x, scalar y, scalar z) {
+    reinterpret_cast<btRigidBody*>(body)->setLinearVelocity(btVector3(x, y, z));
+  }
+
+  void rb_get_linear_velocity(rigid_body* body, scalar* x, scalar* y, scalar* z) {
+    btVector3 g = reinterpret_cast<btRigidBody*>(body)->getLinearVelocity();
+    *x = g[0];
+    *y = g[1];
+    *z = g[2];
+  }
+
   void get_total_force(rigid_body* body, scalar* x, scalar* y, scalar* z) {
     btVector3 F = reinterpret_cast<btRigidBody*>(body)->getTotalForce();
     *x = F[0];
@@ -550,7 +561,7 @@ extern "C" {
     *z = up[2];
   }
 
-  void set_angular_velocity(kinematic_character_controller* kcc,
+  void kcc_set_angular_velocity(kinematic_character_controller* kcc,
 			    scalar ang1,
 			    scalar ang2,
 			    scalar ang3) {
@@ -558,7 +569,7 @@ extern "C" {
       setAngularVelocity(btVector3(ang1, ang2, ang3));
   }
 
-  void get_angular_velocity(kinematic_character_controller* kcc,
+  void kcc_get_angular_velocity(kinematic_character_controller* kcc,
 			    scalar* ang1,
 			    scalar* ang2,
 			    scalar* ang3) {
@@ -569,7 +580,7 @@ extern "C" {
     *ang3 = omega[2];
   }
 
-  void set_linear_velocity(kinematic_character_controller* kcc,
+  void kcc_set_linear_velocity(kinematic_character_controller* kcc,
 			   scalar vx,
 			   scalar vy,
 			   scalar vz) {
@@ -577,7 +588,7 @@ extern "C" {
       setLinearVelocity(btVector3(vx, vy, vz));
   }
 
-  void get_linear_velocity(kinematic_character_controller* kcc,
+  void kcc_get_linear_velocity(kinematic_character_controller* kcc,
 			   scalar* vx,
 			   scalar* vy,
 			   scalar* vz) {

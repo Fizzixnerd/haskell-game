@@ -397,6 +397,21 @@ instance IsCollisionObject RigidBody
    alloca- `CFloat' peek* } -> `()'
 #}
 
+{#fun rb_set_linear_velocity as ^
+ { `RigidBody',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun rb_get_linear_velocity as ^
+ { `RigidBody',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
+
 {#fun get_total_force as ^
  { `RigidBody',
    alloca- `CFloat' peek*,
@@ -756,28 +771,28 @@ instance New KinematicCharacterController (PairCachingGhostObject, ConvexShape, 
    alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun set_angular_velocity as ^
+{#fun kcc_set_angular_velocity as ^
  { `KinematicCharacterController',
    `CFloat',
    `CFloat',
    `CFloat' } -> `()'
 #}
 
-{#fun get_angular_velocity as ^
+{#fun kcc_get_angular_velocity as ^
  { `KinematicCharacterController',
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun set_linear_velocity as ^
+{#fun kcc_set_linear_velocity as ^
  { `KinematicCharacterController',
    `CFloat',
    `CFloat',
    `CFloat' } -> `()'
 #}
 
-{#fun get_linear_velocity as ^
+{#fun kcc_get_linear_velocity as ^
  { `KinematicCharacterController',
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek*,

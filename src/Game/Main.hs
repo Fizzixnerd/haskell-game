@@ -66,7 +66,7 @@ setupPhysics = do
 --           , PL.Plugin "scripts/" "Util"     "reloadPlugins"
 --           ]
 
-createTheCube :: IO (Entity s, P.RigidBody)
+createTheCube :: IO (Entity (Timed Integer ()), P.RigidBody)
 createTheCube = do
   cube <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
@@ -103,8 +103,13 @@ createTheCube = do
             }
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
-          , _entityLogic = Nothing
+          , _entityLogic = Just Lfx
+            { _lfxScripts = singleton $ \cube_ -> do
+                setEntityLinearVelocity cube_ (L.V3 100 100 100)
+                return cube_
+            }
           , _entityWorldTransform = WorldTransform $ P.toCollisionObject rb
+          , _entityRigidBody = Just $ RigidBody rb
           }
   return (e, rb)
 
@@ -146,6 +151,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
+                                  & gameStateTimeState .~ Timed 0 ()
   
     let renderWire :: GameWire s a ()
         renderWire = mkGen_ $ const $ Right <$> do
@@ -190,9 +196,11 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           (timeState, sess') <- stepSession sess_
           let game = stepWire wire timeState (Right ())
           (((_, wire'), input'), gs') <- runGame gs ic game
+          let gs'' = gs' & gameStateTimeState .~ timeState
           swapBuffers win
-          when (gs ^. gameStateShouldClose) $
+          when (gs'' ^. gameStateShouldClose) $ do
+            AL.destroyContext $ gs'' ^. gameStateSoundContext
             exitSuccess
-          doGame input' sess' wire' gs'
+          doGame input' sess' wire' gs''
     void $ doGame input sess mainWire gameState
     

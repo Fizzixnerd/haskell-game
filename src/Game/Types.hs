@@ -84,6 +84,7 @@ data GameState s = GameState
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
+  , _gameStateTimeState     :: s
   }
 
 initGameState :: GameState s
@@ -100,6 +101,7 @@ initGameState = GameState
   , _gameStateEntities      = empty
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
+  , _gameStateTimeState     = error "timeState not set."
   }
 
 data Camera = Camera
@@ -260,6 +262,7 @@ data Entity s = Entity
   , _entitySounds         :: Maybe (Sfx s)
   , _entityLogic          :: Maybe (Lfx s)
   , _entityWorldTransform :: WorldTransform
+  , _entityRigidBody      :: Maybe RigidBody
   }
 
 -- | When an `Entity' is loaded, it's graphics data is stored here.
@@ -281,6 +284,7 @@ data Gfx s = Gfx
   }
 
 newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
+newtype RigidBody = RigidBody { _unRigidBody :: P.RigidBody }
 
 type VPMatrix = L.M44 Float
 type VMatrix  = L.M44 Float

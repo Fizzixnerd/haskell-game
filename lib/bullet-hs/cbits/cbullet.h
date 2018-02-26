@@ -125,6 +125,8 @@ extern "C" {
   motion_state* rb_get_motion_state(rigid_body* body);
   void rb_set_gravity(rigid_body* body, scalar x, scalar y, scalar z);
   void rb_get_gravity(rigid_body* body, scalar* x, scalar* y, scalar* z);
+  void rb_set_linear_velocity(rigid_body* body, scalar x, scalar y, scalar z);
+  void rb_get_linear_velocity(rigid_body* body, scalar* x, scalar* y, scalar* z);
   void get_total_force(rigid_body* body, scalar* x, scalar* y, scalar* z);
   void get_total_torque(rigid_body* body, scalar* x, scalar* y, scalar* z);
   void apply_force(rigid_body* body,
@@ -229,22 +231,22 @@ extern "C" {
   void free_kinematic_character_controller(kinematic_character_controller* kcc);
   void set_up(kinematic_character_controller* kcc, scalar x, scalar y, scalar z);
   void get_up(kinematic_character_controller* kcc, scalar* x, scalar* y, scalar* z);
-  void set_angular_velocity(kinematic_character_controller* kcc,
-			    scalar ang1,
-			    scalar ang2,
-			    scalar ang3);
-  void get_angular_velocity(kinematic_character_controller* kcc,
-			    scalar* ang1,
-			    scalar* ang2,
-			    scalar* ang3);
-  void set_linear_velocity(kinematic_character_controller* kcc,
-			   scalar vx,
-			   scalar vy,
-			   scalar vz);
-  void get_linear_velocity(kinematic_character_controller* kcc,
-			   scalar* vx,
-			   scalar* vy,
-			   scalar* vz);
+  void kcc_set_angular_velocity(kinematic_character_controller* kcc,
+				scalar ang1,
+				scalar ang2,
+				scalar ang3);
+  void kcc_get_angular_velocity(kinematic_character_controller* kcc,
+				scalar* ang1,
+				scalar* ang2,
+				scalar* ang3);
+  void kcc_set_linear_velocity(kinematic_character_controller* kcc,
+			       scalar vx,
+			       scalar vy,
+			       scalar vz);
+  void kcc_get_linear_velocity(kinematic_character_controller* kcc,
+			       scalar* vx,
+			       scalar* vy,
+			       scalar* vz);
   void set_linear_damping(kinematic_character_controller* kcc, scalar d);
   scalar get_linear_damping(kinematic_character_controller* kcc);
   void set_angular_damping(kinematic_character_controller* kcc, scalar d);
