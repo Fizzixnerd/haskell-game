@@ -149,6 +149,8 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                                   & gameStateSoundContext .~ ctxt
         animationWire :: GameWire s a ()
         animationWire = mkGen_ $ const $ Right <$> do
+          clear $ defaultClearBuffer & clearBufferColor .~ True
+                                     & clearBufferDepth .~ True
           entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
           entities' <- mapM animateEntity entities
           gameStatePhysicsWorld . physicsWorldEntities .= entities'

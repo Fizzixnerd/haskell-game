@@ -37,8 +37,6 @@ drawGfxWithTransform :: L.M44 Float -> VPMatrix -> Gfx s -> Game s ()
 drawGfxWithTransform wrld vpm gfx = do
   bindGfxTexture (gfx ^. gfxTextureBlob)
   forM_ (gfx ^. gfxVaoData) $ \(vao, prog, mode, size) -> do
-    clear $ defaultClearBuffer & clearBufferColor .~ True
-                                 & clearBufferDepth .~ True
     useProgram prog
     currentVertexArrayObject $= Just vao
     uniform prog UniformMVP (vpm L.!*! wrld)
