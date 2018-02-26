@@ -261,7 +261,7 @@ data Entity s = Entity
   { _entityGraphics       :: Maybe (Gfx s)
   , _entitySounds         :: Maybe (Sfx s)
   , _entityLogic          :: Maybe (Lfx s)
-  , _entityWorldTransform :: WorldTransform
+  , _entityCollisionBody  :: CollisionBody
   , _entityRigidBody      :: Maybe RigidBody
   }
 
@@ -283,7 +283,7 @@ data Gfx s = Gfx
   , _gfxChildren    :: Vector (Gfx s)
   }
 
-newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
+newtype CollisionBody = CollisionBody { _unCollisionBody :: P.CollisionObject }
 newtype RigidBody = RigidBody { _unRigidBody :: P.RigidBody }
 
 type VPMatrix = L.M44 Float
@@ -308,10 +308,11 @@ mconcat <$> mapM makeLenses
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
-  , ''WorldTransform
+  , ''CollisionBody
   , ''MousePos
   , ''PhysicsWorld
   , ''Player
+  , ''RigidBody
   , ''Script
   , ''ScriptName
   , ''Sfx

@@ -86,18 +86,19 @@ createTheCube = do
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
-            { _lfxScripts = fromList [\cube_ -> do
-                                         t <- use gameStateTime
-                                         when (t < 5.5) $ do
-                                           setEntityLinearVelocity cube_ (L.V3 4 4 4)
-                                         return cube_
-                                     ,\cube_ -> do
-                                         entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
-                                           setEntityLinearVelocity cube_ (L.V3 0 4 0)
-                                         return cube_
-                                     ]
+            { _lfxScripts = fromList [
+                \cube_ -> do
+                  t <- use gameStateTime
+                  when (t < 5.5) $ do
+                    setEntityLinearVelocity cube_ (L.V3 4 4 4)
+                  return cube_
+                , \cube_ -> do
+                    entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
+                      setEntityLinearVelocity cube_ (L.V3 0 4 0)
+                    return cube_
+                ]
             }
-          , _entityWorldTransform = WorldTransform $ P.toCollisionObject rb
+          , _entityCollisionBody = CollisionBody $ P.toCollisionObject rb
           , _entityRigidBody = Just $ RigidBody rb
           }
   return (e, rb)
