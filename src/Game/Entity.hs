@@ -53,7 +53,7 @@ drawEntity vpm e = case e ^. entityGraphics of
     drawGfxWithTransform wrld vpm gfx
 
 playEntity :: Entity s -> Game s ()
-playEntity e = case e ^. entitySounds of 
+playEntity e = case e ^. entitySounds of
   Nothing -> return ()
   Just sfx -> do
     (L.V3 x y z) <- getWorldPosition $ e ^. entityCollisionBody

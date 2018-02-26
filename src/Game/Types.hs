@@ -30,7 +30,7 @@ import           Foreign.C.Types
 import           Foreign.Storable
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
-import           Graphics.Binding 
+import           Graphics.Binding
 import qualified Sound.OpenAL                as AL
 import           Game.Graphics.Texture.Loader
 import qualified Linear                      as L
@@ -40,6 +40,7 @@ import           Data.Dynamic
 import           Control.Monad.Fix           as Fix
 
 type GameWire s a b = Wire s () (Game s) a b
+type GameEffectWire s a = GameWire s a a
 
 newtype Game s a = Game
   { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT IO)) a
