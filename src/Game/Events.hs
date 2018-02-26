@@ -17,69 +17,7 @@ import qualified Physics.Bullet as P
 import           Graphics.Binding
 import qualified Linear                       as L
 import qualified Sound.OpenAL as AL
-
-
--- | Is the identity if only one wire is producing. If both are, it
--- merges the results with merge. This steps both wires.
-solderWire :: (Monoid e, Monad m) => (b -> b -> b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
-solderWire merge' w1 w2 = WGen $ \s eea -> do
-  (eeb1, _) <- stepWire w1 s eea
-  (eeb2, _) <- stepWire w2 s eea
-  let res = merger eeb1 eeb2
-  res `seq` return (res, solderWire merge' w1 w2)
-  where
-    merger = \case
-      Left err -> left (mappend err)
-      Right x  -> const (Right x) ||| (Right . merge' x)
-
--- | If both are producing or both are inhibited, then it inhibits.
--- Otherwise it acts like the producing one. This thing has to step
--- both wires.
-solderWireM :: (Monoid e, Monad m) => (b -> b -> m b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
-solderWireM merge' w1 w2 = WGen $ \s eea -> do
-  (eeb1, _) <- stepWire w1 s eea
-  (eeb2, _) <- stepWire w2 s eea
-  res <- merger eeb1 eeb2
-  res `seq` return (res, solderWireM merge' w1 w2)
-  where
-    merger = \case
-      Left err -> pure . left (mappend err)
-      Right x  -> const (pure . Right $ x) ||| (fmap Right . merge' x)
-
--- | An identity wire that executes a monadic action when activated,
--- and passes the input through unchanged
-effectiveWire :: Monad m => m c -> Wire s e m a a
-effectiveWire act = mkGen_ $ \a -> void act >> return (Right a)
-
--- | A constant wire that executes a monadic action to obtain its output.
-mkConstM :: Monad m => m b -> Wire s e m a b
-mkConstM act = mkGen_ $ const $ Right <$> act
-
--- | A wire transformer that executes the given wire, discards the result, and passes its input through unchanged.
-passWire :: Monad m => Wire s e m a b -> Wire s e m a a
-passWire wire = (wire &&& id) >>> arr snd
-
--- Example usage for caching:
--- make a thingUpdateWire that when pulsed will return thing.
--- then feed that into steppingWire
--- Also, to future Matt: past Christian sends his regards.
-
-steppingWire :: Wire s e m a a
-steppingWire = mkPureN $ \a -> (Right a, mkConst (Right a))
-
--- If both are producing or both are inhibited, then it inhibits.
--- Otherwise it acts like the producing one.
--- This thing has to step both wires.
-
-xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
-xorWire w1 w2 = WGen $ \s eea -> do
-  (eeb1, _) <- stepWire w1 s eea
-  (eeb2, _) <- stepWire w2 s eea
-  return (inverter eeb1 eeb2, xorWire w1 w2)
-  where
-    inverter = \case
-      Left err -> left (mappend err)
-      Right x  -> const (Right x) ||| const (Left mempty)
+import           Game.Wires
 
 zoomCamera :: GameEffectWire s a
 zoomCamera = effectiveWire $ do
