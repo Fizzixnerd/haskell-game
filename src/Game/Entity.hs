@@ -83,11 +83,11 @@ setEntityLinearVelocity e (L.V3 x y z) = case e ^. entityRigidBody of
   Nothing -> return ()
   Just (RigidBody rb) -> liftIO $ P.rbSetLinearVelocity rb (CFloat x) (CFloat y) (CFloat z)
 
-entityLocalRayCast :: Entity s
-                   -> L.V3 Float -- ^ in Entity-local coordinates
-                   -> (P.CollisionObject -> Game s ()) -- ^ callback
-                   -> Game s ()
-entityLocalRayCast e v cb = do
+entityLocalClosestRayCast :: Entity s
+                          -> L.V3 Float -- ^ in Entity-local coordinates
+                          -> (P.CollisionObject -> Game s ()) -- ^ callback
+                          -> Game s ()
+entityLocalClosestRayCast e v cb = do
   dw <- use $ gameStatePhysicsWorld . physicsWorldDynamicsWorld
   entityCenter@(L.V3 fromx fromy fromz) <- toWorldPosition $ e ^. entityWorldTransform
   let (L.V3 tox toy toz) = entityCenter + v

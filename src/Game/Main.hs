@@ -26,7 +26,6 @@ import           Linear                      as L
 import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
-import           System.Exit
 
 setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
@@ -93,7 +92,7 @@ createTheCube = do
                                            setEntityLinearVelocity cube_ (L.V3 4 4 4)
                                          return cube_
                                      ,\cube_ -> do
-                                         entityLocalRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
+                                         entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
                                            setEntityLinearVelocity cube_ (L.V3 0 4 0)
                                          return cube_
                                      ]
