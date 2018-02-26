@@ -204,3 +204,11 @@ cameraVP cam = do
       vup = L.V3 0 1 0
       cfov = cam ^. cameraFOV
       camPerspective = L.perspective cfov (16/9) 0.1 10000
+
+cameraV :: MonadIO m => Camera -> m VMatrix
+cameraV cam = do
+  pos <- getCameraPosition cam
+  tar <- getCameraTargetPosition cam
+  let vup = L.V3 0 1 0
+  return $ (fmap (\(CFloat x) -> x)) <$> L.lookAt pos tar vup
+

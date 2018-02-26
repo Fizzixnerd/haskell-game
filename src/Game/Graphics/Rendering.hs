@@ -74,7 +74,7 @@ bufferData vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
   vertexArrayAttribBinding vao nmlLoc nmlLoc
 
   (ebuf, lene) <- unsafeWithVecLen objIndices $ \indxs vecLen -> do
-    ebuf <- initBufferObject (fromIntegral $ vecLen * sizeOf (undefined :: CUInt)) flags (castPtr indxs)
+    ebuf <- initBufferObject (fromIntegral $ vecLen * sizeOf (0 :: CUInt)) flags (castPtr indxs)
     return (ebuf, vecLen)
 
   bindElementBuffer vao ebuf

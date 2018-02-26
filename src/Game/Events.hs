@@ -15,10 +15,11 @@ import           Game.Entity.Camera
 import qualified Physics.Bullet as P
 import           Graphics.Binding
 import qualified Linear                       as L
+import qualified Sound.OpenAL as AL
 
 
--- Is the identity if only one wire is producing. If both are, it merges the results with merge.
--- This steps both wires.
+-- | Is the identity if only one wire is producing. If both are, it
+-- merges the results with merge.  This steps both wires.
 solderWire :: (Monoid e, Monad m) => (b -> b -> b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 solderWire merge' w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
@@ -29,9 +30,9 @@ solderWire merge' w1 w2 = WGen $ \s eea -> do
       Left err -> left (mappend err)
       Right x  -> const (Right x) ||| (Right . merge' x)
 
--- If both are producing or both are inhibited, then it inhibits.
--- Otherwise it acts like the producing one.
--- This thing has to step both wires.
+-- | If both are producing or both are inhibited, then it inhibits.
+-- Otherwise it acts like the producing one.  This thing has to step
+-- both wires.
 xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 xorWire w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
@@ -48,6 +49,10 @@ zoomCamera = mkGen_ $ const $ Right <$> do
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
       rs   = (cam ^. cameraPreferredDistance) - dist
+  t <- liftIO $ P.coAllocateWorldTransform =<< cam ^. cameraController . to P.getGhostObject
+  (x, y, z) <- liftIO $ P.getOrigin t
+  liftIO $ P.del t
+  AL.listenerPosition $= AL.Vertex3 x y z
   setCameraRadialSpeed cam rs
   cameraLookAtTarget cam
 

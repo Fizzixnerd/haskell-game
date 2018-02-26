@@ -82,6 +82,8 @@ data GameState s = GameState
   , _gameStateEntities      :: Vector (Entity s)
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
+  , _gameStateSoundContext  :: AL.Context
+  , _gameStateSoundDevice   :: AL.Device
   }
 
 initGameState :: GameState s
@@ -96,6 +98,8 @@ initGameState = GameState
   , _gameStateMouseSpeed    = 0.01
   , _gameStateShouldClose   = False
   , _gameStateEntities      = empty
+  , _gameStateSoundContext  = error "soundContext not set."
+  , _gameStateSoundDevice   = error "soundDevice not set."
   }
 
 data Camera = Camera
@@ -252,9 +256,10 @@ data MousePos = MousePos
   } deriving (Eq, Ord, Show)
 
 data Entity s = Entity
-  { _entityGraphics :: Maybe (Gfx s)
-  , _entitySounds   :: Maybe (Sfx s)
-  , _entityLogic    :: Maybe (Lfx s)
+  { _entityGraphics       :: Maybe (Gfx s)
+  , _entitySounds         :: Maybe (Sfx s)
+  , _entityLogic          :: Maybe (Lfx s)
+  , _entityWorldTransform :: WorldTransform
   }
 
 -- | When an `Entity' is loaded, it's graphics data is stored here.
@@ -273,12 +278,12 @@ data Gfx s = Gfx
   { _gfxVaoData     :: Vector (VertexArrayObject, Program, PrimitiveMode, Word32)
   , _gfxTextureBlob :: GfxTexture
   , _gfxChildren    :: Vector (Gfx s)
-  , _gfxWorldXform  :: WorldTransform
   }
 
 newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
 
 type VPMatrix = L.M44 Float
+type VMatrix  = L.M44 Float
 
 data Sfx s = Sfx
   { _sfxSources :: Vector AL.Source

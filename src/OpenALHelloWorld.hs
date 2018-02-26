@@ -23,12 +23,12 @@ doItSoundman = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           AL.listenerVelocity AL.$= (AL.Vector3 0 0 0)
           AL.orientation AL.$= (AL.Vector3 0 0 1, AL.Vector3 0 1 0)
           src :: AL.Source <- AL.genObjectName
-          AL.sourceGain src AL.$= 1
-          AL.sourcePosition src AL.$= (AL.Vertex3 0 0 1)
+          AL.sourcePosition src AL.$= (AL.Vertex3 0 0 100)
           AL.sourceVelocity src AL.$= (AL.Vector3 0 0 0)
           AL.loopingMode src AL.$= AL.OneShot
-          buf <- AL.createBuffer (File "res/sound/a2002011001-e02.wav")
+          AL.distanceModel AL.$= AL.InverseDistance
+          buf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
           AL.buffer src AL.$= Just buf
           AL.play [src]
-          void $ forM [1..] $ \x -> do
-            AL.sourcePosition src AL.$= (AL.Vertex3 0 0 (1 + (x / 10)))
+          void $ forM [0..] $ \x -> do
+            AL.sourcePosition src AL.$= (AL.Vertex3 0 0 (1 + (x / 1000000)))
