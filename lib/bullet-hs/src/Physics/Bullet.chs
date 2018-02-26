@@ -40,6 +40,9 @@ import qualified Linear as L
 {#pointer *point2point_constraint as Point2PointConstraint newtype#}
 {#pointer *overlapping_pair_cache as ^ newtype#}
 {#pointer *ghost_pair_callback as ^ newtype#}
+{#pointer *collision_world as ^ newtype#}
+{#pointer *closest_ray_result_callback as ^ newtype#}
+{#pointer *ray_result_callback as ^ newtype#}
 
 type Mass = CFloat
 
@@ -126,6 +129,8 @@ instance New ConstraintSolver () where
   del x = freeConstraintSolver x
 
 -- | btDiscreteDynamicsWorld
+instance IsCollisionWorld DynamicsWorld
+
 {#fun new_discrete_dynamics_world as ^
  { `CollisionDispatcher',
    `BroadphaseInterface',
@@ -233,6 +238,74 @@ removeConstraint dw = removeConstraint_ dw . toTypedConstraint
  { `DynamicsWorld',
    `Serializer' } -> `()'
 #}
+
+-- | btCollisionWorld::ClosestRayResultCallback
+instance IsRayResultCallback ClosestRayResultCallback
+
+{#fun new_closest_ray_result_callback as ^
+ { `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `ClosestRayResultCallback'
+#}
+
+{#fun free_closest_ray_result_callback as ^
+ { `ClosestRayResultCallback' } -> `()'
+#}
+
+instance New ClosestRayResultCallback ((CFloat, CFloat, CFloat), (CFloat, CFloat, CFloat)) where
+  new ((fx, fy, fz), (tx, ty, tz)) = newClosestRayResultCallback fx fy fz tx ty tz
+  del x = freeClosestRayResultCallback x
+
+-- | btCollisionWorld::RayResultCallback
+class IsRayResultCallback rrc where
+  toRayResultCallback :: rrc -> RayResultCallback
+  toRayResultCallback = unsafeCoerce
+
+{#fun rrc_has_hit as rrcHasHit_
+ { `RayResultCallback' } -> `Bool'
+#}
+
+rrcHasHit :: IsRayResultCallback rrc => rrc -> IO Bool
+rrcHasHit = rrcHasHit_ . toRayResultCallback
+
+{#fun rrc_get_hit as rrcGetHit_
+ { `RayResultCallback' } -> `CollisionObject'
+#}
+
+rrcGetHit :: IsRayResultCallback rrc => rrc -> IO CollisionObject
+rrcGetHit = rrcGetHit_ . toRayResultCallback
+
+-- | btCollisionWorld
+class IsCollisionWorld cw where
+  toCollisionWorld :: cw -> CollisionWorld
+  toCollisionWorld = unsafeCoerce
+
+{#fun ray_test as rayTest_
+ { `CollisionWorld',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `CFloat',
+   `RayResultCallback' } -> `()'
+#}
+
+rayTest :: (IsCollisionWorld cw, IsRayResultCallback rrc)
+        => cw
+        -> CFloat
+        -> CFloat
+        -> CFloat
+        -> CFloat
+        -> CFloat
+        -> CFloat
+        -> rrc
+        -> IO ()
+rayTest cw fx fy fz tx ty tz rrc = 
+  rayTest_ (toCollisionWorld cw) fx fy fz tx ty tz (toRayResultCallback rrc)
 
 -- | btCollisionObject
 class IsCollisionObject cs where
@@ -396,6 +469,21 @@ instance IsCollisionObject RigidBody
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek* } -> `()'
 #}
+
+{#fun rb_set_linear_velocity as ^
+ { `RigidBody',
+   `CFloat',
+   `CFloat',
+   `CFloat' } -> `()'
+#}
+
+{#fun rb_get_linear_velocity as ^
+ { `RigidBody',
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek*,
+   alloca- `CFloat' peek* } -> `()'
+#}
+
 
 {#fun get_total_force as ^
  { `RigidBody',
@@ -756,28 +844,28 @@ instance New KinematicCharacterController (PairCachingGhostObject, ConvexShape, 
    alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun set_angular_velocity as ^
+{#fun kcc_set_angular_velocity as ^
  { `KinematicCharacterController',
    `CFloat',
    `CFloat',
    `CFloat' } -> `()'
 #}
 
-{#fun get_angular_velocity as ^
+{#fun kcc_get_angular_velocity as ^
  { `KinematicCharacterController',
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek* } -> `()'
 #}
 
-{#fun set_linear_velocity as ^
+{#fun kcc_set_linear_velocity as ^
  { `KinematicCharacterController',
    `CFloat',
    `CFloat',
    `CFloat' } -> `()'
 #}
 
-{#fun get_linear_velocity as ^
+{#fun kcc_get_linear_velocity as ^
  { `KinematicCharacterController',
    alloca- `CFloat' peek*,
    alloca- `CFloat' peek*,

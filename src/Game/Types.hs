@@ -85,6 +85,7 @@ data GameState s = GameState
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
+  , _gameStateTime          :: Double
   }
 
 initGameState :: GameState s
@@ -101,6 +102,7 @@ initGameState = GameState
   , _gameStateEntities      = empty
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
+  , _gameStateTime          = 0
   }
 
 data Camera = Camera
@@ -260,7 +262,8 @@ data Entity s = Entity
   { _entityGraphics       :: Maybe (Gfx s)
   , _entitySounds         :: Maybe (Sfx s)
   , _entityLogic          :: Maybe (Lfx s)
-  , _entityWorldTransform :: WorldTransform
+  , _entityCollisionBody  :: CollisionBody
+  , _entityRigidBody      :: Maybe RigidBody
   }
 
 -- | When an `Entity' is loaded, it's graphics data is stored here.
@@ -281,7 +284,8 @@ data Gfx s = Gfx
   , _gfxChildren    :: Vector (Gfx s)
   }
 
-newtype WorldTransform = WorldTransform { _unWorldTransform :: P.CollisionObject }
+newtype CollisionBody = CollisionBody { _unCollisionBody :: P.CollisionObject }
+newtype RigidBody = RigidBody { _unRigidBody :: P.RigidBody }
 
 type VPMatrix = L.M44 Float
 type VMatrix  = L.M44 Float
@@ -291,7 +295,7 @@ data Sfx s = Sfx
   }
 
 data Lfx s = Lfx
-  { _lfxWires :: GameWire s (Lfx s) ()
+  { _lfxScripts :: Vector (Entity s -> Game s (Entity s))
   }
 
 mconcat <$> mapM makeLenses
@@ -305,10 +309,11 @@ mconcat <$> mapM makeLenses
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
-  , ''WorldTransform
+  , ''CollisionBody
   , ''MousePos
   , ''PhysicsWorld
   , ''Player
+  , ''RigidBody
   , ''Script
   , ''ScriptName
   , ''Sfx

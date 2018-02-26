@@ -64,11 +64,11 @@ getPlayerOpenGLMatrix p = withPlayerTransform p P.getOpenGLMatrix
 
 getPlayerLinearVelocity :: MonadIO m => Player -> m (L.V3 CFloat)
 getPlayerLinearVelocity p = liftIO $ do
-  (x, y, z) <- P.getLinearVelocity $ p ^. playerController
+  (x, y, z) <- P.kccGetLinearVelocity $ p ^. playerController
   return $ L.V3 x y z
 
 setPlayerLinearVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
-setPlayerLinearVelocity p v = liftIO $ P.setLinearVelocity
+setPlayerLinearVelocity p v = liftIO $ P.kccSetLinearVelocity
                               (p ^. playerController)
                               (v ^. L._x)
                               (v ^. L._y)
@@ -76,11 +76,11 @@ setPlayerLinearVelocity p v = liftIO $ P.setLinearVelocity
 
 getPlayerAngularVelocity :: MonadIO m => Player -> m (L.V3 CFloat)
 getPlayerAngularVelocity p = liftIO $ do
-  (alpha, beta, gamma) <- P.getAngularVelocity $ p ^. playerController
+  (alpha, beta, gamma) <- P.kccGetAngularVelocity $ p ^. playerController
   return $ L.V3 alpha beta gamma
 
 setPlayerAngularVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
-setPlayerAngularVelocity p omega = liftIO $ P.setAngularVelocity
+setPlayerAngularVelocity p omega = liftIO $ P.kccSetAngularVelocity
                                    (p ^. playerController)
                                    (omega ^. L._x)
                                    (omega ^. L._y)

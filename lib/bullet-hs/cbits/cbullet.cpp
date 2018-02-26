@@ -66,6 +66,49 @@ extern "C" {
     delete reinterpret_cast<btConstraintSolver*>(solver);
   }
 
+  // btCollisionWorld::ClosestRayResultCallback
+  closest_ray_result_callback* new_closest_ray_result_callback(scalar fromx,
+							       scalar fromy,
+							       scalar fromz,
+							       scalar tox,
+							       scalar toy,
+							       scalar toz) {
+    return reinterpret_cast<closest_ray_result_callback*>
+      (new btCollisionWorld::ClosestRayResultCallback
+       (btVector3(fromx, fromy, fromz),
+	btVector3(tox, toy, toz)));
+  }
+
+  void free_closest_ray_result_callback(closest_ray_result_callback* callback) {
+    delete reinterpret_cast<btCollisionWorld::ClosestRayResultCallback*>(callback);
+  }
+
+  // btCollisionWorld::RayResultCallback
+  int rrc_has_hit(ray_result_callback* callback) {
+    return reinterpret_cast<btCollisionWorld::ClosestRayResultCallback*>
+      (callback)->hasHit();
+  }
+  
+  const collision_object* rrc_get_hit(ray_result_callback* callback) {
+    return reinterpret_cast<const collision_object*>
+      (reinterpret_cast<btCollisionWorld::ClosestRayResultCallback*>
+       (callback)->m_collisionObject);
+  }
+
+  // btCollsionWorld
+  void ray_test(collision_world* world,
+		scalar fromx, scalar fromy, scalar fromz, scalar tox, scalar toy,
+		scalar toz, ray_result_callback* callback) {
+    btCollisionWorld* theWorld = reinterpret_cast<btCollisionWorld*>(world);
+    btVector3 fromVector = btVector3(fromx, fromy, fromz);
+    btVector3 toVector = btVector3(tox, toy, toz);
+    btCollisionWorld::ClosestRayResultCallback* theCallback = reinterpret_cast<btCollisionWorld::ClosestRayResultCallback*>(callback);
+    theWorld->rayTest(fromVector, toVector, *theCallback);
+  }
+
+  // btCollisionWorld::ContactResultCallback
+  //int crc_has_result(contact_result_callback* callback);
+
   // btDiscreteDynamicsWorld
   dynamics_world* new_discrete_dynamics_world
   (collision_dispatcher* dispatcher,
@@ -289,6 +332,17 @@ extern "C" {
 
   void rb_get_gravity(rigid_body* body, scalar* x, scalar* y, scalar* z) {
     btVector3 g = reinterpret_cast<btRigidBody*>(body)->getGravity();
+    *x = g[0];
+    *y = g[1];
+    *z = g[2];
+  }
+
+  void rb_set_linear_velocity(rigid_body* body, scalar x, scalar y, scalar z) {
+    reinterpret_cast<btRigidBody*>(body)->setLinearVelocity(btVector3(x, y, z));
+  }
+
+  void rb_get_linear_velocity(rigid_body* body, scalar* x, scalar* y, scalar* z) {
+    btVector3 g = reinterpret_cast<btRigidBody*>(body)->getLinearVelocity();
     *x = g[0];
     *y = g[1];
     *z = g[2];
@@ -550,7 +604,7 @@ extern "C" {
     *z = up[2];
   }
 
-  void set_angular_velocity(kinematic_character_controller* kcc,
+  void kcc_set_angular_velocity(kinematic_character_controller* kcc,
 			    scalar ang1,
 			    scalar ang2,
 			    scalar ang3) {
@@ -558,7 +612,7 @@ extern "C" {
       setAngularVelocity(btVector3(ang1, ang2, ang3));
   }
 
-  void get_angular_velocity(kinematic_character_controller* kcc,
+  void kcc_get_angular_velocity(kinematic_character_controller* kcc,
 			    scalar* ang1,
 			    scalar* ang2,
 			    scalar* ang3) {
@@ -569,7 +623,7 @@ extern "C" {
     *ang3 = omega[2];
   }
 
-  void set_linear_velocity(kinematic_character_controller* kcc,
+  void kcc_set_linear_velocity(kinematic_character_controller* kcc,
 			   scalar vx,
 			   scalar vy,
 			   scalar vz) {
@@ -577,7 +631,7 @@ extern "C" {
       setLinearVelocity(btVector3(vx, vy, vz));
   }
 
-  void get_linear_velocity(kinematic_character_controller* kcc,
+  void kcc_get_linear_velocity(kinematic_character_controller* kcc,
 			   scalar* vx,
 			   scalar* vy,
 			   scalar* vz) {
