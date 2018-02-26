@@ -28,15 +28,6 @@ import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
 import           System.Exit
 
-{-
-printContextVersion :: MonadIO m => G.Window -> m ()
-printContextVersion win = liftIO $ do
-  maj <- G.getWindowContextVersionMajor win
-  min_ <- G.getWindowContextVersionMinor win
-  rev <- G.getWindowContextVersionRevision win
-  printf "%i.%i.%i\n" maj min_ rev
--}
-
 setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
   pw <- newPhysicsWorld
@@ -57,14 +48,6 @@ setupPhysics = do
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw''', pl, cam)
-
--- plugins :: [PL.Plugin]
--- plugins = [ PL.Plugin "scripts/" "Movement" "moveForward"
---           , PL.Plugin "scripts/" "Movement" "moveBackward"
---           , PL.Plugin "scripts/" "Movement" "moveLeft"
---           , PL.Plugin "scripts/" "Movement" "moveRight"
---           , PL.Plugin "scripts/" "Util"     "reloadPlugins"
---           ]
 
 createTheCube :: IO (Entity (Timed Integer ()), P.RigidBody)
 createTheCube = do
@@ -127,7 +110,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     -- Remember: we will eventually have to free the function pointer
     -- that mkGLDEBUGPROC gives us!!!
     debugMessageCallback $= Just simpleDebugFunc
-    --  printContextVersion win
 
     clearColor $= color4 0 0 0.4 0
     -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
@@ -165,16 +147,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           pw <- use gameStatePhysicsWorld
           void $ stepPhysicsWorld pw
   
-    -- -- proof of concept.
-    -- moveForward   <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveForward"
-    -- -- proof of double-loading.
-    -- moveBackward  <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveBackward"
-    -- moveLeft      <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveLeft"
-    -- moveRight     <- PL.loadPlugin $ PL.Plugin "scripts/" "Movement" "moveRight"
-    -- holy shit I'm so fucking mad fuck this shit it doesn't work
-    -- sometimes wtf.
-    --  reloadPlugins <- PL.loadPlugin $ PL.Plugin "scripts/" "Util"     "reloadPlugins
-  
         mainWire =     renderWire
                    <+> (playerHorizontalMovement >>> movePlayer)
                    <+> physicsWire
@@ -198,7 +170,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           (timeState, sess') <- stepSession sess_
           let game = stepWire wire timeState (Right 0)
           (((_, wire'), input'), gs') <- runGame gs ic game
---          let gs'' = gs' & gameStateTimeState .~ timeState
           swapBuffers win
           when (gs' ^. gameStateShouldClose) $ do
             AL.destroyContext $ gs' ^. gameStateSoundContext
