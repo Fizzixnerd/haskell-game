@@ -64,15 +64,17 @@ playEntity e = case e ^. entitySounds of
         AL.Initial -> AL.play [s]
         _ -> return ()
 
-scriptEntity :: Entity s -> Game s ()
+scriptEntity :: Entity s -> Game s (Entity s)
 scriptEntity e = case e ^. entityLogic of
-  Nothing -> return ()
-  Just lfx -> void $ sequence $ lfx ^. lfxScripts
+  Nothing -> return e
+  Just lfx -> foldlM (\ent scr -> scr ent) e (lfx ^. lfxScripts)
 
-animateEntity :: Entity s -> Game s ()
+animateEntity :: Entity s -> Game s (Entity s)
 animateEntity e = do
   cam <- use gameStateCamera
   vpm <- cameraVP cam
-  playEntity e
-  drawEntity vpm e
-  scriptEntity e
+  e' <- scriptEntity e
+  playEntity e'
+  drawEntity vpm e'
+  return e'
+  

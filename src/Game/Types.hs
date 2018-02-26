@@ -290,7 +290,7 @@ data Sfx s = Sfx
   }
 
 data Lfx s = Lfx
-  { _lfxScripts :: Vector (Game s ())
+  { _lfxScripts :: Vector (Entity s -> Game s (Entity s))
   }
 
 mconcat <$> mapM makeLenses

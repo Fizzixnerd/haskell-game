@@ -150,7 +150,8 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     let renderWire :: GameWire s a ()
         renderWire = mkGen_ $ const $ Right <$> do
           entities <- use gameStateEntities
-          mapM_ animateEntity entities
+          entities' <- mapM animateEntity entities
+          gameStateEntities .= entities'
   
         physicsWire :: GameWire s a ()
         physicsWire = mkGen_ $ const $ Right <$> do
