@@ -403,6 +403,21 @@ setCollisionShape co cs = setCollisionShape_ (toCollisionObject co) (toCollision
    `CFloat' } -> `()'
 #}
 
+{#fun set_user_index as setUserIndex_
+ { `CollisionObject',
+   `Int' } -> `()'
+#}
+
+setUserIndex :: IsCollisionObject co => co -> Int -> IO ()
+setUserIndex = setUserIndex_ . toCollisionObject
+
+{#fun get_user_index as getUserIndex_
+ { `CollisionObject' } -> `Int'
+#}
+
+getUserIndex :: IsCollisionObject co => co -> IO Int
+getUserIndex = getUserIndex_ . toCollisionObject
+
 -- | btDefaultMotionState
 {#fun new_default_motion_state as ^
  { `Transform' } -> `MotionState'

@@ -268,6 +268,16 @@ extern "C" {
       setInterpolationLinearVelocity(btVector3(x, y, z));
   }
 
+  void set_user_index(collision_object* obj, int n) {
+    reinterpret_cast<btCollisionObject*>(obj)->
+      setUserIndex(n);
+  }
+
+  int get_user_index(collision_object* obj) {
+    return reinterpret_cast<btCollisionObject*>(obj)->
+      getUserIndex();
+  }
+
   // btMotionState
   motion_state* new_default_motion_state(transform* transform) {
     return reinterpret_cast<motion_state*>

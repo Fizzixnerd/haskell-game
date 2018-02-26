@@ -80,7 +80,6 @@ data GameState s = GameState
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
   , _gameStatePhysicsWorld  :: PhysicsWorld s
   , _gameStatePlayer        :: Player s
-  , _gameStateEntities      :: Vector (Entity s)
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
@@ -99,7 +98,6 @@ initGameState = GameState
   , _gameStatePlayer        = error "player not set."
   , _gameStateMouseSpeed    = 0.01
   , _gameStateShouldClose   = False
-  , _gameStateEntities      = empty
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
   , _gameStateTime          = 0
@@ -113,7 +111,9 @@ data Camera s = Camera
   , _cameraEntity            :: Entity s
   }
 
-newtype GiantFeaturelessPlane = GiantFeaturelessPlane { _unGiantFeauturelessPlane :: P.RigidBody }
+data GiantFeaturelessPlane s = GiantFeaturelessPlane 
+  { _giantFeaturelessPlaneRigidBody :: P.RigidBody
+  , _giantFeaturelessPlaneEntity :: Entity s }
 
 data ExpandObjVTN = ExpandObjVTN
   { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
@@ -204,7 +204,7 @@ data Player s = Player
 data PhysicsWorld s = PhysicsWorld
   { _physicsWorldDynamicsWorld :: P.DynamicsWorld
   , _physicsWorldPlayers :: Vector (Player s)
-  , _physicsWorldGiantFeaturelessPlanes :: Vector GiantFeaturelessPlane
+  , _physicsWorldGiantFeaturelessPlanes :: Vector (GiantFeaturelessPlane s)
   , _physicsWorldCameras :: Vector (Camera s)
   , _physicsWorldBroadphaseInterface :: P.BroadphaseInterface
   , _physicsWorldGhostPairCallback :: P.GhostPairCallback
@@ -213,6 +213,7 @@ data PhysicsWorld s = PhysicsWorld
   , _physicsWorldConstraintSolver :: P.ConstraintSolver
   , _physicsWorldCollisionObjects :: Vector P.CollisionObject
   , _physicsWorldRigidBodies :: Vector P.RigidBody
+  , _physicsWorldEntities :: Vector (Entity s)
   }
 
 data VTNPoint = VTNPoint
@@ -261,12 +262,12 @@ data MousePos = MousePos
   } deriving (Eq, Ord, Show)
 
 data Entity s = Entity
-  { _entityGraphics       :: Maybe (Gfx s)
-  , _entitySounds         :: Maybe (Sfx s)
-  , _entityLogic          :: Maybe (Lfx s)
-  , _entityChildren       :: Vector (Entity s)
-  , _entityCollisionBody  :: CollisionBody
-  , _entityRigidBody      :: Maybe RigidBody
+  { _entityGraphics        :: Maybe (Gfx s)
+  , _entitySounds          :: Maybe (Sfx s)
+  , _entityLogic           :: Maybe (Lfx s)
+  , _entityChildren        :: Vector (Entity s)
+  , _entityCollisionObject :: CollisionObject
+  , _entityRigidBody       :: Maybe RigidBody
   }
 
 -- | When an `Entity' is loaded, it's graphics data is stored here.
@@ -287,8 +288,8 @@ data Gfx s = Gfx
   , _gfxChildren    :: Vector (Gfx s)
   }
 
-newtype CollisionBody = CollisionBody { _unCollisionBody :: P.CollisionObject }
-newtype RigidBody     = RigidBody     { _unRigidBody     :: P.RigidBody       }
+newtype CollisionObject = CollisionObject { _unCollisionObject :: P.CollisionObject }
+newtype RigidBody       = RigidBody       { _unRigidBody       :: P.RigidBody       }
 
 type VPMatrix = L.M44 Float
 type VMatrix  = L.M44 Float
@@ -312,7 +313,7 @@ mconcat <$> mapM makeLenses
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
-  , ''CollisionBody
+  , ''CollisionObject
   , ''MousePos
   , ''PhysicsWorld
   , ''Player

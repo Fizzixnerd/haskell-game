@@ -33,7 +33,7 @@ newPlayer = liftIO $ do
           , _entitySounds   = Nothing
           , _entityLogic    = Nothing
           , _entityRigidBody = Nothing
-          , _entityCollisionBody = CollisionBody (P.toCollisionObject go)
+          , _entityCollisionObject = CollisionObject (P.toCollisionObject go)
           }
   return Player 
     { _playerController = controller

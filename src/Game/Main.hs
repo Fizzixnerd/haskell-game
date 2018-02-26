@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Game.Main where
 
@@ -27,10 +28,12 @@ import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
 
-setupPhysics :: IO (PhysicsWorld s, Player s, Camera s)
+setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
+  (theCubeE, theCubeRB) <- createTheCube
   pw <- newPhysicsWorld
-  pl <- newPlayer
+  pl' <- newPlayer
+  let pl = pl' & playerEntity . entityGraphics .~ (theCubeE ^. entityGraphics)
   go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 4
   cameraLookAtTarget cam
@@ -44,11 +47,12 @@ setupPhysics = do
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
-  setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
+  pw'''' <- addEntityToPhysicsWorld theCubeE pw'''
+  setGravityPhysicsWorld (L.V3 0 (-10) 0) pw''''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
-  return (pw''', pl, cam)
+  return (pw'''', pl, cam, theCubeE, theCubeRB)
 
-createTheCube :: IO (Entity (Timed Integer ()), P.RigidBody)
+createTheCube :: IO (Entity s, P.RigidBody)
 createTheCube = do
   cube <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
@@ -94,12 +98,15 @@ createTheCube = do
                     setEntityLinearVelocity cube_ (L.V3 4 4 4)
                   return cube_
               , \cube_ -> do
-                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
-                    setEntityLinearVelocity cube_ (L.V3 0 4 0)
+                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
+                    \e_@Entity {..} -> do
+                      setEntityLinearVelocity cube_ (L.V3 0 4 0)
+                      -- just for testing~
+                      seq e_ (return ())
                   return cube_
               ]
             }
-          , _entityCollisionBody = CollisionBody $ P.toCollisionObject rb
+          , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
           , _entityRigidBody = Just $ RigidBody rb
           }
   return (e, rb)
@@ -130,21 +137,21 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     AL.currentContext $= Just ctxt
 
     AL.distanceModel $= AL.InverseDistance
-    (physicsWorld', player, cam) <- setupPhysics
-    (theCubeE, theCubeRB) <- createTheCube
-    physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
+    (physicsWorld, player, cam, _, _) <- setupPhysics
+
+    -- no need because we already add the entity.
+    -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
 
     let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                   & gameStatePlayer .~ player
                                   & gameStateCamera .~ cam
-                                  & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
         animationWire :: GameWire s a ()
         animationWire = mkGen_ $ const $ Right <$> do
-          entities <- use gameStateEntities
+          entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
           entities' <- mapM animateEntity entities
-          gameStateEntities .= entities'
+          gameStatePhysicsWorld . physicsWorldEntities .= entities'
 
         physicsWire :: GameWire s a ()
         physicsWire = mkGen_ $ const $ Right <$> do
