@@ -58,7 +58,7 @@ createTheCube = do
   -- Don't delete this!!  See below.
   ms <- P.new startXform
   rbci <- P.newRigidBodyConstructionInfo 1 ms cube 0 1 0
-  -- The ms now belongs to the cube.
+  -- The MotionState ms now belongs to the cube.
   rb   <- P.newRigidBody rbci
   P.del startXform
   P.del rbci
@@ -87,11 +87,16 @@ createTheCube = do
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
-            { _lfxScripts = singleton $ \cube_ -> do
-                t <- use gameStateTime
-                when (t < 5.5) $ do
-                  setEntityLinearVelocity cube_ (L.V3 4 4 40)
-                return cube_
+            { _lfxScripts = fromList [\cube_ -> do
+                                         t <- use gameStateTime
+                                         when (t < 5.5) $ do
+                                           setEntityLinearVelocity cube_ (L.V3 4 4 4)
+                                         return cube_
+                                     ,\cube_ -> do
+                                         entityLocalRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
+                                           setEntityLinearVelocity cube_ (L.V3 0 4 0)
+                                         return cube_
+                                     ]
             }
           , _entityWorldTransform = WorldTransform $ P.toCollisionObject rb
           , _entityRigidBody = Just $ RigidBody rb
@@ -104,19 +109,19 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     . withWindow defaultWindowConfig
     $ \win -> do
     contextCurrent $= Just win
-
+    
     --cullFace $= Just Back
     depthFunc $= Just DepthLess
     -- Remember: we will eventually have to free the function pointer
     -- that mkGLDEBUGPROC gives us!!!
     debugMessageCallback $= Just simpleDebugFunc
-
+    
     clearColor $= color4 0 0 0.4 0
     -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-  
+    
     mdev <- AL.openDevice Nothing
     let dev = case mdev of
-          Nothing -> error "Couldn't open sound device."
+          Nothing -> error "Couldn't open the sound device."
           Just dev_ -> dev_
     mctxt <- AL.createContext dev []
     let ctxt = case mctxt of
@@ -124,30 +129,30 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           Just ctxt_ -> ctxt_
     AL.currentContext $= Just ctxt
     AL.distanceModel $= AL.InverseDistance
-  
+    
     (physicsWorld', player, cam) <- setupPhysics
     (theCubeE, theCubeRB) <- createTheCube
     physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
-  
+    
     let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                   & gameStatePlayer .~ player
                                   & gameStateCamera .~ cam
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
-  
-        renderWire :: GameWire s a ()
-        renderWire = mkGen_ $ const $ Right <$> do
+    
+        animationWire :: GameWire s a ()
+        animationWire = mkGen_ $ const $ Right <$> do
           entities <- use gameStateEntities
           entities' <- mapM animateEntity entities
           gameStateEntities .= entities'
-  
+    
         physicsWire :: GameWire s a ()
         physicsWire = mkGen_ $ const $ Right <$> do
           pw <- use gameStatePhysicsWorld
           void $ stepPhysicsWorld pw
-  
-        mainWire =     renderWire
+    
+        mainWire =     animationWire
                    <+> (playerHorizontalMovement >>> movePlayer)
                    <+> physicsWire
                    <+> close
@@ -156,11 +161,11 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                    <+> zoomCamera
                    <+> turnPlayer
                    <+> (timeF >>> updateTime)
-  
+    
     ic <- N.mkInputControl win
-    let sess = countSession_ 1
     input <- liftIO $ N.getInput ic
-    let doGame :: N.GLFWInputState
+    let sess = countSession_ 1
+        doGame :: N.GLFWInputState
                -> Session IO (Timed Integer ())
                -> GameWire (Timed Integer ()) Double b
                -> GameState (Timed Integer ())
@@ -169,11 +174,12 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           void $ N.pollGLFW input_ ic
           (timeState, sess') <- stepSession sess_
           let game = stepWire wire timeState (Right 0)
-          (((_, wire'), input'), gs') <- runGame gs ic game
+          (((b, wire'), input'), gs') <- runGame gs ic game
           swapBuffers win
-          when (gs' ^. gameStateShouldClose) $ do
-            AL.destroyContext $ gs' ^. gameStateSoundContext
-            exitSuccess
-          doGame input' sess' wire' gs'
+          if gs' ^. gameStateShouldClose
+            then return ((either 
+                          (const $ error "mainWire inhibited and exited. (why!?)")
+                          id
+                          b, input'), gs')
+            else doGame input' sess' wire' gs'
     void $ doGame input sess mainWire gameState
-    
