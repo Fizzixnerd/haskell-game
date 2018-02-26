@@ -88,7 +88,7 @@ data CameraState = CameraState
 
 -- | Caches camera state when stepped.
 
-cameraStateWire :: MonadIO m => Camera -> Wire s e m a CameraState
+cameraStateWire :: MonadIO m => Camera s -> Wire s e m a CameraState
 cameraStateWire cam = stateIOWire $ do
   vel <- getCameraLinearVelocity cam
   withCameraTransform cam $ \ct -> withTargetTransform cam $ \tt -> do

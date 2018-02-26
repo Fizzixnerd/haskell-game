@@ -11,7 +11,7 @@ import Game.Types
 import qualified Linear         as L
 import qualified Physics.Bullet as P
 
-newPlayer :: MonadIO m => m Player
+newPlayer :: MonadIO m => m (Player s)
 newPlayer = liftIO $ do
   pcgo :: P.PairCachingGhostObject <- P.new ()
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
@@ -27,59 +27,70 @@ newPlayer = liftIO $ do
   go <- P.getGhostObject controller
   P.setCollisionShape go playerShape
   P.setUp controller 0 1 0
-  return $ Player controller
+  let e = Entity
+          { _entityChildren = empty
+          , _entityGraphics = Nothing
+          , _entitySounds   = Nothing
+          , _entityLogic    = Nothing
+          , _entityRigidBody = Nothing
+          , _entityCollisionBody = CollisionBody (P.toCollisionObject go)
+          }
+  return Player 
+    { _playerController = controller
+    , _playerEntity = e
+    }
 
-destroyPlayer :: MonadIO m => Player -> m ()
+destroyPlayer :: MonadIO m => Player s -> m ()
 destroyPlayer Player {..} = liftIO $ do
   P.del =<< P.getGhostObject _playerController
   P.del _playerController
 
-allocatePlayerTransform :: MonadIO m => Player -> m P.Transform
+allocatePlayerTransform :: MonadIO m => Player s -> m P.Transform
 allocatePlayerTransform p = liftIO $
                             P.getGhostObject (p ^. playerController) >>=
                             P.coAllocateWorldTransform
 
-getPlayerOrientation :: MonadIO m => Player -> m (L.Quaternion CFloat)
+getPlayerOrientation :: MonadIO m => Player s -> m (L.Quaternion CFloat)
 getPlayerOrientation p = liftIO $ do
   (i, j, k, r) <- withPlayerTransform p (\t -> P.getRotation t)
   return $ L.Quaternion r (L.V3 i j k)
 
-setPlayerOrientation :: MonadIO m => Player -> L.Quaternion CFloat -> m ()
+setPlayerOrientation :: MonadIO m => Player s -> L.Quaternion CFloat -> m ()
 setPlayerOrientation p (L.Quaternion r (L.V3 i j k)) = liftIO $
   withPlayerTransform p (\t -> do
                             P.setRotation t i j k r
                             pcgo <- P.getGhostObject $ p ^. playerController
                             P.coSetWorldTransform pcgo t)
 
-withPlayerTransform :: MonadIO m => Player -> (P.Transform -> IO b) -> m b
+withPlayerTransform :: MonadIO m => Player s -> (P.Transform -> IO b) -> m b
 withPlayerTransform p f = liftIO $ bracket (allocatePlayerTransform p) P.del f
 
-getPlayerPosition :: MonadIO m => Player -> m (L.V3 CFloat)
+getPlayerPosition :: MonadIO m => Player s -> m (L.V3 CFloat)
 getPlayerPosition p = withPlayerTransform p (\t -> do
                                                 (x, y, z) <- P.getOrigin t
                                                 return $ L.V3 x y z)
 
-getPlayerOpenGLMatrix :: MonadIO m => Player -> m (L.M44 CFloat)
+getPlayerOpenGLMatrix :: MonadIO m => Player s -> m (L.M44 CFloat)
 getPlayerOpenGLMatrix p = withPlayerTransform p P.getOpenGLMatrix
 
-getPlayerLinearVelocity :: MonadIO m => Player -> m (L.V3 CFloat)
+getPlayerLinearVelocity :: MonadIO m => Player s -> m (L.V3 CFloat)
 getPlayerLinearVelocity p = liftIO $ do
   (x, y, z) <- P.kccGetLinearVelocity $ p ^. playerController
   return $ L.V3 x y z
 
-setPlayerLinearVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
+setPlayerLinearVelocity :: MonadIO m => Player s -> L.V3 CFloat -> m ()
 setPlayerLinearVelocity p v = liftIO $ P.kccSetLinearVelocity
                               (p ^. playerController)
                               (v ^. L._x)
                               (v ^. L._y)
                               (v ^. L._z)
 
-getPlayerAngularVelocity :: MonadIO m => Player -> m (L.V3 CFloat)
+getPlayerAngularVelocity :: MonadIO m => Player s -> m (L.V3 CFloat)
 getPlayerAngularVelocity p = liftIO $ do
   (alpha, beta, gamma) <- P.kccGetAngularVelocity $ p ^. playerController
   return $ L.V3 alpha beta gamma
 
-setPlayerAngularVelocity :: MonadIO m => Player -> L.V3 CFloat -> m ()
+setPlayerAngularVelocity :: MonadIO m => Player s -> L.V3 CFloat -> m ()
 setPlayerAngularVelocity p omega = liftIO $ P.kccSetAngularVelocity
                                    (p ^. playerController)
                                    (omega ^. L._x)

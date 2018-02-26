@@ -35,7 +35,7 @@ turnPlayer :: GameEffectWire s a
 turnPlayer = effectiveWire $ join $
   setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
 
-rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
+rotateCamera :: MonadIO m => (Float, Float) -> Camera s -> m ()
 rotateCamera (dhor, dver) cam = do
   costheta <- getCameraInclinationCos cam
   setCameraPolarSpeed cam (clampy costheta)

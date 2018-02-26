@@ -27,7 +27,7 @@ import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
 
-setupPhysics :: IO (PhysicsWorld, Player, Camera)
+setupPhysics :: IO (PhysicsWorld s, Player s, Camera s)
 setupPhysics = do
   pw <- newPhysicsWorld
   pl <- newPlayer
@@ -78,10 +78,11 @@ createTheCube = do
   AL.buffer src $= Just sbuf
 
   let e = Entity
-          { _entityGraphics = Just Gfx
+          { _entityChildren = empty
+          , _entityGraphics = Just Gfx
             { _gfxVaoData = singleton (vao, prog, Triangles, fromIntegral $ snd ebuf)
             , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
-            , _gfxChildren   = empty
+            , _gfxChildren = empty
             }
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
@@ -96,7 +97,7 @@ createTheCube = do
                   entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
                     setEntityLinearVelocity cube_ (L.V3 0 4 0)
                   return cube_
-                ]
+              ]
             }
           , _entityCollisionBody = CollisionBody $ P.toCollisionObject rb
           , _entityRigidBody = Just $ RigidBody rb

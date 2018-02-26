@@ -73,13 +73,13 @@ newtype EventRegister s = EventRegister
 type ScanCode = Int
 
 data GameState s = GameState
-  { _gameStateCamera        :: Camera
+  { _gameStateCamera        :: Camera s
   , _gameStateActiveScripts :: Vector (Script s)
   , _gameStateEventRegister :: EventRegister s
   , _gameStateKeyEvent      :: GameWire s () (Event Key)
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
-  , _gameStatePhysicsWorld  :: PhysicsWorld
-  , _gameStatePlayer        :: Player
+  , _gameStatePhysicsWorld  :: PhysicsWorld s
+  , _gameStatePlayer        :: Player s
   , _gameStateEntities      :: Vector (Entity s)
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
@@ -105,11 +105,12 @@ initGameState = GameState
   , _gameStateTime          = 0
   }
 
-data Camera = Camera
+data Camera s = Camera
   { _cameraFOV :: Float
-  , _cameraController     :: P.KinematicCharacterController
-  , _cameraTarget         :: P.CollisionObject
+  , _cameraController        :: P.KinematicCharacterController
+  , _cameraTarget            :: P.CollisionObject
   , _cameraPreferredDistance :: CFloat
+  , _cameraEntity            :: Entity s
   }
 
 newtype GiantFeaturelessPlane = GiantFeaturelessPlane { _unGiantFeauturelessPlane :: P.RigidBody }
@@ -195,15 +196,16 @@ registerEventByName en e (EventRegister er) = MS.insert en e er
 -- registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
-data Player = Player
+data Player s = Player
   { _playerController :: P.KinematicCharacterController
+  , _playerEntity     :: Entity s
   }
 
-data PhysicsWorld = PhysicsWorld
+data PhysicsWorld s = PhysicsWorld
   { _physicsWorldDynamicsWorld :: P.DynamicsWorld
-  , _physicsWorldPlayers :: Vector Player
+  , _physicsWorldPlayers :: Vector (Player s)
   , _physicsWorldGiantFeaturelessPlanes :: Vector GiantFeaturelessPlane
-  , _physicsWorldCameras :: Vector Camera
+  , _physicsWorldCameras :: Vector (Camera s)
   , _physicsWorldBroadphaseInterface :: P.BroadphaseInterface
   , _physicsWorldGhostPairCallback :: P.GhostPairCallback
   , _physicsWorldCollisionConfiguration :: P.CollisionConfiguration
@@ -262,6 +264,7 @@ data Entity s = Entity
   { _entityGraphics       :: Maybe (Gfx s)
   , _entitySounds         :: Maybe (Sfx s)
   , _entityLogic          :: Maybe (Lfx s)
+  , _entityChildren       :: Vector (Entity s)
   , _entityCollisionBody  :: CollisionBody
   , _entityRigidBody      :: Maybe RigidBody
   }
@@ -285,7 +288,7 @@ data Gfx s = Gfx
   }
 
 newtype CollisionBody = CollisionBody { _unCollisionBody :: P.CollisionObject }
-newtype RigidBody = RigidBody { _unRigidBody :: P.RigidBody }
+newtype RigidBody     = RigidBody     { _unRigidBody     :: P.RigidBody       }
 
 type VPMatrix = L.M44 Float
 type VMatrix  = L.M44 Float
