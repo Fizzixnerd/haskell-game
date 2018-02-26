@@ -119,7 +119,7 @@ gameMain = withGraphicsContext defaultGraphicsContext
   (physicsWorld', player, cam) <- setupPhysics
   (theCubeE, theCubeRB) <- createTheCube
   physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
-  
+
   let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                 & gameStatePlayer .~ player
                                 & gameStateCamera .~ cam

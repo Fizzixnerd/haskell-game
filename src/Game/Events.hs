@@ -8,7 +8,7 @@ import           Control.Wire
 import qualified FRP.Netwire.Input as N
 import           Foreign.C.Types
 import           ClassyPrelude
-import           Control.Lens
+import           Control.Lens      as Lens
 import           Game.Types
 import           Game.Entity.Player
 import           Game.Entity.Camera
@@ -29,9 +29,35 @@ solderWire merge' w1 w2 = WGen $ \s eea -> do
       Left err -> left (mappend err)
       Right x  -> const (Right x) ||| (Right . merge' x)
 
+solderWireM :: (Monoid e, Monad m) => (b -> b -> m b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
+solderWireM merge' w1 w2 = WGen $ \s eea -> do
+  (eeb1, _) <- stepWire w1 s eea
+  (eeb2, _) <- stepWire w2 s eea
+  res <- merger eeb1 eeb2
+  return (res, solderWireM merge' w1 w2)
+  where
+    merger = \case
+      Left err -> pure . left (mappend err)
+      Right x  -> const (pure . Right $ x) ||| (fmap Right . merge' x)
+
+effectiveWire :: Monad m => m c -> Wire s e m a a
+effectiveWire act = mkGen_ $ \a -> void act >> return (Right a)
+
+mkMConst :: Monad m => m b -> Wire s e m a b
+mkMConst act = mkGen_ $ const $ Right <$> act
+
+-- Example usage for caching:
+-- make a thingUpdateWire that when pulsed will return thing.
+-- then feed that into steppingWire
+-- Also, to future Matt: past Christian sends his regards.
+
+steppingWire :: Wire s e m a a
+steppingWire = mkPureN $ \a -> (Right a, mkConst (Right a))
+
 -- If both are producing or both are inhibited, then it inhibits.
 -- Otherwise it acts like the producing one.
 -- This thing has to step both wires.
+
 xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 xorWire w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
@@ -60,11 +86,17 @@ turnPlayer = mkGen_ $ const $ Right <$> do
 
 rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
 rotateCamera (dhor, dver) cam = do
-  setCameraPolarSpeed cam (CFloat dver)
+  costheta <- getCameraInclinationCos cam
+  setCameraPolarSpeed cam (clampy costheta)
   setCameraAzimuthalSpeed cam (CFloat dhor)
+  where
+    clampy theta
+      | theta > 0.9    = CFloat $ max 0 dver
+      | theta < (-0.9) = CFloat $ min 0 dver
+      | otherwise      = CFloat dver
 
 camera :: GameWire s a ()
-camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Reset)
+camera = (mkConst (Right ()) >>> N.cursorMode N.CursorMode'Reset)
          --> (rotCam <<< N.mouseMickies)
   where
     rotCam = mkGen_ $ \(x, y) -> Right <$> do
@@ -73,18 +105,17 @@ camera = (arr (const ()) >>> N.cursorMode N.CursorMode'Reset)
 
 movePlayer :: GameWire s (L.V3 CFloat) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
+--  dir <- getCameraDisplacementFromTarget
   p <- use gameStatePlayer
   setPlayerLinearVelocity p dir
 
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
   where
-    fwd = pure $ L.V3 0 0 1
-    bwd = pure $ L.V3 0 0 (-1)
-    lft = pure $ L.V3 1 0 0
-    rgt = pure $ L.V3 (-1) 0 0
-    zwire = xorWire (keyW >>> fwd) (keyS >>> bwd)
-    xwire = xorWire (keyA >>> lft) (keyD >>> rgt)
+    fwd = mkMConst $ join $ Lens.uses gameStateCamera getCameraForward
+    lft = mkMConst $ join $ Lens.uses gameStateCamera getCameraLeft
+    xwire = xorWire (keyA >>> lft) (keyD >>> (negate <$> lft))
+    zwire = xorWire (keyS >>> fwd) (keyW >>> (negate <$> fwd))
 
 close :: GameWire s a ()
 close = cls <<< keyEsc
