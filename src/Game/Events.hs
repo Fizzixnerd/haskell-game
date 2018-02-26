@@ -47,8 +47,8 @@ solderWireM merge' w1 w2 = WGen $ \s eea -> do
 effectiveWire :: Monad m => m c -> Wire s e m a a
 effectiveWire act = mkGen_ $ \a -> void act >> return (Right a)
 
-mkMConst :: Monad m => m b -> Wire s e m a b
-mkMConst act = mkGen_ $ const $ Right <$> act
+mkConstM :: Monad m => m b -> Wire s e m a b
+mkConstM act = mkGen_ $ const $ Right <$> act
 
 -- Example usage for caching:
 -- make a thingUpdateWire that when pulsed will return thing.
@@ -73,7 +73,7 @@ xorWire w1 w2 = WGen $ \s eea -> do
       Right x  -> const (Right x) ||| const (Left mempty)
 
 zoomCamera :: GameWire s a ()
-zoomCamera = mkMConst $ do
+zoomCamera = mkConstM $ do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
@@ -86,7 +86,7 @@ zoomCamera = mkMConst $ do
   cameraLookAtTarget cam
 
 turnPlayer :: GameWire s a ()
-turnPlayer = mkMConst $ do
+turnPlayer = mkConstM $ do
   cam <- use gameStateCamera
   target <- use $ gameStatePlayer
   orientation <- getCameraOrientation cam
@@ -120,8 +120,8 @@ movePlayer = mkGen_ $ \dir -> Right <$> do
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
   where
-    fwd = mkMConst $ join $ Lens.uses gameStateCamera getCameraForward
-    lft = mkMConst $ join $ Lens.uses gameStateCamera getCameraLeft
+    fwd = mkConstM $ join $ Lens.uses gameStateCamera getCameraForward
+    lft = mkConstM $ join $ Lens.uses gameStateCamera getCameraLeft
     xwire = xorWire (keyA >>> lft) (keyD >>> (negate <$> lft))
     zwire = xorWire (keyW >>> fwd) (keyS >>> (negate <$> fwd))
 
