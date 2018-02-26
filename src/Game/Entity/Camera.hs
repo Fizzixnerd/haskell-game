@@ -93,7 +93,7 @@ getCameraDisplacementFromTarget cam = do
 
 -- Not normalized.
 getCameraForward :: MonadIO m => Camera -> m (L.V3 CFloat)
-getCameraForward = fmap (set L._y 0) . getCameraDisplacementFromTarget
+getCameraForward = fmap (negate . set L._y 0) . getCameraDisplacementFromTarget
 
 getCameraLeft :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraLeft = fmap (over L._xz L.perp) . getCameraForward
@@ -157,11 +157,12 @@ getCameraThetaHat cam = do
   return $ L.V3 (cosTheta * cosPhi) (-sinTheta) (cosTheta * sinPhi)
 
 -- i.e. arccos of this is the inclination
+-- this is INWARD
 getCameraInclinationCos :: MonadIO m => Camera -> m CFloat
 getCameraInclinationCos cam = do
   v@(L.V3 _ y _) <- getCameraDisplacementFromTarget cam
   let r = L.norm v
-  return $ y/r
+  return $ negate y / r
 
 getCameraPolarSpeed :: MonadIO m => Camera -> m CFloat
 getCameraPolarSpeed cam = do
@@ -228,4 +229,4 @@ cameraVP cam = do
         -- Projection matrix : custom fov, 16:9 ratio, display range : 0.1 unit <-> 10000 units
       vup = L.V3 0 1 0
       cfov = cam ^. cameraFOV
-      camPerspective = L.perspective cfov (16/9) 0.1 10000
+      camPerspective = L.perspective cfov (16/9) 0.1 100

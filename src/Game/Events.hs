@@ -115,7 +115,7 @@ playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire 
     fwd = mkMConst $ join $ Lens.uses gameStateCamera getCameraForward
     lft = mkMConst $ join $ Lens.uses gameStateCamera getCameraLeft
     xwire = xorWire (keyA >>> lft) (keyD >>> (negate <$> lft))
-    zwire = xorWire (keyS >>> fwd) (keyW >>> (negate <$> fwd))
+    zwire = xorWire (keyW >>> fwd) (keyS >>> (negate <$> fwd))
 
 close :: GameWire s a ()
 close = cls <<< keyEsc
