@@ -48,6 +48,7 @@ dependencies:
 - netwire-input-glfw
 - plugin
 - graphics-binding
+- resourcet
 - safe-exceptions
 - singletons
 - text

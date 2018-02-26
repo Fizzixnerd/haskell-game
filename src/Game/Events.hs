@@ -18,7 +18,7 @@ import qualified Linear                       as L
 import qualified Sound.OpenAL as AL
 import           Game.Wires
 
-zoomCamera :: GameEffectWire s a
+zoomCamera :: GameEffectWire s
 zoomCamera = effectiveWire $ do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
@@ -31,7 +31,7 @@ zoomCamera = effectiveWire $ do
   setCameraRadialSpeed cam rs
   cameraLookAtTarget cam
 
-turnPlayer :: GameEffectWire s a
+turnPlayer :: GameEffectWire s
 turnPlayer = effectiveWire $ join $
   setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
 
@@ -46,7 +46,7 @@ rotateCamera (dhor, dver) cam = do
       | theta < (-0.9) = CFloat $ min 0 dver
       | otherwise      = CFloat dver
 
-camera :: GameEffectWire s a
+camera :: GameEffectWire s
 camera = N.cursorMode N.CursorMode'Reset --> camWire
   where
     rotCam = mkGen_ $ \(x, y) -> Right <$> do
@@ -67,12 +67,12 @@ playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire 
     xwire = xorWire (keyA >>> lft) (keyD >>> (negate <$> lft))
     zwire = xorWire (keyW >>> fwd) (keyS >>> (negate <$> fwd))
 
-close :: GameEffectWire s a
+close :: GameEffectWire s
 close = cls <<< keyEsc
   where
     cls = effectiveWire $ gameStateShouldClose .= True
 
-jump :: GameEffectWire s a
+jump :: GameEffectWire s
 jump = jmp <<< keySpace
   where
     jmp = effectiveWire $ do

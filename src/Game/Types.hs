@@ -38,9 +38,14 @@ import qualified Physics.Bullet              as P
 import           Text.Printf
 import           Data.Dynamic
 import           Control.Monad.Fix           as Fix
+import           Data.Acquire
+
+type ForeignObject a = Acquire a
+
+data ForeignResources = ForeignResources
 
 type GameWire s a b = Wire s () (Game s) a b
-type GameEffectWire s a = GameWire s a a
+type GameEffectWire s = forall a. GameWire s a a
 
 newtype Game s a = Game
   { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT IO)) a

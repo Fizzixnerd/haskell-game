@@ -46,9 +46,7 @@ bulletQuatToL (i,j,k,r) = L.Quaternion r (L.V3 i j k)
 
 
 getCameraLinearVelocity :: MonadIO m => Camera -> m (L.V3 CFloat)
-getCameraLinearVelocity Camera {..} = liftIO $ do
-  (x, y, z) <- P.kccGetLinearVelocity _cameraController
-  return $ L.V3 x y z
+getCameraLinearVelocity Camera {..} = liftIO $ bulletV3ToL <$> P.kccGetLinearVelocity _cameraController
 
 setCameraLinearVelocity :: MonadIO m => L.V3 CFloat -> Camera -> m ()
 setCameraLinearVelocity (L.V3 x y z) Camera {..} =
