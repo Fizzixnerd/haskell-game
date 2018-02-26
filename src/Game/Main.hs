@@ -105,7 +105,9 @@ createTheCube = do
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
             { _lfxScripts = singleton $ \cube_ -> do
-                setEntityLinearVelocity cube_ (L.V3 100 100 100)
+                t <- use gameStateTime
+                when (t < 5.5) $ do
+                  setEntityLinearVelocity cube_ (L.V3 4 4 40)
                 return cube_
             }
           , _entityWorldTransform = WorldTransform $ P.toCollisionObject rb
@@ -151,9 +153,8 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
-                                  & gameStateTimeState .~ Timed 0 ()
   
-    let renderWire :: GameWire s a ()
+        renderWire :: GameWire s a ()
         renderWire = mkGen_ $ const $ Right <$> do
           entities <- use gameStateEntities
           entities' <- mapM animateEntity entities
@@ -174,7 +175,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     -- sometimes wtf.
     --  reloadPlugins <- PL.loadPlugin $ PL.Plugin "scripts/" "Util"     "reloadPlugins
   
-    let mainWire =     renderWire
+        mainWire =     renderWire
                    <+> (playerHorizontalMovement >>> movePlayer)
                    <+> physicsWire
                    <+> close
@@ -182,25 +183,26 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                    <+> camera
                    <+> zoomCamera
                    <+> turnPlayer
+                   <+> (timeF >>> updateTime)
   
     ic <- N.mkInputControl win
     let sess = countSession_ 1
     input <- liftIO $ N.getInput ic
     let doGame :: N.GLFWInputState
                -> Session IO (Timed Integer ())
-               -> GameWire (Timed Integer ()) () b
+               -> GameWire (Timed Integer ()) Double b
                -> GameState (Timed Integer ())
                -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
         doGame input_ sess_ wire gs = do
           void $ N.pollGLFW input_ ic
           (timeState, sess') <- stepSession sess_
-          let game = stepWire wire timeState (Right ())
+          let game = stepWire wire timeState (Right 0)
           (((_, wire'), input'), gs') <- runGame gs ic game
-          let gs'' = gs' & gameStateTimeState .~ timeState
+--          let gs'' = gs' & gameStateTimeState .~ timeState
           swapBuffers win
-          when (gs'' ^. gameStateShouldClose) $ do
-            AL.destroyContext $ gs'' ^. gameStateSoundContext
+          when (gs' ^. gameStateShouldClose) $ do
+            AL.destroyContext $ gs' ^. gameStateSoundContext
             exitSuccess
-          doGame input' sess' wire' gs''
+          doGame input' sess' wire' gs'
     void $ doGame input sess mainWire gameState
     

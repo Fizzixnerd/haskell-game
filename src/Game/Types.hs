@@ -84,7 +84,7 @@ data GameState s = GameState
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
-  , _gameStateTimeState     :: s
+  , _gameStateTime          :: Double
   }
 
 initGameState :: GameState s
@@ -101,7 +101,7 @@ initGameState = GameState
   , _gameStateEntities      = empty
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
-  , _gameStateTimeState     = error "timeState not set."
+  , _gameStateTime          = 0
   }
 
 data Camera = Camera
