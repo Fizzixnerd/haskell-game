@@ -92,7 +92,7 @@ entityLocalClosestRayCast e v cb = do
   entityCenter@(L.V3 fromx fromy fromz) <- getWorldPosition $ e ^. entityCollisionBody
   let (L.V3 tox toy toz) = entityCenter + v
   crrc :: P.ClosestRayResultCallback <- liftIO $ P.new (((CFloat fromx), (CFloat fromy), (CFloat fromz)),
-                          ((CFloat tox), (CFloat toy), (CFloat toz)))
+                                                        ((CFloat tox), (CFloat toy), (CFloat toz)))
   liftIO $ P.rayTest dw (CFloat fromx) (CFloat fromy) (CFloat fromz)
     (CFloat tox) (CFloat toy) (CFloat toz) crrc
   hasHit <- liftIO $ P.rrcHasHit crrc
