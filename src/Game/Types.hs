@@ -290,7 +290,7 @@ data Sfx s = Sfx
   }
 
 data Lfx s = Lfx
-  { _lfxWires :: GameWire s (Lfx s) ()
+  { _lfxScripts :: Vector (Game s ())
   }
 
 mconcat <$> mapM makeLenses

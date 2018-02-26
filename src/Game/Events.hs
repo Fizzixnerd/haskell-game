@@ -30,9 +30,6 @@ solderWire merge' w1 w2 = WGen $ \s eea -> do
       Left err -> left (mappend err)
       Right x  -> const (Right x) ||| (Right . merge' x)
 
--- | If both are producing or both are inhibited, then it inhibits.
--- Otherwise it acts like the producing one.  This thing has to step
--- both wires.
 solderWireM :: (Monoid e, Monad m) => (b -> b -> m b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 solderWireM merge' w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
@@ -58,11 +55,9 @@ mkMConst act = mkGen_ $ const $ Right <$> act
 steppingWire :: Wire s e m a a
 steppingWire = mkPureN $ \a -> (Right a, mkConst (Right a))
 
--- If both are producing or both are inhibited, then it inhibits.
--- Otherwise it acts like the producing one.
--- This thing has to step both wires.
-
->>>>>>> 626f07ca5f16c61218d1ce87d7ce9cfe5d181cd6
+-- | If both are producing or both are inhibited, then it inhibits.
+-- Otherwise it acts like the producing one.  This thing has to step
+-- both wires.
 xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 xorWire w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
