@@ -1,6 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
+
 module Game.Events where
 
 import           Control.Arrow
@@ -8,7 +9,7 @@ import           Control.Wire
 import qualified FRP.Netwire.Input as N
 import           Foreign.C.Types
 import           ClassyPrelude
-import           Control.Lens      as Lens
+import           Control.Lens
 import           Game.Types
 import           Game.Entity.Player
 import           Game.Entity.Camera
@@ -19,7 +20,7 @@ import qualified Sound.OpenAL as AL
 
 
 -- | Is the identity if only one wire is producing. If both are, it
--- merges the results with merge.  This steps both wires.
+-- merges the results with merge. This steps both wires.
 solderWire :: (Monoid e, Monad m) => (b -> b -> b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 solderWire merge' w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
@@ -31,7 +32,7 @@ solderWire merge' w1 w2 = WGen $ \s eea -> do
       Right x  -> const (Right x) ||| (Right . merge' x)
 
 -- | If both are producing or both are inhibited, then it inhibits.
--- Otherwise it acts like the producing one.  This thing has to step
+-- Otherwise it acts like the producing one. This thing has to step
 -- both wires.
 solderWireM :: (Monoid e, Monad m) => (b -> b -> m b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 solderWireM merge' w1 w2 = WGen $ \s eea -> do
@@ -44,11 +45,18 @@ solderWireM merge' w1 w2 = WGen $ \s eea -> do
       Left err -> pure . left (mappend err)
       Right x  -> const (pure . Right $ x) ||| (fmap Right . merge' x)
 
+-- | An identity wire that executes a monadic action when activated,
+-- and passes the input through unchanged
 effectiveWire :: Monad m => m c -> Wire s e m a a
 effectiveWire act = mkGen_ $ \a -> void act >> return (Right a)
 
+-- | A constant wire that executes a monadic action to obtain its output.
 mkConstM :: Monad m => m b -> Wire s e m a b
 mkConstM act = mkGen_ $ const $ Right <$> act
+
+-- | A wire transformer that executes the given wire, discards the result, and passes its input through unchanged.
+passWire :: Monad m => Wire s e m a b -> Wire s e m a a
+passWire wire = (wire &&& id) >>> arr snd
 
 -- Example usage for caching:
 -- make a thingUpdateWire that when pulsed will return thing.
@@ -72,8 +80,8 @@ xorWire w1 w2 = WGen $ \s eea -> do
       Left err -> left (mappend err)
       Right x  -> const (Right x) ||| const (Left mempty)
 
-zoomCamera :: GameWire s a ()
-zoomCamera = mkConstM $ do
+zoomCamera :: GameEffectWire s a
+zoomCamera = effectiveWire $ do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
@@ -85,12 +93,9 @@ zoomCamera = mkConstM $ do
   setCameraRadialSpeed cam rs
   cameraLookAtTarget cam
 
-turnPlayer :: GameWire s a ()
-turnPlayer = mkConstM $ do
-  cam <- use gameStateCamera
-  target <- use $ gameStatePlayer
-  orientation <- getCameraOrientation cam
-  setPlayerOrientation target orientation
+turnPlayer :: GameEffectWire s a
+turnPlayer = effectiveWire $ join $
+  setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
 
 rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
 rotateCamera (dhor, dver) cam = do
@@ -103,37 +108,36 @@ rotateCamera (dhor, dver) cam = do
       | theta < (-0.9) = CFloat $ min 0 dver
       | otherwise      = CFloat dver
 
-camera :: GameWire s a ()
-camera = (mkConst (Right ()) >>> N.cursorMode N.CursorMode'Reset)
-         --> (rotCam <<< N.mouseMickies)
+camera :: GameEffectWire s a
+camera = N.cursorMode N.CursorMode'Reset --> camWire
   where
     rotCam = mkGen_ $ \(x, y) -> Right <$> do
       cam <- use gameStateCamera
       rotateCamera (-x * 10, -y * 10)  cam
+    camWire = passWire $ rotCam <<< N.mouseMickies
 
 movePlayer :: GameWire s (L.V3 CFloat) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
---  dir <- getCameraDisplacementFromTarget
   p <- use gameStatePlayer
   setPlayerLinearVelocity p dir
 
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
   where
-    fwd = mkConstM $ join $ Lens.uses gameStateCamera getCameraForward
-    lft = mkConstM $ join $ Lens.uses gameStateCamera getCameraLeft
+    fwd = mkConstM $ join $ uses gameStateCamera getCameraForward
+    lft = mkConstM $ join $ uses gameStateCamera getCameraLeft
     xwire = xorWire (keyA >>> lft) (keyD >>> (negate <$> lft))
     zwire = xorWire (keyW >>> fwd) (keyS >>> (negate <$> fwd))
 
-close :: GameWire s a ()
+close :: GameEffectWire s a
 close = cls <<< keyEsc
   where
-    cls = mkGen_ $ const $ Right <$> (gameStateShouldClose .= True)
+    cls = effectiveWire $ gameStateShouldClose .= True
 
-jump :: GameWire s a ()
+jump :: GameEffectWire s a
 jump = jmp <<< keySpace
   where
-    jmp = mkGen_ $ const $ Right <$> do
+    jmp = effectiveWire $ do
       p <- use $ gameStatePlayer . playerController
       liftIO $ P.jump p
 
