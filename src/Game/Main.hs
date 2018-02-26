@@ -109,13 +109,13 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     . withWindow defaultWindowConfig
     $ \win -> do
     contextCurrent $= Just win
-    
+
     --cullFace $= Just Back
     depthFunc $= Just DepthLess
     -- Remember: we will eventually have to free the function pointer
     -- that mkGLDEBUGPROC gives us!!!
     debugMessageCallback $= Just simpleDebugFunc
-    
+
     clearColor $= color4 0 0 0.4 0
     -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
     mdev <- AL.openDevice Nothing
@@ -165,17 +165,17 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     let sess = countSession_ 1
         doGame :: N.GLFWInputState
                -> Session IO (Timed Integer ())
-               -> GameWire (Timed Integer ()) Double b
+               -> GameWire (Timed Integer ()) () b
                -> GameState (Timed Integer ())
                -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
         doGame input_ sess_ wire gs = do
           void $ N.pollGLFW input_ ic
           (timeState, sess') <- stepSession sess_
-          let game = stepWire wire timeState (Right 0)
+          let game = stepWire wire timeState (Right ())
           (((b, wire'), input'), gs') <- runGame gs ic game
           swapBuffers win
           if gs' ^. gameStateShouldClose
-            then return ((either 
+            then return ((either
                           (const $ error "mainWire inhibited and exited. (why!?)")
                           id
                           b, input'), gs')
