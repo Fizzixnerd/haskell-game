@@ -54,7 +54,7 @@ createTheCube = do
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
   P.setOrigin startXform 0 1 0
-  -- Don't delete this!!  See below.
+  -- Don't delete the ms!!  See below.
   ms <- P.new startXform
   rbci <- P.newRigidBodyConstructionInfo 1 ms cube 0 1 0
   -- The MotionState ms now belongs to the cube.
@@ -174,10 +174,11 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           let game = stepWire wire timeState (Right 0)
           (((b, wire'), input'), gs') <- runGame gs ic game
           swapBuffers win
-          if gs' ^. gameStateShouldClose
-            then return ((either 
-                          (const $ error "mainWire inhibited and exited. (why!?)")
-                          id
-                          b, input'), gs')
+          if gs' ^. gameStateShouldClose 
+            then do
+            -- Should probably stop all the sound producers here.
+            return ((either (const $ error "mainWire inhibited and exited. (why!?)")
+                      id
+                      b, input'), gs')
             else doGame input' sess' wire' gs'
     void $ doGame input sess mainWire gameState
