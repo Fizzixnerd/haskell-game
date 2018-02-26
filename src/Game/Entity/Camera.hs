@@ -96,7 +96,7 @@ getCameraForward :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraForward = fmap (set L._y 0) . getCameraDisplacementFromTarget
 
 getCameraLeft :: MonadIO m => Camera -> m (L.V3 CFloat)
-getCameraLeft = fmap (over L._xz L.perp . set L._y 0) . getCameraDisplacementFromTarget
+getCameraLeft = fmap (over L._xz L.perp) . getCameraForward
 
 getCameraRHat :: MonadIO m => Camera -> m (L.V3 CFloat)
 getCameraRHat = fmap L.normalize <$> getCameraDisplacementFromTarget

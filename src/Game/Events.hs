@@ -69,7 +69,7 @@ xorWire w1 w2 = WGen $ \s eea -> do
       Right x  -> const (Right x) ||| const (Left mempty)
 
 zoomCamera :: GameWire s a ()
-zoomCamera = mkGen_ $ const $ Right <$> do
+zoomCamera = mkMConst $ do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
@@ -78,7 +78,7 @@ zoomCamera = mkGen_ $ const $ Right <$> do
   cameraLookAtTarget cam
 
 turnPlayer :: GameWire s a ()
-turnPlayer = mkGen_ $ const $ Right <$> do
+turnPlayer = mkMConst $ do
   cam <- use gameStateCamera
   target <- use $ gameStatePlayer
   orientation <- getCameraOrientation cam
