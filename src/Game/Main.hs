@@ -73,7 +73,7 @@ createTheCube = do
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
   (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
-  
+
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
@@ -118,7 +118,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     
     clearColor $= color4 0 0 0.4 0
     -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-    
     mdev <- AL.openDevice Nothing
     let dev = case mdev of
           Nothing -> error "Couldn't open the sound device."
@@ -128,30 +127,29 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           Nothing -> error "Couldn't create the sound context."
           Just ctxt_ -> ctxt_
     AL.currentContext $= Just ctxt
+
     AL.distanceModel $= AL.InverseDistance
-    
     (physicsWorld', player, cam) <- setupPhysics
     (theCubeE, theCubeRB) <- createTheCube
     physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
-    
+
     let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                   & gameStatePlayer .~ player
                                   & gameStateCamera .~ cam
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
-    
         animationWire :: GameWire s a ()
         animationWire = mkGen_ $ const $ Right <$> do
           entities <- use gameStateEntities
           entities' <- mapM animateEntity entities
           gameStateEntities .= entities'
-    
+
         physicsWire :: GameWire s a ()
         physicsWire = mkGen_ $ const $ Right <$> do
           pw <- use gameStatePhysicsWorld
           void $ stepPhysicsWorld pw
-    
+
         mainWire =     animationWire
                    <+> (playerHorizontalMovement >>> movePlayer)
                    <+> physicsWire
@@ -161,7 +159,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                    <+> zoomCamera
                    <+> turnPlayer
                    <+> (timeF >>> updateTime)
-    
+
     ic <- N.mkInputControl win
     input <- liftIO $ N.getInput ic
     let sess = countSession_ 1
