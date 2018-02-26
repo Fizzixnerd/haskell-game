@@ -25,7 +25,8 @@ solderWire :: (Monoid e, Monad m) => (b -> b -> b) -> Wire s e m a b -> Wire s e
 solderWire merge' w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
   (eeb2, _) <- stepWire w2 s eea
-  return (merger eeb1 eeb2, solderWire merge' w1 w2)
+  let res = merger eeb1 eeb2
+  res `seq` return (res, solderWire merge' w1 w2)
   where
     merger = \case
       Left err -> left (mappend err)
@@ -39,7 +40,7 @@ solderWireM merge' w1 w2 = WGen $ \s eea -> do
   (eeb1, _) <- stepWire w1 s eea
   (eeb2, _) <- stepWire w2 s eea
   res <- merger eeb1 eeb2
-  return (res, solderWireM merge' w1 w2)
+  res `seq` return (res, solderWireM merge' w1 w2)
   where
     merger = \case
       Left err -> pure . left (mappend err)
