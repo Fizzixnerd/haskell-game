@@ -35,7 +35,7 @@ turnPlayer :: GameEffectWire s
 turnPlayer = effectWire $ join $
   setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
 
-rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
+rotateCamera :: MonadIO m => (Float, Float) -> Camera s -> m ()
 rotateCamera (dhor, dver) cam = do
   costheta <- getCameraInclinationCos cam
   setCameraPolarSpeed cam (clampy costheta)
@@ -78,9 +78,6 @@ jump = jmp <<< keySpace
     jmp = effectWire $ do
       p <- use $ gameStatePlayer . playerController
       liftIO $ P.jump p
-
-updateTime :: GameWire s Double ()
-updateTime = mkGen_ $ \t -> Right <$> (gameStateTime .= t)
 
 mouseL :: GameWire s a a
 mouseL = N.mousePressed MouseButton'1

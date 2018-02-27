@@ -1,5 +1,62 @@
 * Haskell Game
 
+** Dynamic Wires
+
+   Okay, let's hash this out baby.
+
+   inputWires ===> GAME CHUG ===> outputWires
+       /\                             ||
+       ||                             ||  
+       ##=============================##
+
+  gameStateWires :: Vector (Wire ...)
+
+  #+BEGIN_SRC haskell -n
+    doGame input_ sess_ wire gs = do
+      void $ N.pollGLFW input_ ic
+      (timeState, sess') <- stepSession sess_
+      let game = stepWire wire timeState (Right ())
+      (((b, wire'), input'), gs') <- runGame gs ic game
+      swapBuffers win
+      if gs' ^. gameStateShouldClose 
+	then do
+	-- Should probably stop all the sound producers here.
+	return ((either (const $ error "mainWire inhibited and exited. (why!?)")
+		  id
+		  b, input'), gs')
+	else doGame input' sess' (wire' <+> (concatA $ gs' ^. gameStateWires)) gs'
+  #+END_SRC
+
+  
+
+** Getting an Entity from a Collision Object
+   
+   !!WARNING!!  UNSAFE NONSENSE AHEAD  !!WARNING!!
+   ===============================================
+
+   So, btCollisionObject has some methods to help.
+
+   void(/*) (s/g)etUserPointer() (/const)
+   (void/int) (s/g)etUserIndex() (/const)
+
+   I think the \*UserPointer methods are actually *not* the way to
+   go.  This is because Haskell uses a compacting generational
+   garbage collector.  This means that a pointer to a regular haskell
+   object can become invalid randomly, and we have no way of telling
+   Haskell easily where it needs to update the pointers we already
+   have in the case of compaction.
+
+   Therefore, I think we should use \*UserIndex.  Just have a big 'ol
+   Vector of every entity and stick an index in this Vector in the
+   userIndex.
+
+   Concerns:
+   - Big ol' Vector would have to be immutable, in the sense that we
+     can't reuse spaces that have already been use lest badness
+     happens.
+
+   Note: we did it this way!  Yay!
+   
 ** Types
 
 *** Camera
@@ -78,3 +135,4 @@
     have to cast it themselves if they want to examine it.  This is
     the purpose of using Typeable.  If an EventName is not found, I
     guess it will be logged and nothing else will happen.
+

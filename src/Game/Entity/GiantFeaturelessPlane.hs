@@ -9,8 +9,8 @@ import Foreign.C.Types
 import qualified Physics.Bullet as P
 import qualified Linear as L
 
-newGiantFeaturelessPlane :: MonadIO m => L.V3 CFloat -> CFloat -> m GiantFeaturelessPlane
-newGiantFeaturelessPlane (L.V3 x y z) pc = liftIO $ GiantFeaturelessPlane <$> do
+newGiantFeaturelessPlane :: MonadIO m => L.V3 CFloat -> CFloat -> m (GiantFeaturelessPlane s)
+newGiantFeaturelessPlane (L.V3 x y z) pc = liftIO $ do
   gfpShape :: P.StaticPlaneShape <- P.new ((0, 1, 0), pc)
   gfpXform <- P.new ((0,0,0,1), (x, y, z))
   gfpMotionState <- P.new gfpXform
@@ -19,7 +19,18 @@ newGiantFeaturelessPlane (L.V3 x y z) pc = liftIO $ GiantFeaturelessPlane <$> do
   P.del gfpXform
   P.del gfpMotionState
   P.del gfpRigidBodyCI
-  return gfpRigidBody
+  let e = Entity
+          { _entityChildren = empty
+          , _entityGraphics = Nothing
+          , _entitySounds   = Nothing
+          , _entityLogic    = Nothing
+          , _entityRigidBody = Nothing
+          , _entityCollisionObject = CollisionObject (P.toCollisionObject gfpRigidBody)
+          }
+  return GiantFeaturelessPlane
+    { _giantFeaturelessPlaneRigidBody = gfpRigidBody
+    , _giantFeaturelessPlaneEntity = e
+    }
 
-destroyGiantFeaturelessPlane :: MonadIO m => GiantFeaturelessPlane -> m ()
-destroyGiantFeaturelessPlane (GiantFeaturelessPlane gfp) = liftIO $ P.freeRigidBody gfp
+destroyGiantFeaturelessPlane :: MonadIO m => GiantFeaturelessPlane s -> m ()
+destroyGiantFeaturelessPlane (GiantFeaturelessPlane gfp _) = liftIO $ P.freeRigidBody gfp

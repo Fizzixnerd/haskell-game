@@ -42,23 +42,6 @@ import qualified Physics.Bullet               as P
 import qualified Sound.OpenAL                 as AL
 import           Text.Printf
 
-type ForeignObject a = Acquire a
-
-data ForeignResources = ForeignResources
-
-newtype Foreign s a = Foreign
-  { _unForeign :: MSS.StateT s RT.ResIO a
-  } deriving ( Functor
-             , Applicative
-             , Monad
-             , MonadThrow -- Do I need these?
-             , MonadIO
-             )
-type GameResource s a = Foreign (GameState s) a
-
-runForeign :: s -> Foreign s a -> IO (a, s)
-runForeign s fr = RT.runResourceT . MSS.runStateT (_unForeign fr) $ s
-
 type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
 
@@ -119,19 +102,18 @@ type ScanCode = Int
 
 data GameState s = GameState
   { _gameStateIOData        :: IOData
-  , _gameStateCamera        :: Camera
+  , _gameStateCamera        :: Camera s
   , _gameStateActiveScripts :: Vector (Script s)
   , _gameStateEventRegister :: EventRegister s
   , _gameStateKeyEvent      :: GameWire s () (Event Key)
   , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
-  , _gameStatePhysicsWorld  :: PhysicsWorld
-  , _gameStatePlayer        :: Player
-  , _gameStateEntities      :: Vector (Entity s)
+  , _gameStatePhysicsWorld  :: PhysicsWorld s
+  , _gameStatePlayer        :: Player s
   , _gameStateMouseSpeed    :: Float
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
-  , _gameStateTime          :: Double
+  , _gameStateWires         :: Vector (GameEffectWire s ())
   }
 
 initGameState :: GameState s
@@ -146,20 +128,22 @@ initGameState = GameState
   , _gameStatePlayer        = error "player not set."
   , _gameStateMouseSpeed    = 0.01
   , _gameStateShouldClose   = False
-  , _gameStateEntities      = empty
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
-  , _gameStateTime          = 0
+  , _gameStateWires         = empty
   }
 
-data Camera = Camera
+data Camera s = Camera
   { _cameraFOV :: Float
-  , _cameraController     :: P.KinematicCharacterController
-  , _cameraTarget         :: P.CollisionObject
+  , _cameraController        :: P.KinematicCharacterController
+  , _cameraTarget            :: P.CollisionObject
   , _cameraPreferredDistance :: CFloat
+  , _cameraEntity            :: Entity s
   }
 
-newtype GiantFeaturelessPlane = GiantFeaturelessPlane { _unGiantFeauturelessPlane :: P.RigidBody }
+data GiantFeaturelessPlane s = GiantFeaturelessPlane 
+  { _giantFeaturelessPlaneRigidBody :: P.RigidBody
+  , _giantFeaturelessPlaneEntity :: Entity s }
 
 data ExpandObjVTN = ExpandObjVTN
   { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
@@ -242,15 +226,16 @@ registerEventByName en e (EventRegister er) = MS.insert en e er
 -- registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
-data Player = Player
+data Player s = Player
   { _playerController :: P.KinematicCharacterController
+  , _playerEntity     :: Entity s
   }
 
-data PhysicsWorld = PhysicsWorld
+data PhysicsWorld s = PhysicsWorld
   { _physicsWorldDynamicsWorld :: P.DynamicsWorld
-  , _physicsWorldPlayers :: Vector Player
-  , _physicsWorldGiantFeaturelessPlanes :: Vector GiantFeaturelessPlane
-  , _physicsWorldCameras :: Vector Camera
+  , _physicsWorldPlayers :: Vector (Player s)
+  , _physicsWorldGiantFeaturelessPlanes :: Vector (GiantFeaturelessPlane s)
+  , _physicsWorldCameras :: Vector (Camera s)
   , _physicsWorldBroadphaseInterface :: P.BroadphaseInterface
   , _physicsWorldGhostPairCallback :: P.GhostPairCallback
   , _physicsWorldCollisionConfiguration :: P.CollisionConfiguration
@@ -258,6 +243,7 @@ data PhysicsWorld = PhysicsWorld
   , _physicsWorldConstraintSolver :: P.ConstraintSolver
   , _physicsWorldCollisionObjects :: Vector P.CollisionObject
   , _physicsWorldRigidBodies :: Vector P.RigidBody
+  , _physicsWorldEntities :: Vector (Entity s)
   }
 
 data VTNPoint = VTNPoint
@@ -306,11 +292,12 @@ data MousePos = MousePos
   } deriving (Eq, Ord, Show)
 
 data Entity s = Entity
-  { _entityGraphics       :: Maybe (Gfx s)
-  , _entitySounds         :: Maybe (Sfx s)
-  , _entityLogic          :: Maybe (Lfx s)
-  , _entityCollisionBody  :: CollisionBody
-  , _entityRigidBody      :: Maybe RigidBody
+  { _entityGraphics        :: Maybe (Gfx s)
+  , _entitySounds          :: Maybe (Sfx s)
+  , _entityLogic           :: Maybe (Lfx s)
+  , _entityChildren        :: Vector (Entity s)
+  , _entityCollisionObject :: CollisionObject
+  , _entityRigidBody       :: Maybe RigidBody
   }
 
 -- | When an `Entity' is loaded, it's graphics data is stored here.
@@ -331,8 +318,8 @@ data Gfx s = Gfx
   , _gfxChildren    :: Vector (Gfx s)
   }
 
-newtype CollisionBody = CollisionBody { _unCollisionBody :: P.CollisionObject }
-newtype RigidBody = RigidBody { _unRigidBody :: P.RigidBody }
+newtype CollisionObject = CollisionObject { _unCollisionObject :: P.CollisionObject }
+newtype RigidBody       = RigidBody       { _unRigidBody       :: P.RigidBody       }
 
 type VPMatrix = L.M44 Float
 type VMatrix  = L.M44 Float
@@ -356,7 +343,7 @@ mconcat <$> mapM makeLenses
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
-  , ''CollisionBody
+  , ''CollisionObject
   , ''MousePos
   , ''PhysicsWorld
   , ''Player

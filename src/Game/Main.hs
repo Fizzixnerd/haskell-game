@@ -2,6 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Game.Main where
 
@@ -58,10 +59,12 @@ doGame initGS initWire = fmap fst . runGame initGS $ go initWire
         then return $ either (const $ error "mainWire inhibited and exited. (why!?)") id b
         else go loopyWire'
 
-setupPhysics :: IO (PhysicsWorld, Player, Camera)
+setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
+  (theCubeE, theCubeRB) <- createTheCube
   pw <- newPhysicsWorld
-  pl <- newPlayer
+  pl' <- newPlayer
+  let pl = pl' & playerEntity . entityGraphics .~ (theCubeE ^. entityGraphics)
   go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 4
   cameraLookAtTarget cam
@@ -75,17 +78,18 @@ setupPhysics = do
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
-  setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''
+  pw'''' <- addEntityToPhysicsWorld theCubeE pw'''
+  setGravityPhysicsWorld (L.V3 0 (-10) 0) pw''''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
-  return (pw''', pl, cam)
+  return (pw'''', pl, cam, theCubeE, theCubeRB)
 
-createTheCube :: IO (Entity (Timed Integer ()), P.RigidBody)
+createTheCube :: IO (Entity s, P.RigidBody)
 createTheCube = do
   cube <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
   P.setOrigin startXform 0 1 0
-  -- Don't delete this!!  See below.
+  -- Don't delete the ms!!  See below.
   ms <- P.new startXform
   rbci <- P.newRigidBodyConstructionInfo 1 ms cube 0 1 0
   -- The MotionState ms now belongs to the cube.
@@ -109,30 +113,31 @@ createTheCube = do
   AL.buffer src $= Just sbuf
 
   let e = Entity
-          { _entityGraphics = Just Gfx
+          { _entityChildren = empty
+          , _entityGraphics = Just Gfx
             { _gfxVaoData = singleton (vao, prog, Triangles, fromIntegral $ snd ebuf)
             , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
-            , _gfxChildren   = empty
+            , _gfxChildren = empty
             }
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
-            { _lfxScripts = fromList [
-                \cube_ -> do
-                  t <- use gameStateTime
-                  when (t < 5.5) $ do
-                    setEntityLinearVelocity cube_ (L.V3 4 4 4)
-                  return cube_
-                , \cube_ -> do
-                    entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ \_ -> do
+            { _lfxScripts = fromList 
+              [ \cube_ -> return cube_
+              , \cube_ -> do
+                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
+                    \Entity {..} -> do
                       setEntityLinearVelocity cube_ (L.V3 0 4 0)
-                    return cube_
-                ]
+                  return cube_
+              ]
             }
-          , _entityCollisionBody = CollisionBody $ P.toCollisionObject rb
+          , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
           , _entityRigidBody = Just $ RigidBody rb
           }
   return (e, rb)
+
+concatA :: ArrowPlus a => Vector (a b b) -> a b b
+concatA = foldr (<+>) id
 
 gameMain :: IO ()
 gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
@@ -160,10 +165,10 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     AL.currentContext $= Just ctxt
 
     AL.distanceModel $= AL.InverseDistance
-    (physicsWorld', player, cam) <- setupPhysics
-    (theCubeE, theCubeRB) <- createTheCube
-    physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
+    (physicsWorld, player, cam, _, _) <- setupPhysics
 
+    -- no need because we already add the entity.
+    -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
     ic <- N.mkInputControl win
     input <- liftIO $ N.getInput ic
     let sess = countSession_ 1
@@ -171,32 +176,35 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                             & ioDataGLFWInputState .~ input
                             & ioDataSession .~ sess
                             & ioDataWindow .~ win
-        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
-                                  & gameStatePlayer .~ player
-                                  & gameStateCamera .~ cam
-                                  & gameStateEntities .~ singleton theCubeE
-                                  & gameStateSoundDevice .~ dev
-                                  & gameStateSoundContext .~ ctxt
-                                  & gameStateIOData .~ ioData
+
         animationWire :: GameEffectWire s
         animationWire = effectWire $ do
-          entities <- use gameStateEntities
+          clear $ defaultClearBuffer & clearBufferColor .~ True
+                                     & clearBufferDepth .~ True
+          entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
           entities' <- mapM animateEntity entities
-          gameStateEntities .= entities'
+          gameStatePhysicsWorld . physicsWorldEntities .= entities'
 
         physicsWire :: GameEffectWire s
         physicsWire = effectWire $ do
           pw <- use gameStatePhysicsWorld
           stepPhysicsWorld pw
 
-        mainWire =     animationWire
-                   <+> (playerHorizontalMovement >>> movePlayer)
-                   <+> physicsWire
-                   <+> close
-                   <+> jump
-                   <+> camera
-                   <+> zoomCamera
-                   <+> turnPlayer
-                   <+> (timeF >>> updateTime)
+        mainWires = fromList [ animationWire
+                             , (playerHorizontalMovement >>> movePlayer)
+                             , physicsWire
+                             , close
+                             , jump
+                             , camera
+                             , zoomCamera
+                             , turnPlayer
+                             ]
 
-    void $ doGame gameState mainWire
+        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+                                  & gameStatePlayer .~ player
+                                  & gameStateCamera .~ cam
+                                  & gameStateSoundDevice .~ dev
+                                  & gameStateSoundContext .~ ctxt
+                                  & gameStateWires .~ mainWires
+                                  & gameStateIOData .~ ioData
+    void $ doGame gameState
