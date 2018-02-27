@@ -92,11 +92,7 @@ createTheCube = do
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
             { _lfxScripts = fromList 
-              [ \cube_ -> do
-                  t <- use gameStateTime
-                  when (t < 5.5) $ do
-                    setEntityLinearVelocity cube_ (L.V3 4 4 4)
-                  return cube_
+              [ \cube_ -> return cube_
               , \cube_ -> do
                   entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
                     \e_@Entity {..} -> do
@@ -110,6 +106,9 @@ createTheCube = do
           , _entityRigidBody = Just $ RigidBody rb
           }
   return (e, rb)
+
+concatA :: ArrowPlus a => Vector (a b b) -> a b b
+concatA ars = foldr (\ar ac -> ac <+> ar) (arr id) ars
 
 gameMain :: IO ()
 gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
@@ -142,12 +141,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     -- no need because we already add the entity.
     -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
 
-    let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
-                                  & gameStatePlayer .~ player
-                                  & gameStateCamera .~ cam
-                                  & gameStateSoundDevice .~ dev
-                                  & gameStateSoundContext .~ ctxt
-        animationWire :: GameWire s a ()
+    let animationWire :: GameWire s a ()
         animationWire = mkGen_ $ const $ Right <$> do
           clear $ defaultClearBuffer & clearBufferColor .~ True
                                      & clearBufferDepth .~ True
@@ -160,29 +154,37 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           pw <- use gameStatePhysicsWorld
           void $ stepPhysicsWorld pw
 
-        mainWire =     animationWire
-                   <+> (playerHorizontalMovement >>> movePlayer)
-                   <+> physicsWire
-                   <+> close
-                   <+> jump
-                   <+> camera
-                   <+> zoomCamera
-                   <+> turnPlayer
-                   <+> (timeF >>> updateTime)
+        mainWires = fromList [ animationWire
+                             , (playerHorizontalMovement >>> movePlayer)
+                             , physicsWire
+                             , close
+                             , jump
+                             , camera
+                             , zoomCamera
+                             , turnPlayer
+                             , (timeF >>> updateTime)
+                             ]
+
+        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+                                  & gameStatePlayer .~ player
+                                  & gameStateCamera .~ cam
+                                  & gameStateSoundDevice .~ dev
+                                  & gameStateSoundContext .~ ctxt
+                                  & gameStateWires .~ mainWires
 
     ic <- N.mkInputControl win
     input <- liftIO $ N.getInput ic
     let sess = countSession_ 1
         doGame :: N.GLFWInputState
                -> Session IO (Timed Integer ())
-               -> GameWire (Timed Integer ()) () b
                -> GameState (Timed Integer ())
-               -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
-        doGame input_ sess_ wire gs = do
+               -> IO (((), N.GLFWInputState), GameState (Timed Integer ()))
+        doGame input_ sess_ gs = do
           void $ N.pollGLFW input_ ic
           (timeState, sess') <- stepSession sess_
-          let game = stepWire wire timeState (Right ())
-          (((b, wire'), input'), gs') <- runGame gs ic game
+          let mainWire = concatA $ gs ^. gameStateWires
+              game = stepWire mainWire timeState (Right ())
+          (((b, _), input'), gs') <- runGame gs ic game
           swapBuffers win
           if gs' ^. gameStateShouldClose 
             then do
@@ -190,5 +192,5 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
             return ((either (const $ error "mainWire inhibited and exited. (why!?)")
                       id
                       b, input'), gs')
-            else doGame input' sess' wire' gs'
-    void $ doGame input sess mainWire gameState
+            else doGame input' sess' gs'
+    void $ doGame input sess gameState

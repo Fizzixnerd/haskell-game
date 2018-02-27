@@ -85,6 +85,7 @@ data GameState s = GameState
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
   , _gameStateTime          :: Double
+  , _gameStateWires         :: Vector (GameWire s () ())
   }
 
 initGameState :: GameState s
@@ -101,6 +102,7 @@ initGameState = GameState
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
   , _gameStateTime          = 0
+  , _gameStateWires         = empty
   }
 
 data Camera s = Camera
