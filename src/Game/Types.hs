@@ -84,8 +84,7 @@ data GameState s = GameState
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
-  , _gameStateTime          :: Double
-  , _gameStateWires         :: Vector (GameWire s () ())
+  , _gameStateWires         :: Vector (GameEffectWire s ())
   }
 
 initGameState :: GameState s
@@ -101,7 +100,6 @@ initGameState = GameState
   , _gameStateShouldClose   = False
   , _gameStateSoundContext  = error "soundContext not set."
   , _gameStateSoundDevice   = error "soundDevice not set."
-  , _gameStateTime          = 0
   , _gameStateWires         = empty
   }
 

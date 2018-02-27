@@ -79,9 +79,6 @@ jump = jmp <<< keySpace
       p <- use $ gameStatePlayer . playerController
       liftIO $ P.jump p
 
-updateTime :: GameWire s Double ()
-updateTime = mkGen_ $ \t -> Right <$> (gameStateTime .= t)
-
 mouseL :: GameWire s a a
 mouseL = N.mousePressed MouseButton'1
 

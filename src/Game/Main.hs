@@ -95,10 +95,8 @@ createTheCube = do
               [ \cube_ -> return cube_
               , \cube_ -> do
                   entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
-                    \e_@Entity {..} -> do
+                    \Entity {..} -> do
                       setEntityLinearVelocity cube_ (L.V3 0 4 0)
-                      -- just for testing~
-                      seq e_ (return ())
                   return cube_
               ]
             }
@@ -108,7 +106,7 @@ createTheCube = do
   return (e, rb)
 
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
-concatA ars = foldr (\ar ac -> ac <+> ar) (arr id) ars
+concatA = foldr (<+>) id
 
 gameMain :: IO ()
 gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
@@ -162,7 +160,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                              , camera
                              , zoomCamera
                              , turnPlayer
-                             , (timeF >>> updateTime)
                              ]
 
         gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
