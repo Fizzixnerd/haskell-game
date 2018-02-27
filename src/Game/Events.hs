@@ -19,7 +19,7 @@ import qualified Sound.OpenAL as AL
 import           Game.Wires
 
 zoomCamera :: GameEffectWire s
-zoomCamera = effectiveWire $ do
+zoomCamera = effectWire $ do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
@@ -32,7 +32,7 @@ zoomCamera = effectiveWire $ do
   cameraLookAtTarget cam
 
 turnPlayer :: GameEffectWire s
-turnPlayer = effectiveWire $ join $
+turnPlayer = effectWire $ join $
   setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
 
 rotateCamera :: MonadIO m => (Float, Float) -> Camera -> m ()
@@ -70,12 +70,12 @@ playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire 
 close :: GameEffectWire s
 close = cls <<< keyEsc
   where
-    cls = effectiveWire $ gameStateShouldClose .= True
+    cls = effectWire $ gameStateShouldClose .= True
 
 jump :: GameEffectWire s
 jump = jmp <<< keySpace
   where
-    jmp = effectiveWire $ do
+    jmp = effectWire $ do
       p <- use $ gameStatePlayer . playerController
       liftIO $ P.jump p
 

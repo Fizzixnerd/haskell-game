@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -23,7 +24,6 @@ import           Game.Entity.GiantFeaturelessPlane
 import           Game.Entity
 import           Graphics.Binding
 import           Linear                      as L
-import qualified Monad.State.Strict as MSS
 import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
@@ -31,32 +31,32 @@ import           Game.Wires
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
-  s <- MSS.get
-  let iod = _gameStateIOData s
-      ic  = _ioDataGLFWInputControl iod
-      is  = _ioDataGLFWInputState iod
-  is' <- liftIO $ N.pollGLFW is ic
-  MSS.put $ s { _gameStateIOData = iod { _ioDataGLFWInputState = is'}}
+  iod <- use gameStateIOData
+  is' <- liftIO $ N.pollGLFW (iod ^. ioDataGLFWInputState)
+                             (iod ^. ioDataGLFWInputControl)
+  gameStateIOData . ioDataGLFWInputState .= is'
 
 stepTime :: Game s (Timed Integer ())
 stepTime = do
-  sess <- use $ gameStateIOData ^. ioDataSession
-  (time, sess') <- stepSession sess
+  sess <- use $ gameStateIOData . ioDataSession
+  (timey, sess') <- liftIO $ stepSession sess
   gameStateIOData . ioDataSession .= sess'
-  return time
+  return timey
 
-doGame :: GameState s -> GameWire (Timed Integer ()) () b -> IO b
-doGame initGS loopyWire = fmap fst . runGame $ loop
+-- Put wires into game state?
+doGame :: GameState (Timed Integer ()) -> GameWire (Timed Integer ()) () b -> IO b
+doGame initGS initWire = fmap fst . runGame initGS $ go initWire
   where
-    loop = do
+    go loopyWire = do
       updateGLFWInput
-      time <- stepTime
-      b <- stepWire loopyWire time (Right ())
-      swapBuffers (view $ gameStateIOData . ioDataWindow)
-      gssc <- view gameStateShouldClose
+      timey <- stepTime
+      (b, loopyWire') <- stepWire loopyWire timey (Right ())
+      win <- use $ gameStateIOData . ioDataWindow
+      liftIO $ swapBuffers win
+      gssc <- use gameStateShouldClose
       if gssc
-        then return . either (const $ error "mainWire inhibited and exited. (why!?)") id $ b
-        else loop
+        then return $ either (const $ error "mainWire inhibited and exited. (why!?)") id b
+        else go loopyWire'
 
 setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
@@ -177,6 +177,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
+                                  & gameStateIOData .~ ioData
         animationWire :: GameEffectWire s
         animationWire = effectWire $ do
           entities <- use gameStateEntities
@@ -198,22 +199,4 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                    <+> turnPlayer
                    <+> (timeF >>> updateTime)
 
-    let 
-        doGame :: N.GLFWInputState
-               -> Session IO (Timed Integer ())
-               -> GameWire (Timed Integer ()) () b
-               -> GameState (Timed Integer ())
-               -> IO ((b, N.GLFWInputState), GameState (Timed Integer ()))
-        doGame input_ sess_ wire gs = do
-          void $ N.pollGLFW input_ ic
-          (timeState, sess') <- stepSession sess_
-          let game = stepWire wire timeState (Right ())
-          (((b, wire'), input'), gs') <- runGame gs ic game
-          swapBuffers win
-          if gs' ^. gameStateShouldClose
-            then return ((either
-                          (const $ error "mainWire inhibited and exited. (why!?)")
-                          id
-                          b, input'), gs')
-            else doGame input' sess' wire' gs'
     void $ doGame gameState mainWire
