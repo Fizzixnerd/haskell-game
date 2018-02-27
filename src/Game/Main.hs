@@ -23,24 +23,40 @@ import           Game.Entity.GiantFeaturelessPlane
 import           Game.Entity
 import           Graphics.Binding
 import           Linear                      as L
+import qualified Monad.State.Strict as MSS
 import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
 import           Game.Wires
 
-doGame :: IOData -> GameWire (Timed Integer ()) () b -> IO b
-doGame IOData {..} loopyWire = do
-  void $ N.pollGLFW input_ ic
-  (timeState, sess') <- stepSession sess_
-  let game = stepWire wire timeState (Right ())
-  (((b, wire'), input'), gs') <- runGame gs ic game
-  swapBuffers win
-  if gs' ^. gameStateShouldClose
-    then return ((either
-                   (const $ error "mainWire inhibited and exited. (why!?)")
-                   id
-                   b, input'), gs')
-    else doGame input' sess' wire' gs'
+updateGLFWInput :: Game s ()
+updateGLFWInput = do
+  s <- MSS.get
+  let iod = _gameStateIOData s
+      ic  = _ioDataGLFWInputControl iod
+      is  = _ioDataGLFWInputState iod
+  is' <- liftIO $ N.pollGLFW is ic
+  MSS.put $ s { _gameStateIOData = iod { _ioDataGLFWInputState = is'}}
+
+stepTime :: Game s (Timed Integer ())
+stepTime = do
+  sess <- use $ gameStateIOData ^. ioDataSession
+  (time, sess') <- stepSession sess
+  gameStateIOData . ioDataSession .= sess'
+  return time
+
+doGame :: GameState s -> GameWire (Timed Integer ()) () b -> IO b
+doGame initGS loopyWire = fmap fst . runGame $ loop
+  where
+    loop = do
+      updateGLFWInput
+      time <- stepTime
+      b <- stepWire loopyWire time (Right ())
+      swapBuffers (view $ gameStateIOData . ioDataWindow)
+      gssc <- view gameStateShouldClose
+      if gssc
+        then return . either (const $ error "mainWire inhibited and exited. (why!?)") id $ b
+        else loop
 
 setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
@@ -148,7 +164,14 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     (theCubeE, theCubeRB) <- createTheCube
     physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
 
-    let gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+    ic <- N.mkInputControl win
+    input <- liftIO $ N.getInput ic
+    let sess = countSession_ 1
+        ioData = initIOData & ioDataGLFWInputControl .~ ic
+                            & ioDataGLFWInputState .~ input
+                            & ioDataSession .~ sess
+                            & ioDataWindow .~ win
+        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
                                   & gameStatePlayer .~ player
                                   & gameStateCamera .~ cam
                                   & gameStateEntities .~ singleton theCubeE
@@ -175,9 +198,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                    <+> turnPlayer
                    <+> (timeF >>> updateTime)
 
-    ic <- N.mkInputControl win
-    input <- liftIO $ N.getInput ic
-    let sess = countSession_ 1
+    let 
         doGame :: N.GLFWInputState
                -> Session IO (Timed Integer ())
                -> GameWire (Timed Integer ()) () b
@@ -195,4 +216,4 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                           id
                           b, input'), gs')
             else doGame input' sess' wire' gs'
-    void $ doGame input sess mainWire gameState
+    void $ doGame gameState mainWire

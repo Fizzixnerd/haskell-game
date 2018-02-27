@@ -92,22 +92,15 @@ instance N.MonadGLFWInput (Game s) where
     in
       s { _gameStateIOData = iod }
 
-updateGLFWInput :: Game s ()
-updateGLFWInput = do
-  s <- MSS.get
-  let iod = _gameStateIOData s
-      ic  = _ioDataGLFWInputControl iod
-      is  = _ioDataGLFWInputState iod
-  is' <- liftIO $ N.pollGLFW is ic
-  MSS.put $ s { _gameStateIOData = iod { _ioDataGLFWInputState = is'}}
-
---  putGLFWInput :: GLFWInputState -> m ()
-
 data IOData = IOData
   { _ioDataGLFWInputControl :: N.GLFWInputControl
   , _ioDataGLFWInputState   :: N.GLFWInputState
   , _ioDataSession          :: Session IO (Timed Integer ())
+  , _ioDataWindow           :: Window
   }
+
+initIOData :: IOData
+initIOData = IOData (error "No GLFWInputControl") (error "No GLFWInputState") (error "No wire session") (error "No window")
 
 runGame :: GameState s -> Game s a -> IO (a, GameState s)
 runGame gs g = RT.runResourceTChecked . ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
@@ -373,4 +366,5 @@ mconcat <$> mapM makeLenses
   , ''Sfx
   , ''VTNIndex
   , ''VTNPoint
+  , ''IOData
   ]
