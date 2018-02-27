@@ -4,3 +4,6 @@
 [submodule "lib/assimp-hs"]
 	path = lib/assimp-hs
 	url = https://github.com/Fizzixnerd/assimp-hs
+[submodule "lib/bullet-hs"]
+	path = lib/bullet-hs
+	url = https://github.com/Fizzixnerd/bullet-hs
