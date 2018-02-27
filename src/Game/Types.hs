@@ -63,7 +63,7 @@ type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
 
 newtype Game s a = Game
-  { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT RT.ResIO)) a
+  { _unGame :: MSS.StateT (GameState s) (ML.LoggingT RT.ResIO) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -72,7 +72,6 @@ newtype Game s a = Game
              , MC.MonadThrow
              , MC.MonadCatch
              , MC.MonadMask
-             , N.MonadGLFWInput
              , Fix.MonadFix
              , RT.MonadResource
              , MonadBase IO
@@ -85,6 +84,25 @@ instance ML.MonadLogger (Game s) where
 instance Fix.MonadFix m => Fix.MonadFix (ML.LoggingT m) where
   mfix f = ML.LoggingT $ \r -> Fix.mfix $ \a -> ML.runLoggingT (f a) r
 
+instance N.MonadGLFWInput (Game s) where
+  getGLFWInput     = MSS.gets $ _ioDataGLFWInputState . _gameStateIOData
+  putGLFWInput inp = MSS.modify' $ \s ->
+    let
+      iod = (_gameStateIOData s) { _ioDataGLFWInputState = inp }
+    in
+      s { _gameStateIOData = iod }
+
+updateGLFWInput :: Game s ()
+updateGLFWInput = do
+  s <- MSS.get
+  let iod = _gameStateIOData s
+      ic  = _ioDataGLFWInputControl iod
+      is  = _ioDataGLFWInputState iod
+  is' <- liftIO $ N.pollGLFW is ic
+  MSS.put $ s { _gameStateIOData = iod { _ioDataGLFWInputState = is'}}
+
+--  putGLFWInput :: GLFWInputState -> m ()
+
 data IOData = IOData
   { _ioDataGLFWInputControl :: N.GLFWInputControl
   , _ioDataGLFWInputState   :: N.GLFWInputState
@@ -92,7 +110,7 @@ data IOData = IOData
   }
 
 runGame :: GameState s -> Game s a -> IO (a, GameState s)
-
+runGame gs g = RT.runResourceTChecked . ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
 {-
 runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputState), GameState s)
 runGame s ic g = do
@@ -107,7 +125,8 @@ newtype EventRegister s = EventRegister
 type ScanCode = Int
 
 data GameState s = GameState
-  { _gameStateCamera        :: Camera
+  { _gameStateIOData        :: IOData
+  , _gameStateCamera        :: Camera
   , _gameStateActiveScripts :: Vector (Script s)
   , _gameStateEventRegister :: EventRegister s
   , _gameStateKeyEvent      :: GameWire s () (Event Key)
@@ -124,7 +143,8 @@ data GameState s = GameState
 
 initGameState :: GameState s
 initGameState = GameState
-  { _gameStateCamera = error "camera not set."
+  { _gameStateIOData        = error "ioData not set"
+  , _gameStateCamera        = error "camera not set."
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateMousePosEvent = error "mousePosEvent not set."
