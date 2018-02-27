@@ -1,3 +1,6 @@
 [submodule "lib/assimp"]
 	path = lib/assimp
 	url = https://github.com/assimp/assimp
+[submodule "lib/netwire-input-glfw"]
+	path = lib/netwire-input-glfw
+	url = https://github.com/Fizzixnerd/netwire-input-glfw
