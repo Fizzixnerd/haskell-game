@@ -44,20 +44,20 @@ stepTime = do
   gameStateIOData . ioDataSession .= sess'
   return timey
 
--- Put wires into game state?
 doGame :: GameState (Timed Integer ()) -> GameWire (Timed Integer ()) () b -> IO b
-doGame initGS initWire = fmap fst . runGame initGS $ go initWire
+doGame initGS = fmap fst . runGame initGS $ go
   where
-    go loopyWire = do
+    go = do
       updateGLFWInput
-      timey <- stepTime
-      (b, loopyWire') <- stepWire loopyWire timey (Right ())
+      time_ <- stepTime
+      let mainWire = concatA $ gs ^. gameStateWires
+      (b, _) <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
       gssc <- use gameStateShouldClose
       if gssc
         then return $ either (const $ error "mainWire inhibited and exited. (why!?)") id b
-        else go loopyWire'
+        else go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
