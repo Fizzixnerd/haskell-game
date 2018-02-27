@@ -28,7 +28,6 @@ import           Control.Monad.Fix            as Fix
 import qualified Control.Monad.Logger         as ML
 import qualified Control.Monad.State.Strict   as MSS
 import qualified Control.Monad.Trans.Resource as RT
-import           Data.Acquire                 as RT
 import           Data.Dynamic
 import qualified Data.Map.Strict              as MS
 import           FRP.Netwire
@@ -87,12 +86,6 @@ initIOData = IOData (error "No GLFWInputControl") (error "No GLFWInputState") (e
 
 runGame :: GameState s -> Game s a -> IO (a, GameState s)
 runGame gs g = RT.runResourceTChecked . ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
-{-
-runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputState), GameState s)
-runGame s ic g = do
-  input <- N.getInput ic
-  ML.runStderrLoggingT $ MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
--}
 
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
@@ -113,7 +106,7 @@ data GameState s = GameState
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
-  , _gameStateWires         :: Vector (GameEffectWire s ())
+  , _gameStateWires         :: Vector (GameWire s () ())
   }
 
 initGameState :: GameState s
@@ -141,7 +134,7 @@ data Camera s = Camera
   , _cameraEntity            :: Entity s
   }
 
-data GiantFeaturelessPlane s = GiantFeaturelessPlane 
+data GiantFeaturelessPlane s = GiantFeaturelessPlane
   { _giantFeaturelessPlaneRigidBody :: P.RigidBody
   , _giantFeaturelessPlaneEntity :: Entity s }
 

@@ -1,3 +1,9 @@
+[submodule "lib/netwire-input-glfw"]
+	path = lib/netwire-input-glfw
+	url = https://github.com/Fizzixnerd/netwire-input-glfw
 [submodule "lib/assimp-hs"]
 	path = lib/assimp-hs
 	url = https://github.com/Fizzixnerd/assimp-hs
+[submodule "lib/bullet-hs"]
+	path = lib/bullet-hs
+	url = https://github.com/Fizzixnerd/bullet-hs

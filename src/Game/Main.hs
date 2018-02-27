@@ -6,7 +6,7 @@
 
 module Game.Main where
 
-import           ClassyPrelude
+import           ClassyPrelude as ClassyP
 import           Control.Lens
 import           Control.Wire.Core
 import qualified Data.ObjectName as ON
@@ -44,20 +44,18 @@ stepTime = do
   gameStateIOData . ioDataSession .= sess'
   return timey
 
-doGame :: GameState (Timed Integer ()) -> GameWire (Timed Integer ()) () b -> IO b
-doGame initGS = fmap fst . runGame initGS $ go
+doGame :: GameState (Timed Integer ()) -> IO ()
+doGame initGS = void $ runGame initGS go
   where
     go = do
       updateGLFWInput
       time_ <- stepTime
-      let mainWire = concatA $ gs ^. gameStateWires
-      (b, _) <- stepWire mainWire time_ (Right ())
+      mainWire <- concatA <$> use gameStateWires
+      _ <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
       gssc <- use gameStateShouldClose
-      if gssc
-        then return $ either (const $ error "mainWire inhibited and exited. (why!?)") id b
-        else go
+      ClassyP.unless gssc go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
