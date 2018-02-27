@@ -87,6 +87,13 @@ initIOData = IOData (error "No GLFWInputControl") (error "No GLFWInputState") (e
 runGame :: GameState s -> Game s a -> IO (a, GameState s)
 runGame gs g = RT.runResourceTChecked . ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
 
+releaseResources :: Game s a -> Game s a
+releaseResources act = do
+  s <- MSS.get
+  (a, s') <- liftIO $ runGame s act
+  MSS.put s'
+  return a
+
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
   }

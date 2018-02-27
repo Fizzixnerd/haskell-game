@@ -120,10 +120,10 @@ createTheCube = do
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
-            { _lfxScripts = fromList 
+            { _lfxScripts = fromList
               [ \cube_ -> return cube_
               , \cube_ -> do
-                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
+                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $
                     \Entity {..} -> do
                       setEntityLinearVelocity cube_ (L.V3 0 4 0)
                   return cube_
