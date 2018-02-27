@@ -96,7 +96,7 @@ createTheCube = do
               , \cube_ -> do
                   entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
                     \Entity {..} -> do
-                      setEntityLinearVelocity cube_ (L.V3 0 4 0)
+                      setEntityLinearVelocity cube_ (L.V3 0 6 0)
                   return cube_
               ]
             }
