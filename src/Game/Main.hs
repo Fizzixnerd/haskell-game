@@ -205,4 +205,4 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                                   & gameStateSoundContext .~ ctxt
                                   & gameStateWires .~ mainWires
                                   & gameStateIOData .~ ioData
-    void $ doGame gameState
+    doGame gameState
