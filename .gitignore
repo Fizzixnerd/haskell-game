@@ -31,3 +31,5 @@ cabal.project.local
 ./lib/bullet-hs/libcbullet.so*
 ./lib/bullet-hs/cmake_install.cmake
 ./lib/bullet-hs/install_manifest.txt
+
+*TAGS
