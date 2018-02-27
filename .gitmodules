@@ -1,9 +1,6 @@
 [submodule "lib/netwire-input-glfw"]
 	path = lib/netwire-input-glfw
 	url = https://github.com/Fizzixnerd/netwire-input-glfw
-[submodule "lib/bullet-hs/lib/bullet3"]
-	path = lib/bullet-hs/lib/bullet3
-	url = https://github.com/bulletphysics/bullet3
 [submodule "lib/assimp-hs"]
 	path = lib/assimp-hs
 	url = https://github.com/Fizzixnerd/assimp-hs
