@@ -53,9 +53,6 @@ newtype Foreign s a = Foreign
              , Monad
              , MonadThrow -- Do I need these?
              , MonadIO
-             , RT.MonadResource
-             , MonadBase IO
-             , MonadBaseControl IO
              )
 type GameResource s a = Foreign (GameState s) a
 
@@ -66,7 +63,7 @@ type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
 
 newtype Game s a = Game
-  { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT IO)) a
+  { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT RT.ResIO)) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -76,7 +73,11 @@ newtype Game s a = Game
              , MC.MonadCatch
              , MC.MonadMask
              , N.MonadGLFWInput
-             , Fix.MonadFix )
+             , Fix.MonadFix
+             , RT.MonadResource
+             , MonadBase IO
+             , MonadBaseControl IO
+             )
 
 instance ML.MonadLogger (Game s) where
   monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
@@ -84,16 +85,20 @@ instance ML.MonadLogger (Game s) where
 instance Fix.MonadFix m => Fix.MonadFix (ML.LoggingT m) where
   mfix f = ML.LoggingT $ \r -> Fix.mfix $ \a -> ML.runLoggingT (f a) r
 
+data IOData = IOData
+  { _ioDataGLFWInputControl :: N.GLFWInputControl
+  , _ioDataGLFWInputState   :: N.GLFWInputState
+  , _ioDataSession          :: Session IO (Timed Integer ())
+  }
+
+runGame :: GameState s -> Game s a -> IO (a, GameState s)
+
+{-
 runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputState), GameState s)
 runGame s ic g = do
   input <- N.getInput ic
   ML.runStderrLoggingT $ MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
-
-foreignInGame :: GameState s -> GameResource s a -> Game s a
-foreignInGame gs gr = do
-  (a, s) <- liftIO $ runForeign gs gr
-  MSS.put s
-  return a
+-}
 
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))

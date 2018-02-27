@@ -41,7 +41,9 @@ library
                        GLFW-b,
                        stm,
                        mtl,
-                       exceptions
+                       exceptions,
+                       resourcet,
+                       transformers-base
   hs-source-dirs:      lib
   default-language:    Haskell2010
 

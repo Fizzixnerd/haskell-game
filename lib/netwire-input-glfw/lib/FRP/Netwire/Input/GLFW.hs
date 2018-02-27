@@ -49,8 +49,9 @@ import Control.Monad.Cont
 import Control.Monad.Identity
 import Control.Monad.Catch
 import GHC.Float hiding (clamp)
-
+import Control.Monad.Trans.Resource
 import FRP.Netwire.Input
+import Control.Monad.Base
 --------------------------------------------------------------------------------
 
 clamp :: Ord a => a -> a -> a -> a
@@ -111,6 +112,9 @@ newtype GLFWInputT m a =
 deriving instance MonadThrow m => MonadThrow (GLFWInputT m)
 deriving instance MonadCatch m => MonadCatch (GLFWInputT m)
 deriving instance MonadMask m => MonadMask (GLFWInputT m)
+deriving instance MonadResource m => MonadResource (GLFWInputT m)
+deriving instance MonadBase b m => MonadBase b (GLFWInputT m)
+deriving instance MonadBaseControl b m => MonadBaseControl b (GLFWInputT m)
 
 instance MonadState s m => MonadState s (GLFWInputT m) where
   get = lift get

@@ -1,18 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE Arrows #-}
 
 module Game.Wires where
 
-import Game.Types
 import ClassyPrelude
-import Foreign.C.Types
 import Control.Wire
-import Control.Lens
-import Game.Entity.Camera
-import qualified Linear as L
-import qualified Physics.Bullet as P
 
 -- | Is the identity if only one wire is producing. If both are, it
 -- merges the results with merge. This steps both wires.
@@ -43,8 +35,8 @@ solderWireM merge' w1 w2 = WGen $ \s eea -> do
 
 -- | An identity wire that executes a monadic action when activated,
 -- and passes the input through unchanged
-effectiveWire :: Monad m => m c -> Wire s e m a a
-effectiveWire act = mkGen_ $ \a -> void act >> return (Right a)
+effectWire :: Monad m => m c -> Wire s e m a a
+effectWire act = mkGen_ $ \a -> void act >> return (Right a)
 
 -- | A constant wire that executes a monadic action to obtain its output.
 mkConstM :: Monad m => m b -> Wire s e m a b
@@ -78,7 +70,7 @@ xorWire w1 w2 = WGen $ \s eea -> do
 
 stateIOWire :: MonadIO m => IO b -> Wire s e m a b
 stateIOWire act = mkConstM (liftIO act) >>> steppingWire
-
+{-
 data CameraState = CameraState
   { _cameraStateLinearVelocity :: L.V3 CFloat
   , _cameraStatePosition       :: L.V3 CFloat
@@ -157,3 +149,4 @@ cameraVP' = proc cam -> do
       camPerspective = L.perspective cfov (16/9) 0.1 100
     in
     returnA -< camPerspective L.!*! fmap (fmap (\(CFloat x) -> x)) camView
+-}

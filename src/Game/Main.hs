@@ -26,6 +26,21 @@ import           Linear                      as L
 import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
+import           Game.Wires
+
+doGame :: IOData -> GameWire (Timed Integer ()) () b -> IO b
+doGame IOData {..} loopyWire = do
+  void $ N.pollGLFW input_ ic
+  (timeState, sess') <- stepSession sess_
+  let game = stepWire wire timeState (Right ())
+  (((b, wire'), input'), gs') <- runGame gs ic game
+  swapBuffers win
+  if gs' ^. gameStateShouldClose
+    then return ((either
+                   (const $ error "mainWire inhibited and exited. (why!?)")
+                   id
+                   b, input'), gs')
+    else doGame input' sess' wire' gs'
 
 setupPhysics :: IO (PhysicsWorld, Player, Camera)
 setupPhysics = do
@@ -139,16 +154,16 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
                                   & gameStateEntities .~ singleton theCubeE
                                   & gameStateSoundDevice .~ dev
                                   & gameStateSoundContext .~ ctxt
-        animationWire :: GameWire s a ()
-        animationWire = mkGen_ $ const $ Right <$> do
+        animationWire :: GameEffectWire s
+        animationWire = effectWire $ do
           entities <- use gameStateEntities
           entities' <- mapM animateEntity entities
           gameStateEntities .= entities'
 
-        physicsWire :: GameWire s a ()
-        physicsWire = mkGen_ $ const $ Right <$> do
+        physicsWire :: GameEffectWire s
+        physicsWire = effectWire $ do
           pw <- use gameStatePhysicsWorld
-          void $ stepPhysicsWorld pw
+          stepPhysicsWorld pw
 
         mainWire =     animationWire
                    <+> (playerHorizontalMovement >>> movePlayer)
