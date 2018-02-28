@@ -29,6 +29,7 @@ dependencies:
 - Rasterific
 - StateVar
 - ObjectName
+- assimp-hs
 - base >= 4.7 && < 5
 - bullet-hs
 - bytestring

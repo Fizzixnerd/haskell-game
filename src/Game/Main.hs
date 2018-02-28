@@ -95,7 +95,7 @@ createTheCube = do
               [ \cube_ -> return cube_
               , \cube_ -> do
                   entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
-                    \Entity {..} -> do
+                    \_ -> do
                       setEntityLinearVelocity cube_ (L.V3 0 6 0)
                   return cube_
               ]
@@ -110,84 +110,82 @@ concatA = foldr (<+>) id
 
 gameMain :: IO ()
 gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
-  withGraphicsContext defaultGraphicsContext
-    . withWindow defaultWindowConfig
-    $ \win -> do
-    contextCurrent $= Just win
+  withGraphicsContext defaultGraphicsContext . withWindow defaultWindowConfig $
+    \win -> do
+      contextCurrent $= Just win
 
-    --cullFace $= Just Back
-    depthFunc $= Just DepthLess
-    -- Remember: we will eventually have to free the function pointer
-    -- that mkGLDEBUGPROC gives us!!!
-    debugMessageCallback $= Just simpleDebugFunc
-
-    clearColor $= color4 0 0 0.4 0
-    -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-    mdev <- AL.openDevice Nothing
-    let dev = case mdev of
-          Nothing -> error "Couldn't open the sound device."
-          Just dev_ -> dev_
-    mctxt <- AL.createContext dev []
-    let ctxt = case mctxt of
-          Nothing -> error "Couldn't create the sound context."
-          Just ctxt_ -> ctxt_
-    AL.currentContext $= Just ctxt
-
-    AL.distanceModel $= AL.InverseDistance
-    (physicsWorld, player, cam, _, _) <- setupPhysics
-
-    -- no need because we already add the entity.
-    -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
-
-    let animationWire :: GameWire s a ()
-        animationWire = mkGen_ $ const $ Right <$> do
-          clear $ defaultClearBuffer & clearBufferColor .~ True
-                                     & clearBufferDepth .~ True
-          entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
-          entities' <- mapM animateEntity entities
-          gameStatePhysicsWorld . physicsWorldEntities .= entities'
-
-        physicsWire :: GameWire s a ()
-        physicsWire = mkGen_ $ const $ Right <$> do
-          pw <- use gameStatePhysicsWorld
-          void $ stepPhysicsWorld pw
-
-        mainWires = fromList [ animationWire
-                             , (playerHorizontalMovement >>> movePlayer)
-                             , physicsWire
-                             , close
-                             , jump
-                             , camera
-                             , zoomCamera
-                             , turnPlayer
-                             ]
-
-        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
-                                  & gameStatePlayer .~ player
-                                  & gameStateCamera .~ cam
-                                  & gameStateSoundDevice .~ dev
-                                  & gameStateSoundContext .~ ctxt
-                                  & gameStateWires .~ mainWires
-
-    ic <- N.mkInputControl win
-    input <- liftIO $ N.getInput ic
-    let sess = countSession_ 1
-        doGame :: N.GLFWInputState
-               -> Session IO (Timed Integer ())
-               -> GameState (Timed Integer ())
-               -> IO (((), N.GLFWInputState), GameState (Timed Integer ()))
-        doGame input_ sess_ gs = do
-          void $ N.pollGLFW input_ ic
-          (timeState, sess') <- stepSession sess_
-          let mainWire = concatA $ gs ^. gameStateWires
-              game = stepWire mainWire timeState (Right ())
-          (((b, _), input'), gs') <- runGame gs ic game
-          swapBuffers win
-          if gs' ^. gameStateShouldClose 
-            then do
-            -- Should probably stop all the sound producers here.
-            return ((either (const $ error "mainWire inhibited and exited. (why!?)")
-                      id
-                      b, input'), gs')
-            else doGame input' sess' gs'
-    void $ doGame input sess gameState
+      --cullFace $= Just Back
+      depthFunc $= Just DepthLess
+      -- Remember: we will eventually have to free the function pointer
+      -- that mkGLDEBUGPROC gives us!!!
+      debugMessageCallback $= Just simpleDebugFunc
+  
+      clearColor $= color4 0 0 0.4 0
+      -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
+      mdev <- AL.openDevice Nothing
+      let dev = case mdev of
+            Nothing -> error "Couldn't open the sound device."
+            Just dev_ -> dev_
+      mctxt <- AL.createContext dev []
+      let ctxt = case mctxt of
+            Nothing -> error "Couldn't create the sound context."
+            Just ctxt_ -> ctxt_
+      AL.currentContext $= Just ctxt
+  
+      AL.distanceModel $= AL.InverseDistance
+      (physicsWorld, player, cam, _, _) <- setupPhysics
+  
+      let animationWire :: GameWire s a ()
+          animationWire = mkGen_ $ const $ Right <$> do
+            clear $ defaultClearBuffer & clearBufferColor .~ True
+                                       & clearBufferDepth .~ True
+            entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
+            entities' <- mapM animateEntity entities
+            gameStatePhysicsWorld . physicsWorldEntities .= entities'
+  
+          physicsWire :: GameWire s a ()
+          physicsWire = mkGen_ $ const $ Right <$> do
+            pw <- use gameStatePhysicsWorld
+            void $ stepPhysicsWorld pw
+  
+          mainWires = fromList [ animationWire
+                               , (playerHorizontalMovement >>> movePlayer)
+                               , physicsWire
+                               , close
+                               , jump
+                               , camera
+                               , zoomCamera
+                               , turnPlayer
+                               ]
+  
+          gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+                                    & gameStatePlayer .~ player
+                                    & gameStateCamera .~ cam
+                                    & gameStateSoundDevice .~ dev
+                                    & gameStateSoundContext .~ ctxt
+                                    & gameStateWires .~ mainWires
+  
+      ic <- N.mkInputControl win
+      input <- liftIO $ N.getInput ic
+      let sess = countSession_ 1
+          doGame :: N.GLFWInputState
+                 -> Session IO (Timed Integer ())
+                 -> GameState (Timed Integer ())
+                 -> IO (((), N.GLFWInputState), GameState (Timed Integer ()))
+          doGame input_ sess_ gs = do
+            void $ N.pollGLFW input_ ic
+            (timeState, sess') <- stepSession sess_
+            let mainWire = concatA $ gs ^. gameStateWires
+                game = stepWire mainWire timeState (Right ())
+            (((b, _), input'), gs') <- runGame gs ic game
+            swapBuffers win
+            if gs' ^. gameStateShouldClose 
+              then do
+              -- Should probably stop all the sound producers here.
+              return ((either (const $
+                               error "mainWire inhibited and exited. (why!?)")
+                        id
+                        b, input'), gs')
+              else doGame input' sess' gs'
+      void $ doGame input sess gameState
+  
