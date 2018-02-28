@@ -56,9 +56,10 @@ dependencies:
 - vinyl
 - wavefront
 - unliftio-core
+- comonad
+- contravariant
 
 ghc-options:
-  - -dynamic
   - -fPIC
 
 library:
@@ -73,7 +74,6 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall
-    - -dynamic
     - -fPIC
 
     dependencies:
@@ -87,7 +87,6 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -dynamic
     - -fPIC
     dependencies:
     - haskell-game
