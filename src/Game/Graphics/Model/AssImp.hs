@@ -81,9 +81,9 @@ getAssImpMesh2D RawAssImpMesh {..} = do
 
   tptr <- peek _rawAssImpMeshTextureCoords
   tvec <- VS.generateM n $ \i -> do
-    let m = 3 * sizeOf (0 :: Float)
-    x <- peekByteOff tptr $ m*i   :: IO Float
-    y <- peekByteOff tptr $ m*i+1 :: IO Float
+    let m = sizeOf (0 :: Float)
+    x <- peekByteOff tptr $ 3*m*i   :: IO Float
+    y <- peekByteOff tptr $ m*(3*i+1) :: IO Float
     return $ L.V2 x y
 
   let (fptr, fnum) = _rawAssImpMeshFaces
