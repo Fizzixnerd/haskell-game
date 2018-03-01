@@ -94,7 +94,7 @@ bufferDataAssImp vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
                                        & mapPersistent .~ True
                                        & mapCoherent .~ True
   vbuf <- unsafeWithVecLen objPoints $ \vtxs vecLen ->
-    initBufferObject (fromIntegral $ vecLen * (sizeOf (undefined :: VTNPoint))) flags (castPtr vtxs)
+    initBufferObject (fromIntegral $ vecLen * (sizeOf (undefined :: AssImpVertex))) flags (castPtr vtxs)
   let vtxOffset = 0
       texOffset = fromIntegral $ 3 * sizeOf (0 :: CFloat)
       nmlOffset = fromIntegral $ 5 * sizeOf (0 :: CFloat)
