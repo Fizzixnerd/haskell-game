@@ -61,6 +61,7 @@ dependencies:
 
 ghc-options:
   - -fPIC
+  - -dynamic
 
 library:
   source-dirs: src
@@ -75,6 +76,7 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -fPIC
+    - -dynamic
 
     dependencies:
     - haskell-game
@@ -88,5 +90,6 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     - -fPIC
+    - -dynamic
     dependencies:
     - haskell-game

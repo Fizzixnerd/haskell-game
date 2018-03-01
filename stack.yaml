@@ -52,7 +52,6 @@ extra-deps:
 - lib/assimp-hs
 - lib/graphics-binding
 - lib/netwire-input-glfw
-- lib/assimp-hs
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
