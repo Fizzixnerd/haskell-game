@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -5,14 +6,14 @@
 
 module Game.Main where
 
-import           ClassyPrelude
+import           ClassyPrelude as ClassyP
 import           Control.Lens
 import           Control.Wire.Core
 import qualified Data.ObjectName as ON
-import           FRP.Netwire hiding (when)
+import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Types
-import           Game.Graphics.Model.Loader
+import           Game.Graphics.Model.ObjLoader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
@@ -27,6 +28,36 @@ import           Linear                      as L
 import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
+import           Game.Wires
+import           Game.Graphics.Model.AssImp
+
+updateGLFWInput :: Game s ()
+updateGLFWInput = do
+  iod <- use gameStateIOData
+  is' <- liftIO $ N.pollGLFW (iod ^. ioDataGLFWInputState)
+                             (iod ^. ioDataGLFWInputControl)
+  gameStateIOData . ioDataGLFWInputState .= is'
+
+stepTime :: Game s (Timed Integer ())
+stepTime = do
+  sess <- use $ gameStateIOData . ioDataSession
+  (timey, sess') <- liftIO $ stepSession sess
+  gameStateIOData . ioDataSession .= sess'
+  return timey
+
+doGame :: GameState (Timed Integer ()) -> IO ()
+doGame initGS = void $ runGame initGS go
+  where
+    go = do
+      updateGLFWInput
+      time_ <- stepTime
+      mainWire <- concatA <$> use gameStateWires
+      _ <- stepWire mainWire time_ (Right ())
+      win <- use $ gameStateIOData . ioDataWindow
+      liftIO $ swapBuffers win
+      flip unlessM go $ use gameStateShouldClose
+--      gssc <- use gameStateShouldClose
+--      ClassyP.unless gssc go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
@@ -67,15 +98,16 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-
-  (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
-
+  modelVec <- loadAssImpMeshes2D "res/models/simple-cube-2.obj"
+  let (objPoints, objIndices) = modelVec ^. ix 0
+  traceM $ show objIndices
+--  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
   let posLocation = AttribLocation 0
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
-  (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
+  (vao, _, ebuf) <- bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
@@ -91,7 +123,7 @@ createTheCube = do
           , _entitySounds = Just Sfx
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
-            { _lfxScripts = fromList 
+            { _lfxScripts = fromList
               [ \cube_ -> return cube_
               , \cube_ -> do
                   entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
@@ -110,82 +142,70 @@ concatA = foldr (<+>) id
 
 gameMain :: IO ()
 gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
-  withGraphicsContext defaultGraphicsContext . withWindow defaultWindowConfig $
-    \win -> do
-      contextCurrent $= Just win
+  withGraphicsContext defaultGraphicsContext
+    . withWindow defaultWindowConfig
+    $ \win -> do
+    contextCurrent $= Just win
 
-      --cullFace $= Just Back
-      depthFunc $= Just DepthLess
-      -- Remember: we will eventually have to free the function pointer
-      -- that mkGLDEBUGPROC gives us!!!
-      debugMessageCallback $= Just simpleDebugFunc
-  
-      clearColor $= color4 0 0 0.4 0
-      -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-      mdev <- AL.openDevice Nothing
-      let dev = case mdev of
-            Nothing -> error "Couldn't open the sound device."
-            Just dev_ -> dev_
-      mctxt <- AL.createContext dev []
-      let ctxt = case mctxt of
-            Nothing -> error "Couldn't create the sound context."
-            Just ctxt_ -> ctxt_
-      AL.currentContext $= Just ctxt
-  
-      AL.distanceModel $= AL.InverseDistance
-      (physicsWorld, player, cam, _, _) <- setupPhysics
-  
-      let animationWire :: GameWire s a ()
-          animationWire = mkGen_ $ const $ Right <$> do
-            clear $ defaultClearBuffer & clearBufferColor .~ True
-                                       & clearBufferDepth .~ True
-            entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
-            entities' <- mapM animateEntity entities
-            gameStatePhysicsWorld . physicsWorldEntities .= entities'
-  
-          physicsWire :: GameWire s a ()
-          physicsWire = mkGen_ $ const $ Right <$> do
-            pw <- use gameStatePhysicsWorld
-            void $ stepPhysicsWorld pw
-  
-          mainWires = fromList [ animationWire
-                               , (playerHorizontalMovement >>> movePlayer)
-                               , physicsWire
-                               , close
-                               , jump
-                               , camera
-                               , zoomCamera
-                               , turnPlayer
-                               ]
-  
-          gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
-                                    & gameStatePlayer .~ player
-                                    & gameStateCamera .~ cam
-                                    & gameStateSoundDevice .~ dev
-                                    & gameStateSoundContext .~ ctxt
-                                    & gameStateWires .~ mainWires
-  
-      ic <- N.mkInputControl win
-      input <- liftIO $ N.getInput ic
-      let sess = countSession_ 1
-          doGame :: N.GLFWInputState
-                 -> Session IO (Timed Integer ())
-                 -> GameState (Timed Integer ())
-                 -> IO (((), N.GLFWInputState), GameState (Timed Integer ()))
-          doGame input_ sess_ gs = do
-            void $ N.pollGLFW input_ ic
-            (timeState, sess') <- stepSession sess_
-            let mainWire = concatA $ gs ^. gameStateWires
-                game = stepWire mainWire timeState (Right ())
-            (((b, _), input'), gs') <- runGame gs ic game
-            swapBuffers win
-            if gs' ^. gameStateShouldClose 
-              then do
-              -- Should probably stop all the sound producers here.
-              return ((either (const $
-                               error "mainWire inhibited and exited. (why!?)")
-                        id
-                        b, input'), gs')
-              else doGame input' sess' gs'
-      void $ doGame input sess gameState
-  
+    --cullFace $= Just Back
+    depthFunc $= Just DepthLess
+    -- Remember: we will eventually have to free the function pointer
+    -- that mkGLDEBUGPROC gives us!!!
+    debugMessageCallback $= Just simpleDebugFunc
+
+    clearColor $= color4 0 0 0.4 0
+    -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
+    mdev <- AL.openDevice Nothing
+    let dev = case mdev of
+          Nothing -> error "Couldn't open the sound device."
+          Just dev_ -> dev_
+    mctxt <- AL.createContext dev []
+    let ctxt = case mctxt of
+          Nothing -> error "Couldn't create the sound context."
+          Just ctxt_ -> ctxt_
+    AL.currentContext $= Just ctxt
+
+    AL.distanceModel $= AL.InverseDistance
+    (physicsWorld, player, cam, _, _) <- setupPhysics
+
+    -- no need because we already add the entity.
+    -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
+    ic <- N.mkInputControl win
+    input <- liftIO $ N.getInput ic
+    let sess = countSession_ 1
+        ioData = initIOData & ioDataGLFWInputControl .~ ic
+                            & ioDataGLFWInputState .~ input
+                            & ioDataSession .~ sess
+                            & ioDataWindow .~ win
+
+        animationWire :: GameEffectWire s
+        animationWire = effectWire $ do
+          clear $ defaultClearBuffer & clearBufferColor .~ True
+                                     & clearBufferDepth .~ True
+          entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
+          entities' <- mapM animateEntity entities
+          gameStatePhysicsWorld . physicsWorldEntities .= entities'
+
+        physicsWire :: GameEffectWire s
+        physicsWire = effectWire $ do
+          pw <- use gameStatePhysicsWorld
+          stepPhysicsWorld pw
+
+        mainWires = fromList [ animationWire
+                             , (playerHorizontalMovement >>> movePlayer)
+                             , physicsWire
+                             , close
+                             , jump
+                             , camera
+                             , zoomCamera
+                             , turnPlayer
+                             ]
+
+        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+                                  & gameStatePlayer .~ player
+                                  & gameStateCamera .~ cam
+                                  & gameStateSoundDevice .~ dev
+                                  & gameStateSoundContext .~ ctxt
+                                  & gameStateWires .~ mainWires
+                                  & gameStateIOData .~ ioData
+    doGame gameState

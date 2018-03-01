@@ -75,7 +75,7 @@ animateEntity e = do
   playEntity e'
   drawEntity vpm e'
   return e'
-  
+
 setEntityLinearVelocity :: Entity s -> L.V3 Float -> Game s ()
 setEntityLinearVelocity e (L.V3 x y z) = case e ^. entityRigidBody of
   Nothing -> return ()

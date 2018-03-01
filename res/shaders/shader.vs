@@ -1,6 +1,6 @@
 #version 450 core
 
-layout (location = 0) in vec4 vertexPos;
+layout (location = 0) in vec3 vertexPos;
 layout (location = 1) in vec2 vertexUV;
 layout (location = 2) in vec3 vertexNormal;
 
@@ -11,6 +11,6 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  gl_Position = MVP * vertexPos;
+  gl_Position = MVP * vec4(vertexPos, 1);
   vs_out.UV = vertexUV;
 }

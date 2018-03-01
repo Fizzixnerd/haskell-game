@@ -3,7 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Game.Graphics.Model.Loader where
+module Game.Graphics.Model.ObjLoader where
 
 import           ClassyPrelude
 import qualified Codec.Wavefront            as W
@@ -62,8 +62,8 @@ updateVTNMap fi = do
 addVTNFace :: W.Face -> ExpandObjVTNState ()
 addVTNFace (W.Face a b c _) = updateVTNMap a >> updateVTNMap b >> updateVTNMap c
 
-expandVTNObj :: W.WavefrontOBJ -> (VS.Vector VTNPoint, VS.Vector CUInt)
-expandVTNObj obj = (expandedPoints, expandedIndices)
+expandVTNObj :: W.WavefrontOBJ -> (VS.Vector VTNPoint, VS.Vector Word32)
+expandVTNObj obj = (expandedPoints, (\(CUInt x) -> x) `VS.map` expandedIndices)
   where
     objVerts = W.objLocations obj
     objTexs  = W.objTexCoords obj
@@ -76,5 +76,5 @@ expandVTNObj obj = (expandedPoints, expandedIndices)
     expandedPoints = finState ^. expandObjVTNPoints . to (VS.fromList . reverse)
     expandedIndices = finState ^. expandObjVTNIndices . to (VS.fromList . reverse)
 
-loadObjVTN :: MonadIO m => FilePath -> m (VS.Vector VTNPoint, VS.Vector CUInt)
+loadObjVTN :: MonadIO m => FilePath -> m (VS.Vector VTNPoint, VS.Vector Word32)
 loadObjVTN = fmap expandVTNObj . loadObj

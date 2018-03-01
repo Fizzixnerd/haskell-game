@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -20,30 +21,31 @@
 module Game.Types where
 
 import           ClassyPrelude
-import qualified Codec.Wavefront             as W
+import qualified Codec.Wavefront              as W
 import           Control.Lens
-import qualified Control.Monad.Logger        as ML
-import qualified Control.Monad.State.Strict  as MSS
-import qualified Control.Monad.Catch         as MC
-import qualified Data.Map.Strict             as MS
+import qualified Control.Monad.Catch          as MC
+import           Control.Monad.Fix            as Fix
+import qualified Control.Monad.Logger         as ML
+import qualified Control.Monad.State.Strict   as MSS
+import qualified Control.Monad.Trans.Resource as RT
+import           Data.Dynamic
+import qualified Data.Map.Strict              as MS
+import           FRP.Netwire
+import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
 import           Foreign.Storable
-import           FRP.Netwire
-import qualified FRP.Netwire.Input.GLFW      as N
-import           Graphics.Binding
-import qualified Sound.OpenAL                as AL
 import           Game.Graphics.Texture.Loader
-import qualified Linear                      as L
-import qualified Physics.Bullet              as P
+import           Graphics.Binding
+import qualified Linear                       as L
+import qualified Physics.Bullet               as P
+import qualified Sound.OpenAL                 as AL
 import           Text.Printf
-import           Data.Dynamic
-import           Control.Monad.Fix           as Fix
 
 type GameWire s a b = Wire s () (Game s) a b
-type GameEffectWire s a = GameWire s a a
+type GameEffectWire s = forall a. GameWire s a a
 
 newtype Game s a = Game
-  { _unGame :: N.GLFWInputT (MSS.StateT (GameState s) (ML.LoggingT IO)) a
+  { _unGame :: MSS.StateT (GameState s) (ML.LoggingT RT.ResIO) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -52,8 +54,11 @@ newtype Game s a = Game
              , MC.MonadThrow
              , MC.MonadCatch
              , MC.MonadMask
-             , N.MonadGLFWInput
-             , Fix.MonadFix )
+             , Fix.MonadFix
+             , RT.MonadResource
+             , MonadBase IO
+             , MonadBaseControl IO
+             )
 
 instance ML.MonadLogger (Game s) where
   monadLoggerLog l ls ll m = Game $ lift $ ML.monadLoggerLog l ls ll m
@@ -61,10 +66,33 @@ instance ML.MonadLogger (Game s) where
 instance Fix.MonadFix m => Fix.MonadFix (ML.LoggingT m) where
   mfix f = ML.LoggingT $ \r -> Fix.mfix $ \a -> ML.runLoggingT (f a) r
 
-runGame :: GameState s -> N.GLFWInputControl -> Game s a -> IO ((a, N.GLFWInputState), GameState s)
-runGame s ic g = do
-  input <- N.getInput ic
-  ML.runStderrLoggingT $ MSS.runStateT (N.runGLFWInputT (_unGame g) input) s
+instance N.MonadGLFWInput (Game s) where
+  getGLFWInput     = MSS.gets $ _ioDataGLFWInputState . _gameStateIOData
+  putGLFWInput inp = MSS.modify' $ \s ->
+    let
+      iod = (_gameStateIOData s) { _ioDataGLFWInputState = inp }
+    in
+      s { _gameStateIOData = iod }
+
+data IOData = IOData
+  { _ioDataGLFWInputControl :: N.GLFWInputControl
+  , _ioDataGLFWInputState   :: N.GLFWInputState
+  , _ioDataSession          :: Session IO (Timed Integer ())
+  , _ioDataWindow           :: Window
+  }
+
+initIOData :: IOData
+initIOData = IOData (error "No GLFWInputControl") (error "No GLFWInputState") (error "No wire session") (error "No window")
+
+runGame :: GameState s -> Game s a -> IO (a, GameState s)
+runGame gs g = RT.runResourceTChecked . ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
+
+releaseResources :: Game s a -> Game s a
+releaseResources act = do
+  s <- MSS.get
+  (a, s') <- liftIO $ runGame s act
+  MSS.put s'
+  return a
 
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
@@ -73,7 +101,8 @@ newtype EventRegister s = EventRegister
 type ScanCode = Int
 
 data GameState s = GameState
-  { _gameStateCamera        :: Camera s
+  { _gameStateIOData        :: IOData
+  , _gameStateCamera        :: Camera s
   , _gameStateActiveScripts :: Vector (Script s)
   , _gameStateEventRegister :: EventRegister s
   , _gameStateKeyEvent      :: GameWire s () (Event Key)
@@ -84,12 +113,13 @@ data GameState s = GameState
   , _gameStateShouldClose   :: Bool
   , _gameStateSoundContext  :: AL.Context
   , _gameStateSoundDevice   :: AL.Device
-  , _gameStateWires         :: Vector (GameEffectWire s ())
+  , _gameStateWires         :: Vector (GameWire s () ())
   }
 
 initGameState :: GameState s
 initGameState = GameState
-  { _gameStateCamera = error "camera not set."
+  { _gameStateIOData        = error "ioData not set"
+  , _gameStateCamera        = error "camera not set."
   , _gameStateActiveScripts = empty
   , _gameStateEventRegister = EventRegister mempty
   , _gameStateMousePosEvent = error "mousePosEvent not set."
@@ -111,7 +141,7 @@ data Camera s = Camera
   , _cameraEntity            :: Entity s
   }
 
-data GiantFeaturelessPlane s = GiantFeaturelessPlane 
+data GiantFeaturelessPlane s = GiantFeaturelessPlane
   { _giantFeaturelessPlaneRigidBody :: P.RigidBody
   , _giantFeaturelessPlaneEntity :: Entity s }
 
@@ -222,6 +252,12 @@ data VTNPoint = VTNPoint
   , _vtnPointN :: !(L.V3 CFloat)
   } deriving (Eq, Show, Ord, Read)
 
+data AssImpVertex = AssImpVertex
+  { _assImpVertexV :: !(L.V3 Float)
+  , _assImpVertexT :: !(L.V2 Float)
+  , _assImpVertexN :: !(L.V3 Float)
+  } deriving (Eq, Show, Ord, Read)
+
 data VTNIndex = VTNIndex
   { _vtnIndexV :: !Int
   , _vtnIndexT :: !Int
@@ -240,6 +276,19 @@ instance Storable VTNPoint where
     t <- peekByteOff ptr (4 * sizeOf (0 :: CFloat))
     n <- peekByteOff ptr (6 * sizeOf (0 :: CFloat))
     return $ VTNPoint v t n
+
+instance Storable AssImpVertex where
+  sizeOf _ = 8 * sizeOf (0 :: Float)
+  alignment _ = alignment (0 :: Float)
+  poke ptr (AssImpVertex v t n) = do
+    pokeByteOff ptr 0 v
+    pokeByteOff ptr (3 * sizeOf (0 :: Float)) t
+    pokeByteOff ptr (5 * sizeOf (0 :: Float)) n
+  peek ptr = do
+    v <- peekByteOff ptr 0
+    t <- peekByteOff ptr (3 * sizeOf (0 :: Float))
+    n <- peekByteOff ptr (5 * sizeOf (0 :: Float))
+    return $ AssImpVertex v t n
 
 instance Storable VTNIndex where
   sizeOf _ = 3 * sizeOf (0 :: Int)
@@ -323,4 +372,6 @@ mconcat <$> mapM makeLenses
   , ''Sfx
   , ''VTNIndex
   , ''VTNPoint
+  , ''IOData
+  , ''AssImpVertex
   ]
