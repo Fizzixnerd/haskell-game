@@ -21,6 +21,7 @@ description:         Please see the README on Github at <https://github.com/gith
 
 dependencies:
 - ALUT
+- assimp-hs
 - FontyFruity
 - GLFW-b
 - JuicyPixels
@@ -56,8 +57,6 @@ dependencies:
 - vinyl
 - wavefront
 - unliftio-core
-- comonad
-- contravariant
 
 ghc-options:
   - -fPIC

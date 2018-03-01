@@ -10,10 +10,10 @@ import           ClassyPrelude as ClassyP
 import           Control.Lens
 import           Control.Wire.Core
 import qualified Data.ObjectName as ON
-import           FRP.Netwire hiding (when)
+import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Types
-import           Game.Graphics.Model.Loader
+import           Game.Graphics.Model.ObjLoader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
@@ -29,6 +29,7 @@ import qualified Physics.Bullet as P
 import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
 import           Game.Wires
+import           Game.Graphics.Model.AssImp
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -54,8 +55,9 @@ doGame initGS = void $ runGame initGS go
       _ <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
-      gssc <- use gameStateShouldClose
-      ClassyP.unless gssc go
+      flip unlessM go $ use gameStateShouldClose
+--      gssc <- use gameStateShouldClose
+--      ClassyP.unless gssc go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
@@ -96,15 +98,16 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-
-  (objPoints, objIndices) <- loadObjVTN "res/models/simple-cube-2.obj"
-
+  modelVec <- loadAssImpMeshes2D "res/models/simple-cube-2.obj"
+  let (objPoints, objIndices) = modelVec ^. ix 0
+  traceM $ show objIndices
+--  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
 
   let posLocation = AttribLocation 0
       texLocation = AttribLocation 1
       nmlLocation = AttribLocation 2
-  (vao, _, ebuf) <- bufferData posLocation texLocation nmlLocation objPoints objIndices
+  (vao, _, ebuf) <- bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")

@@ -252,6 +252,12 @@ data VTNPoint = VTNPoint
   , _vtnPointN :: !(L.V3 CFloat)
   } deriving (Eq, Show, Ord, Read)
 
+data AssImpVertex = AssImpVertex
+  { _assImpVertexV :: !(L.V3 Float)
+  , _assImpVertexT :: !(L.V2 Float)
+  , _assImpVertexN :: !(L.V3 Float)
+  } deriving (Eq, Show, Ord, Read)
+
 data VTNIndex = VTNIndex
   { _vtnIndexV :: !Int
   , _vtnIndexT :: !Int
@@ -270,6 +276,19 @@ instance Storable VTNPoint where
     t <- peekByteOff ptr (4 * sizeOf (0 :: CFloat))
     n <- peekByteOff ptr (6 * sizeOf (0 :: CFloat))
     return $ VTNPoint v t n
+
+instance Storable AssImpVertex where
+  sizeOf _ = 8 * sizeOf (0 :: Float)
+  alignment _ = alignment (0 :: Float)
+  poke ptr (AssImpVertex v t n) = do
+    pokeByteOff ptr 0 v
+    pokeByteOff ptr (3 * sizeOf (0 :: Float)) t
+    pokeByteOff ptr (5 * sizeOf (0 :: Float)) n
+  peek ptr = do
+    v <- peekByteOff ptr 0
+    t <- peekByteOff ptr (3 * sizeOf (0 :: Float))
+    n <- peekByteOff ptr (5 * sizeOf (0 :: Float))
+    return $ AssImpVertex v t n
 
 instance Storable VTNIndex where
   sizeOf _ = 3 * sizeOf (0 :: Int)
@@ -354,4 +373,5 @@ mconcat <$> mapM makeLenses
   , ''VTNIndex
   , ''VTNPoint
   , ''IOData
+  , ''AssImpVertex
   ]
