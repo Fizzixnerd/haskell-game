@@ -98,7 +98,7 @@ bufferDataAssImp vtxLoc texLoc nmlLoc objPoints objIndices = liftIO $ do
   let vtxOffset = 0
       texOffset = fromIntegral $ 3 * sizeOf (0 :: CFloat)
       nmlOffset = fromIntegral $ 5 * sizeOf (0 :: CFloat)
-      stride    = fromIntegral $ sizeOf (undefined :: VTNPoint)
+      stride    = fromIntegral $ sizeOf (undefined :: AssImpVertex)
       relOffset = 0
 
   vertexArrayAttribCapability vao vtxLoc Enabled
