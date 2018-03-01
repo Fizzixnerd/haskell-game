@@ -79,6 +79,11 @@ jump = jmp <<< keySpace
       p <- use $ gameStatePlayer . playerController
       liftIO $ P.jump p
 
+basicEventStream :: (Fractional a, HasTime t s) => GameWire s a (Event a)
+basicEventStream = periodic 4 . timeF
+
+
+
 mouseL :: GameWire s a a
 mouseL = N.mousePressed MouseButton'1
 
