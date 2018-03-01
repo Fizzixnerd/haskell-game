@@ -26,7 +26,7 @@ type AssImpNormalCoords     = Vector3DPtr
 type AssImpFaces            = FacePtr
 
 importAssImpFileGood :: FilePath -> IO AssImpScene
-importAssImpFileGood = flip importFile 0
+importAssImpFileGood = importAndProcessFileGood
 --importAssImpFileGood = importAndProcessFileFast
 
 data RawAssImpMesh = RawAssImpMesh

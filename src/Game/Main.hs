@@ -98,7 +98,7 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-  modelVec <- loadAssImpMeshes2D "res/models/simple-cube-2.obj"
+  modelVec <- loadAssImpMeshes2D "res/models/Lowpoly_tree_sample.dae"
   let (objPoints, objIndices) = modelVec ^. ix 0
   traceM $ show objIndices
 --  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
