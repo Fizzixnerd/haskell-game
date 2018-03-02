@@ -13,8 +13,6 @@ import qualified Data.ObjectName as ON
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Types
-import           Game.Graphics.Model.ObjLoader
-import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Events
@@ -98,15 +96,11 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-  modelVec <- loadAssImpMeshes2D "res/models/Bayonetta 1/bayo_default.dae"
+  assImpScene@(AssImpScene meshes) <- loadAssImpScene "res/models/simple-cube-2.obj"
   -- [(vao, _, ebuf)]
-  vaos <- forM modelVec $ \(objPoints, objIndices) -> do
-    --  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
+  let vaoData = flip ClassyP.map meshes $ \aim -> (_assImpMeshVAO aim, prog, Triangles, _assImpMeshIndexNum aim)
 
-    let posLocation = AttribLocation 0
-        texLocation = AttribLocation 1
-        nmlLocation = AttribLocation 2
-    bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
+    --  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
 
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
   src :: AL.Source <- ON.genObjectName
@@ -116,7 +110,7 @@ createTheCube = do
   let e = Entity
           { _entityChildren = empty
           , _entityGraphics = Just Gfx
-            { _gfxVaoData = (\(vao, _, ebuf) -> (vao, prog, Triangles, fromIntegral $ snd ebuf)) <$> vaos
+            { _gfxVaoData = vaoData
             , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
             , _gfxChildren = empty
             }
@@ -126,7 +120,7 @@ createTheCube = do
             { _lfxScripts = fromList
               [ \cube_ -> return cube_
               , \cube_ -> do
-                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
+                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $
                     \_ -> do
                       setEntityLinearVelocity cube_ (L.V3 0 6 0)
                   return cube_
@@ -192,7 +186,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           stepPhysicsWorld pw
 
         mainWires = fromList [ animationWire
-                             , (playerHorizontalMovement >>> movePlayer)
+                             , playerHorizontalMovement >>> movePlayer
                              , physicsWire
                              , close
                              , jump

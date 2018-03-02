@@ -24,7 +24,7 @@ instance ObjectName VertexArrayObject where
 instance GeneratableObjectName VertexArrayObject where
   genObjectNames_ n = fmap VertexArrayObject <$> (liftIO . allocaArray n $ \ptr -> glCreateVertexArrays (fromIntegral n) ptr >> peekArray n ptr)
 
-newtype AttribLocation = AttribLocation { getAttribLocationGLuint :: GLuint } deriving (Eq, Ord, Show)
+newtype AttribLocation = AttribLocation { getAttribLocationGLuint :: GLuint } deriving (Eq, Ord, Show, Num)
 
 --------------------------------------------
 currentVertexArrayObject :: StateVar (Maybe VertexArrayObject)

@@ -319,7 +319,7 @@ data Entity s = Entity
   , _entityRigidBody       :: Maybe RigidBody
   }
 
--- | When an `Entity' is loaded, it's graphics data is stored here.
+-- | When an `Entity' is loaded, its graphics data is stored here.
 -- Note that `gfxWire' is constructed from a `GameWire s (Gfx s) ()'.
 -- It is then combined with `arr (const <this Gfx s>)' to create the
 -- final `Wire' seen below, which is more flexible.  This means the
@@ -351,6 +351,19 @@ data Lfx s = Lfx
   { _lfxScripts :: Vector (Entity s -> Game s (Entity s))
   }
 
+newtype AssImpScene = AssImpScene
+  { _assImpMeshes :: Vector AssImpMesh }
+
+data AssImpMesh = AssImpMesh
+  { _assImpMeshVAO         :: VertexArrayObject
+  , _assImpMeshVertexBO    :: BufferObject
+  , _assImpMeshTextureBO   :: Vector BufferObject
+  , _assImpMeshNormalBO    :: BufferObject
+  , _assImpMeshIndexBO     :: BufferObject
+  , _assImpMeshIndexBOType :: IndexType
+  , _assImpMeshIndexNum    :: Word32
+  }
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''Entity
@@ -374,4 +387,6 @@ mconcat <$> mapM makeLenses
   , ''VTNPoint
   , ''IOData
   , ''AssImpVertex
+  , ''AssImpScene
+  , ''AssImpMesh
   ]

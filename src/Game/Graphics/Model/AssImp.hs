@@ -1,99 +1,76 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Game.Graphics.Model.AssImp where
 
-import ClassyPrelude
+import ClassyPrelude as ClassyP
 import Asset.AssImp.Types
 import Asset.AssImp.Import
 import Foreign.C.Types
 import Foreign.Storable
 import Foreign.Ptr
-import Foreign.ForeignPtr
-import Foreign.Marshal.Utils
-import Foreign.Marshal.Alloc
 import Game.Types
+import Graphics.Binding
+import qualified Data.Vector as V (generateM, empty, imapM_, unfoldrM)
 
-import qualified Data.Vector.Storable as VS
-import qualified Data.Vector as V (generateM)
-import qualified Linear as L
-
-type AssImpScene            = ScenePtr
-type AssImpMesh             = MeshPtr
-type AssImpVertexCoords     = Vector3DPtr
-type AssImpTextureCoordsPtr = Ptr Vector3DPtr
-type AssImpNormalCoords     = Vector3DPtr
-type AssImpFaces            = FacePtr
-
-importAssImpFileGood :: FilePath -> IO AssImpScene
+importAssImpFileGood :: FilePath -> IO ScenePtr
 importAssImpFileGood = importAndProcessFileGood
---importAssImpFileGood = importAndProcessFileFast
 
-data RawAssImpMesh = RawAssImpMesh
-  { _rawAssImpMeshNumVertices     :: Word32
-  , _rawAssImpMeshNumUVComponents :: Ptr Word32
-  , _rawAssImpMeshVertexCoords    :: AssImpVertexCoords
-  , _rawAssImpMeshTextureCoords   :: AssImpTextureCoordsPtr
-  , _rawAssImpMeshNormalCoords    :: AssImpNormalCoords
-  , _rawAssImpMeshFaces           :: (Ptr CUInt, Int)
-  } deriving (Eq, Ord)
-
-getRawAssImpMesh :: AssImpMesh -> IO RawAssImpMesh
-getRawAssImpMesh ptr = do
+-- Layout:
+-- 0: Vertex
+-- 1: Texture channel 1
+-- 2: Normal
+-- 3+: remaining texture channels
+marshalAssImpMesh :: MeshPtr -> IO AssImpMesh
+marshalAssImpMesh ptr = do
   numV <- (\(CUInt x) -> x) <$> meshNumVertices ptr
-  numUV <- castPtr <$> meshNumUVComponents ptr
   vptr <- meshVertices ptr
   nptr <- meshNormals ptr
   tptrptr <- meshTextureCoords ptr
-  faces <- bufferFaces ptr
-  return $ RawAssImpMesh numV numUV vptr tptrptr nptr faces
+  (faceptr, faceNum) <- bufferFaces ptr
 
-{-
-data AssImpMesh2D = AssImpMesh2D
-  { _rawAssImpMesh2DVertexCoords    :: !(VS.Vector (L.V3 Float))
-  , _rawAssImpMesh2DTextureCoords   :: !(VS.Vector (L.V2 Float))
-  , _rawAssImpMesh2DNormalCoords    :: !(VS.Vector (L.V3 Float))
-  }
--}
+  vao <- genObjectName
+  let flags   = defaultBufferAttribFlags
+      m       = fromIntegral $ sizeOf (0 :: CFloat)
+      bufSize = fromIntegral $ 3 * m * numV
+      buffInit ptr_ = initBufferObject bufSize flags (castPtr ptr_)
 
-getSceneMeshes :: AssImpScene -> IO (Vector RawAssImpMesh)
-getSceneMeshes sc = do
+  vbuf <- buffInit vptr
+  nbuf <-buffInit nptr
+  tbufs <- flip V.unfoldrM 0 $ \i -> do
+    tptr <- peekElemOff tptrptr i
+    if tptr == nullPtr
+      then return Nothing
+      else buffInit tptr >>= (\x -> return $ Just (x, i+1))
+  ibuf <- initBufferObject (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) flags (castPtr faceptr)
+
+  let (mtbuf1,tbufrest) = maybe (Nothing, V.empty) (first Just) $ ClassyP.uncons tbufs
+      fullAttribInit loc_ buf_ = do
+        vertexArrayAttribCapability vao loc_ Enabled
+        vertexArrayAttribFormat vao loc_ 3 GLFloat NotNormalized 0
+        vertexArrayVertexBuffer vao loc_ buf_ 0 (fromIntegral $ 3 * sizeOf (0 :: CFloat))
+        vertexArrayAttribBinding vao loc_ loc_
+
+  fullAttribInit 0 vbuf
+  traverse_ (fullAttribInit 1) mtbuf1
+  fullAttribInit 2 nbuf
+  flip V.imapM_ tbufrest $ \i tbuf -> fullAttribInit (fromIntegral $ i+3) tbuf
+  bindElementBuffer vao ibuf
+
+  return AssImpMesh
+    { _assImpMeshVAO = vao
+    , _assImpMeshVertexBO = vbuf
+    , _assImpMeshTextureBO = tbufs
+    , _assImpMeshNormalBO = nbuf
+    , _assImpMeshIndexBO = ibuf
+    , _assImpMeshIndexBOType = UnsignedInt
+    , _assImpMeshIndexNum = fromIntegral faceNum
+    }
+
+marshalAssImpScene :: ScenePtr -> IO AssImpScene
+marshalAssImpScene sc = do
   numMeshes <- fromIntegral <$> sceneNumMeshes sc
   mptr <- sceneMeshes sc
-  V.generateM numMeshes $ peekElemOff mptr >=> getRawAssImpMesh
+  fmap AssImpScene $ V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh
 
--- Can probably interleave here, if I want.
--- Also, perhaps we can assume that the texture dimension is constant
--- across a mesh?
-getAssImpMesh2D :: RawAssImpMesh -> IO (VS.Vector AssImpVertex, VS.Vector Word32)
-getAssImpMesh2D RawAssImpMesh {..} = do
-  vfptr <- mallocForeignPtrArray vsize :: IO (ForeignPtr CFloat)
-  withForeignPtr vfptr $ \destptr ->
-    copyBytes destptr (castPtr _rawAssImpMeshVertexCoords) vsize
-  let vvec = VS.unsafeFromForeignPtr0 (castForeignPtr vfptr) n
-
-  nfptr <- mallocForeignPtrArray nsize :: IO (ForeignPtr CFloat)
-  withForeignPtr nfptr $ \destptr ->
-    copyBytes destptr (castPtr _rawAssImpMeshNormalCoords) nsize
-  let nvec = VS.unsafeFromForeignPtr0 (castForeignPtr nfptr) n
-
-  tptr <- peek _rawAssImpMeshTextureCoords
-  tvec <- VS.generateM n $ \i -> do
-    let m = sizeOf (0 :: Float)
-    x <- peekByteOff tptr $ 3*m*i   :: IO Float
-    y <- peekByteOff tptr $ m*(3*i+1) :: IO Float
-    return $ L.V2 x (1-y)
-
-  let (fptr, fnum) = _rawAssImpMeshFaces
-  ffptr <- newForeignPtr finalizerFree (castPtr fptr)
-  let ivec = VS.unsafeFromForeignPtr0 ffptr fnum
-  return (VS.zipWith3 AssImpVertex vvec tvec nvec, ivec)
-  where
-    n = fromIntegral _rawAssImpMeshNumVertices
-    vsize = fromIntegral $ 3 * n * sizeOf (0 :: CFloat)
-    nsize = fromIntegral $ 3 * n * sizeOf (0 :: CFloat)
-
-loadAssImpMeshes2D :: FilePath -> IO (Vector (VS.Vector AssImpVertex, VS.Vector Word32))
-loadAssImpMeshes2D =     importAssImpFileGood
-                     >=> getSceneMeshes
-                     >=> mapM getAssImpMesh2D
+loadAssImpScene :: MonadIO m => FilePath -> m AssImpScene
+loadAssImpScene = liftIO . (importAssImpFileGood >=> marshalAssImpScene)
