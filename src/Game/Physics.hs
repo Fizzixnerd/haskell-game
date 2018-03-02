@@ -19,11 +19,11 @@ type UpdateM m s a = forall b. (a -> m a) -> (s -> m b) -> (s -> m b)
 mkGetM :: Monad m => (s -> m a) -> GetM m s a
 mkGetM = (>=>)
 
-mkSetM :: Monad m => (s -> a -> m ()) -> SetM m s a
-mkSetM set_ obtain_ f s = (obtain_ s >>= set_ s) >> f s
+mkSetM :: Monad m => (s -> a -> m s) -> SetM m s a
+mkSetM set_ obtain_ f s = obtain_ s >>= set_ s >>= f
 
-mkUpdateM :: Monad m => (s -> m a) -> (s -> a -> m ()) -> UpdateM m s a
-mkUpdateM get_ set_ update_ f s = get_ s >>= update_ >>= set_ s >> f s
+mkUpdateM :: Monad m => (s -> m a) -> (s -> a -> m s) -> UpdateM m s a
+mkUpdateM get_ set_ update_ f s = get_ s >>= update_ >>= set_ s >>= f
 
 class ForeignObject a where
   type ForeignObjectConf a
