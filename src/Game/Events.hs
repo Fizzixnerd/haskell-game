@@ -14,7 +14,7 @@ import           Game.Entity.Player
 import           Game.Entity.Camera
 import qualified Physics.Bullet as P
 import           Graphics.Binding
-import qualified Linear                       as L
+import qualified Linear as L
 import qualified Sound.OpenAL as AL
 import           Game.Wires
 
@@ -81,8 +81,6 @@ jump = jmp <<< keySpace
 
 basicEventStream :: (Fractional a, HasTime t s) => GameWire s a (Event a)
 basicEventStream = periodic 4 . timeF
-
-
 
 mouseL :: GameWire s a a
 mouseL = N.mousePressed MouseButton'1

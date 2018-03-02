@@ -14,9 +14,9 @@ import qualified Physics.Bullet as P
 newPlayer :: MonadIO m => m (Player s)
 newPlayer = liftIO $ do
   pcgo :: P.PairCachingGhostObject <- P.new ()
-  startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
+  startXform <- P.new ((0, 0, 1, 0), (0, 0, 0))
   P.setIdentity startXform
-  P.setOrigin startXform 0 0 0
+  P.setOrigin startXform 0 10 4
   P.coSetWorldTransform pcgo startXform
   P.del startXform
 

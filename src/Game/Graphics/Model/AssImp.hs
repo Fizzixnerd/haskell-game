@@ -72,8 +72,6 @@ getAssImpMesh2D RawAssImpMesh {..} = do
     copyBytes destptr (castPtr _rawAssImpMeshVertexCoords) vsize
   let vvec = VS.unsafeFromForeignPtr0 (castForeignPtr vfptr) n
 
-  VS.forM_ vvec $ print . show
-
   nfptr <- mallocForeignPtrArray nsize :: IO (ForeignPtr CFloat)
   withForeignPtr nfptr $ \destptr ->
     copyBytes destptr (castPtr _rawAssImpMeshNormalCoords) nsize

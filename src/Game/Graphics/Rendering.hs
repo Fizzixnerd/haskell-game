@@ -2,19 +2,16 @@
 {-# LANGUAGE TypeFamilies #-}
 module Game.Graphics.Rendering where
 
-import Unsafe.Coerce
 import           ClassyPrelude
 import           Control.Lens
-import qualified Data.Vector.Storable         as VS
+import qualified Data.Vector.Storable as VS
 import           Foreign hiding (void)
 import           Foreign.C.Types
 import           Game.Types
 import           Graphics.Binding
-import           Game.Entity.Player
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
 import           Game.Entity.Camera
-import           Linear
 
 render :: MonadIO m
        => GameState s
