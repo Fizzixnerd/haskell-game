@@ -13,7 +13,6 @@ import qualified Data.ObjectName as ON
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW      as N
 import           Game.Types
-import           Game.Graphics.Model.ObjLoader
 import           Game.Graphics.Rendering
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
@@ -98,17 +97,17 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-  modelVec <- loadAssImpMeshes2D "res/models/Bayonetta 1/bayo_default.dae"
-  -- [(vao, _, ebuf)]
-  vaos <- forM modelVec $ \(objPoints, objIndices) -> do
-    --  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
-
-    let posLocation = AttribLocation 0
-        texLocation = AttribLocation 1
-        nmlLocation = AttribLocation 2
+  -- modelVec <- loadAssImpMeshes2D "res/models/Bayonetta 1/bayo_default.dae"
+  -- scene <- importAndProcessFileGood "res/models/Bayonetta 1/bayo_default.dae"
+  -- -- fromList [(vao, _, ebuf)] is what vaos looks like
+  -- vaos <- forM modelVec $ \(objPoints, objIndices) -> do
+  --   let posLocation = AttribLocation 0
+  --       texLocation = AttribLocation 1
+  --       nmlLocation = AttribLocation 2
     bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
+    tex <- loadPNGTexture "res/models/Bayonetta 1/" ++ 
 
-  tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
+
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
@@ -116,7 +115,9 @@ createTheCube = do
   let e = Entity
           { _entityChildren = empty
           , _entityGraphics = Just Gfx
-            { _gfxVaoData = (\(vao, _, ebuf) -> (vao, prog, Triangles, fromIntegral $ snd ebuf)) <$> vaos
+            { _gfxVaoData = (\(vao, _, ebuf) -> 
+                               (vao, prog, Triangles, fromIntegral $ snd ebuf)) <$>
+                            vaos
             , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
             , _gfxChildren = empty
             }
@@ -168,8 +169,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     AL.distanceModel $= AL.InverseDistance
     (physicsWorld, player, cam, _, _) <- setupPhysics
 
-    -- no need because we already add the entity.
-    -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
     ic <- N.mkInputControl win
     input <- liftIO $ N.getInput ic
     let sess = countSession_ 1
@@ -192,7 +191,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
           stepPhysicsWorld pw
 
         mainWires = fromList [ animationWire
-                             , (playerHorizontalMovement >>> movePlayer)
+                             , playerHorizontalMovement >>> movePlayer
                              , physicsWire
                              , close
                              , jump
