@@ -26,7 +26,7 @@ type AssImpNormalCoords     = Vector3DPtr
 type AssImpFaces            = FacePtr
 
 importAssImpFileGood :: FilePath -> IO AssImpScene
-importAssImpFileGood = flip importFile 0
+importAssImpFileGood = importAndProcessFileGood
 --importAssImpFileGood = importAndProcessFileFast
 
 data RawAssImpMesh = RawAssImpMesh
@@ -71,8 +71,6 @@ getAssImpMesh2D RawAssImpMesh {..} = do
   withForeignPtr vfptr $ \destptr ->
     copyBytes destptr (castPtr _rawAssImpMeshVertexCoords) vsize
   let vvec = VS.unsafeFromForeignPtr0 (castForeignPtr vfptr) n
-
-  VS.forM_ vvec $ print . show
 
   nfptr <- mallocForeignPtrArray nsize :: IO (ForeignPtr CFloat)
   withForeignPtr nfptr $ \destptr ->

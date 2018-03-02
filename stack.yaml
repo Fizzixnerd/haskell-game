@@ -23,13 +23,10 @@ resolver: lts-10.7
 packages:
   - ./lib/plugin
   - ./lib/bullet-hs
+  - ./lib/assimp-hs
   - ./lib/graphics-binding
   - ./lib/netwire-input-glfw
   - ./lib/foreign-objects
-  - ./lib/assimp-hs
-  - location:
-      git: https://github.com/Fizzixnerd/netwire-input-glfw
-      commit: HEAD
 # - some-directory
 # - https://example.com/foo/bar/baz-0.0.2.tar.gz
 # - location:
@@ -52,9 +49,9 @@ extra-deps:
 - linear-opengl-0.3.0.0
 - lib/plugin
 - lib/bullet-hs
+- lib/assimp-hs
 - lib/graphics-binding
 - lib/netwire-input-glfw
-- lib/assimp-hs
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

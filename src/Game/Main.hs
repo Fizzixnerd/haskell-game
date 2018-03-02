@@ -98,17 +98,17 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-  modelVec <- loadAssImpMeshes2D "res/models/simple-cube-2.obj"
-  let (objPoints, objIndices) = modelVec ^. ix 0
-  traceM $ show objIndices
---  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
+  modelVec <- loadAssImpMeshes2D "res/models/Bayonetta 1/bayo_default.dae"
+  -- [(vao, _, ebuf)]
+  vaos <- forM modelVec $ \(objPoints, objIndices) -> do
+    --  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
+
+    let posLocation = AttribLocation 0
+        texLocation = AttribLocation 1
+        nmlLocation = AttribLocation 2
+    bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
+
   tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
-
-  let posLocation = AttribLocation 0
-      texLocation = AttribLocation 1
-      nmlLocation = AttribLocation 2
-  (vao, _, ebuf) <- bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
-
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
@@ -116,7 +116,7 @@ createTheCube = do
   let e = Entity
           { _entityChildren = empty
           , _entityGraphics = Just Gfx
-            { _gfxVaoData = singleton (vao, prog, Triangles, fromIntegral $ snd ebuf)
+            { _gfxVaoData = (\(vao, _, ebuf) -> (vao, prog, Triangles, fromIntegral $ snd ebuf)) <$> vaos
             , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
             , _gfxChildren = empty
             }
@@ -126,9 +126,9 @@ createTheCube = do
             { _lfxScripts = fromList
               [ \cube_ -> return cube_
               , \cube_ -> do
-                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $
-                    \Entity {..} -> do
-                      setEntityLinearVelocity cube_ (L.V3 0 4 0)
+                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $ 
+                    \_ -> do
+                      setEntityLinearVelocity cube_ (L.V3 0 6 0)
                   return cube_
               ]
             }
