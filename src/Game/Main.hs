@@ -104,7 +104,7 @@ createTheModel = do
                                prog
                                Triangles
                                (_assImpMeshIndexNum aim)
-                               (TextureBundle (Just dif) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing))
+                               (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif))
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")

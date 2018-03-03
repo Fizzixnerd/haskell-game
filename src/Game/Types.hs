@@ -332,6 +332,9 @@ data TextureBundle s = TextureBundle
   , _textureBundleReflectionTexture   :: Maybe s
   } deriving (Eq, Ord, Show)
 
+emptyTextureBundle :: TextureBundle s
+emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+
 data VaoData = VaoData
   { _vaoDataVao            :: VertexArrayObject
   , _vaoDataProgram        :: Program
