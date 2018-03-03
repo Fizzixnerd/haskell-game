@@ -98,7 +98,7 @@ createTheCube = do
   prog <- compileShaders
   assImpScene@(AssImpScene meshes) <- loadAssImpScene "res/models/simple-cube-2.obj"
   let vaoData = flip ClassyP.map meshes $ \aim -> (_assImpMeshVAO aim, prog, Triangles, _assImpMeshIndexNum aim)
-  tex <- loadPNGTexture "res/models/Bayonetta 1/" ++ ""
+  tex <- loadPNGTexture ("res/models/Bayonetta 1/" ++ "")
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")

@@ -354,18 +354,6 @@ data Lfx s = Lfx
 newtype AssImpScene = AssImpScene
   { _assImpMeshes :: Vector AssImpMesh }
 
-{-
-data AssImpMesh' = AssImpMesh'
-  { _assImpMeshVAO         :: VertexArrayObject
-  , _assImpMeshVertexBO    :: BufferObject
-  , _assImpMeshTextureBO   :: Vector BufferObject
-  , _assImpMeshNormalBO    :: BufferObject
-  , _assImpMeshIndexBO     :: BufferObject
-  , _assImpMeshIndexBOType :: IndexType
-  , _assImpMeshIndexNum    :: Word32
-  }
--}
-
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
   , _assImpMeshBufferObject   :: BufferObject
