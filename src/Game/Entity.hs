@@ -97,15 +97,12 @@ entityLocalClosestRayCast e v cb = do
   dw <- use $ gameStatePhysicsWorld . physicsWorldDynamicsWorld
   entityCenter@(L.V3 fromx fromy fromz) <- getWorldPosition $ e ^. entityCollisionObject
   let (L.V3 tox toy toz) = entityCenter + v
-  crrc :: P.ClosestRayResultCallback <- liftIO $ P.new (((CFloat fromx), (CFloat fromy), (CFloat fromz)),
-                                                        ((CFloat tox), (CFloat toy), (CFloat toz)))
+  crrc :: P.ClosestRayResultCallback <- liftIO $ P.new ((CFloat fromx, CFloat fromy, CFloat fromz),
+                                                        (CFloat tox, CFloat toy, CFloat toz))
   liftIO $ P.rayTest dw (CFloat fromx) (CFloat fromy) (CFloat fromz)
     (CFloat tox) (CFloat toy) (CFloat toz) crrc
-  hasHit <- liftIO $ P.rrcHasHit crrc
-  if hasHit
-    then do
+  whenM (liftIO . P.rrcHasHit $ crrc) $ do
     co <- liftIO $ P.rrcGetHit crrc
     n <- liftIO $ P.getUserIndex co
     es <- use $ gameStatePhysicsWorld . physicsWorldEntities
     cb $ es `unsafeIndex` n
-    else return ()
