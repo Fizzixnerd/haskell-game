@@ -8,7 +8,9 @@ import Asset.AssImp.Types
 import Asset.AssImp.Import
 import Foreign.C.Types
 import Foreign.Storable
+import Foreign.ForeignPtr
 import Foreign.Ptr
+import Foreign.Marshal.Utils
 import Game.Types
 import Control.Lens
 import Graphics.Binding
@@ -27,10 +29,10 @@ importAssImpFileGood = importAndProcessFileGood
 -- 3+: remaining texture channels
 massageAssImpMesh :: MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32)
 massageAssImpMesh ptr = do
-  numV <- (\(CUInt x) -> x) <$> meshNumVertices ptr
-  numUVs <- castPtr <$> meshNumUVComponents ptr :: IO (Ptr Word32)
-  vptr <- castPtr <$> meshVertices ptr
-  nptr <- castPtr <$> meshNormals ptr
+  numV    <- (\(CUInt x) -> x) <$> meshNumVertices ptr
+  numUVs  <- castPtr <$> meshNumUVComponents ptr :: IO (Ptr Word32)
+  vptr    <- castPtr <$> meshVertices ptr
+  nptr    <- castPtr <$> meshNormals ptr
   tptrptr <- meshTextureCoords ptr
   (faceptr, faceNum) <- bufferFaces ptr
   uvs_ :: Vector Word32 <- flip V.unfoldrM 0 $ \i -> do
@@ -51,24 +53,21 @@ massageAssImpMesh ptr = do
       chunkLen = fromIntegral $ sum components
       totalLen = chunkLen * fromIntegral numV
 
-      getData n = if uv_ == 2 && offs_ == 1 -- FIXME: If textures are ever sane, remove this.
-                  then (\x -> 1-x) <$> peekElemOff ptr_ place
-                  else peekElemOff ptr_ place
-        where
-          (n', i) = n `divMod` fromIntegral chunkLen
-          indx    = subtract 1 . fromMaybe (error "Index out of range in assimp") $  V.findIndex (> fromIntegral i) offsets
-          ptr_    = V.unsafeIndex ptrs indx
-          offs_   = i - fromIntegral (V.unsafeIndex offsets indx)
-          uv_     = V.unsafeIndex components indx
-          place   = 3 * n' + fromIntegral offs_
-
-  vdata <- VS.generateM totalLen getData
+  mems <- mallocForeignPtrArray totalLen :: IO (ForeignPtr Float)
+  withForeignPtr mems $ \memptr ->
+    flip V.imapM_ ptrs $ \chunkIndex ptr_ ->
+      forM_ [0..(numV-1)] $ \n -> do
+        let componentNum = V.unsafeIndex components chunkIndex
+            destPtr = plusPtr memptr $ (chunkLen * fromIntegral n + chunkIndex) * sizeOf (0 :: CFloat)
+            srcPtr  = plusPtr ptr_ $ 3 * sizeOf (0 :: CFloat) * fromIntegral n
+        copyBytes destPtr srcPtr (fromIntegral componentNum * sizeOf (0 :: CFloat))
+  let vdata = VS.unsafeFromForeignPtr0 mems totalLen
   return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
   (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets) <- massageAssImpMesh ptr
-  let texOffsets' = flip map texOffsets $ \n -> sizeOf (0 :: CFloat) * fromIntegral (6+n)
+  let texOffsets' = V.map ((* sizeOf (0 :: CFloat)) . fromIntegral) texOffsets
 
   vao <- genObjectName
   let flags   = defaultBufferAttribFlags
@@ -84,9 +83,7 @@ marshalAssImpMesh sc ptr = do
       vertexArrayVertexBuffer vao loc_ vbuf offset_ (fromIntegral stride)
       vertexArrayAttribBinding vao loc_ loc_
 
-  fullAttribInit 0 3 0
-  fullAttribInit 1 3 (fromIntegral $ 3 * sizeOf (0 :: Float))
-  V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral $ i+2) (fromIntegral uv) (fromIntegral offset)) texData
+  V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral i) (fromIntegral uv) (fromIntegral offset)) texData
   bindElementBuffer vao ibuf
 
   mats <- sceneMaterials sc
