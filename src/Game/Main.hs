@@ -29,6 +29,8 @@ import qualified Sound.OpenAL.AL as AL
 import qualified Sound.ALUT as AL
 import           Game.Wires
 import           Game.Graphics.Model.AssImp
+import qualified Asset.AssImp.Types as AI
+import qualified Asset.AssImp.Import as AI
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -97,17 +99,15 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-  -- modelVec <- loadAssImpMeshes2D "res/models/Bayonetta 1/bayo_default.dae"
-  -- scene <- importAndProcessFileGood "res/models/Bayonetta 1/bayo_default.dae"
-  -- -- fromList [(vao, _, ebuf)] is what vaos looks like
-  -- vaos <- forM modelVec $ \(objPoints, objIndices) -> do
-  --   let posLocation = AttribLocation 0
-  --       texLocation = AttribLocation 1
-  --       nmlLocation = AttribLocation 2
+  modelVec <- loadAssImpMeshes2D "res/models/Bayonetta 1/bayo_default.dae"
+  -- fromList [(vao, _, ebuf)] is what vaos looks like
+  vaos <- forM modelVec $ \(objPoints, objIndices) -> do
+    let posLocation = AttribLocation 0
+        texLocation = AttribLocation 1
+        nmlLocation = AttribLocation 2
     bufferDataAssImp posLocation texLocation nmlLocation objPoints objIndices
-    tex <- loadPNGTexture "res/models/Bayonetta 1/" ++ 
 
-
+  tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ "clock.png"
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
