@@ -10,6 +10,7 @@ import Foreign.C.Types
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
+import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Game.Types
 import Graphics.Binding
@@ -20,21 +21,18 @@ import qualified Data.Vector.Storable as VS
 importAssImpFileGood :: FilePath -> IO ScenePtr
 importAssImpFileGood = importAndProcessFileGood
 
-rawInterleave :: (Storable a, Num a) => Int -> Vector (Ptr a) -> Vector Word32 -> Vector Word32 -> IO (VS.Vector a)
-rawInterleave numV ptrs componentSizes offsets = do
+rawInterleave :: (Storable a, Num a) => Int -> Int -> Int -> Vector (Ptr a, Word32, Word32) -> IO (VS.Vector a)
+rawInterleave numV chunkLen elemSize ptrData = do
   mems <- mallocForeignPtrArray totalLen
-  withForeignPtr mems $ \memptr ->
-    flip V.imapM_ ptrs $ \chunkIndex ptr_ ->
-      let compSize   = fromIntegral $ V.unsafeIndex componentSizes chunkIndex
-          elemOffset = fromIntegral $ V.unsafeIndex offsets chunkIndex
-      in forM_ [0..(compSize -1)] $ \componentIndex ->
-           forM_ [0..(numV-1)] $ \n -> do
-             x <- peekElemOff ptr_ (3 * n + componentIndex)
-             pokeElemOff memptr (chunkLen * n + componentIndex + elemOffset) x
+  withForeignPtr mems $
+    \memptr -> V.forM_ ptrData $
+    \(ptr_, compSize, elemOffset) -> forM_ [0..(numV-1)] $
+    \n -> let destPtr = plusPtr memptr $ elemSize * (chunkLen * n + fromIntegral elemOffset)
+              srcPtr  = plusPtr ptr_ $ elemSize * (3 * fromIntegral n)
+          in copyBytes destPtr srcPtr (fromIntegral compSize * fromIntegral elemSize)
 
   return $ VS.unsafeFromForeignPtr0 mems totalLen
   where
-    chunkLen = fromIntegral $ sum componentSizes :: Int
     totalLen = chunkLen * numV
 
 -- Layout:
@@ -59,9 +57,9 @@ massageAssImpMesh ptr = do
       (components, ptrs) = (fmap fst combined_, fmap snd combined_)
       offsets = V.prescanl' (+) 0 components
       chunkLen = fromIntegral $ sum components
-  vdata <- rawInterleave (fromIntegral numV) ptrs components offsets
+  vdata <- rawInterleave (fromIntegral numV) chunkLen (sizeOf (0 :: Float)) (V.zip3 ptrs components offsets)
 
-  return (vdata, chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
+  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
