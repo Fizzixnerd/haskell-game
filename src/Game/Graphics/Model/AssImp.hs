@@ -13,7 +13,8 @@ import Game.Types
 import Control.Lens
 import Graphics.Binding
 import Data.Maybe (fromJust)
-import qualified Data.Vector as V (generateM, imapM_, unfoldrM, prescanl, findIndex, zip)
+import Control.Monad (mfilter)
+import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 
 importAssImpFileGood :: FilePath -> IO ScenePtr
@@ -32,40 +33,37 @@ massageAssImpMesh ptr = do
   nptr <- castPtr <$> meshNormals ptr
   tptrptr <- meshTextureCoords ptr
   (faceptr, faceNum) <- bufferFaces ptr
-  uvs :: Vector Word32 <- flip V.unfoldrM 0 $ \i -> do
+  uvs_ :: Vector Word32 <- flip V.unfoldrM 0 $ \i -> do
     let uvptr = numUVs `plusPtr` (i * sizeOf (0 :: CUInt))
     nullB <- peek (castPtr uvptr) :: IO Char
     if nullB == '\0'
       then return Nothing
       else peek uvptr >>= (\x -> return $ Just (x, i+1))
-  tptrs <- V.generateM (length uvs) $ fmap castPtr . peekElemOff tptrptr
+  tptrs_ <- V.generateM (length uvs_) $ fmap castPtr . peekElemOff tptrptr
 
-  let chunkLen = fromIntegral $ sum uvs + 6
+  let insertAround x y v = V.cons x . V.cons (V.head v) . V.cons y $ V.tail v
+      (ptrs, components, offsets) = if null uvs_
+                                    then (V.fromList [vptr, nptr], V.fromList [3,3], V.fromList [0,3,6])
+                                    else let uvs_' = insertAround 3 3 uvs_
+                                         in ( insertAround vptr nptr tptrs_
+                                            , uvs_'
+                                            , V.scanl' (+) 0 uvs_')
+      chunkLen = fromIntegral $ sum components
       totalLen = chunkLen * fromIntegral numV
 
-      texOffsets = ClassyP.snoc (V.prescanl (+) 0 uvs) (fromIntegral $ chunkLen - 6)
-
-      tptrRange n = do
-        i    <- subtract 1 <$> V.findIndex (> n) texOffsets
-        tptr <- ClassyP.index tptrs i
-        offs <- ClassyP.index texOffsets i
-        uv   <- ClassyP.index uvs i
-        return (n-offs, tptr, uv)
-
-      getData n
-        | i < 3     = peekElemOff vptr (3 * n'+i)
-        | i < 6     = peekElemOff nptr (3 * n'+i-3)
-        | otherwise = fromJust (tptrRange (fromIntegral $ i-6)) & 
-                      (\(offs, tptr, uv) -> 
-                          if uv == 2 && offs == 1
-                          -- FIXME: If textures are ever sane, remove this.
-                          then (\x -> 1-x) <$> peekElemOff tptr (3*n' + fromIntegral offs)
-                          else peekElemOff tptr (3*n' + fromIntegral offs))
+      getData n = if uv_ == 2 && offs_ == 1 -- FIXME: If textures are ever sane, remove this.
+                  then (\x -> 1-x) <$> peekElemOff ptr_ place
+                  else peekElemOff ptr_ place
         where
-          (n', i) = n `divMod` chunkLen
+          (n', i) = n `divMod` fromIntegral chunkLen
+          indx    = subtract 1 . fromMaybe (error "Index out of range in assimp") $  V.findIndex (> fromIntegral i) offsets
+          ptr_    = V.unsafeIndex ptrs indx
+          offs_   = i - fromIntegral (V.unsafeIndex offsets indx)
+          uv_     = V.unsafeIndex components indx
+          place   = 3 * n' + fromIntegral offs_
 
   vdata <- VS.generateM totalLen getData
-  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, uvs, texOffsets)
+  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
@@ -96,60 +94,17 @@ marshalAssImpMesh sc ptr = do
 
   mat <- peekElemOff mats (fromIntegral idx)
 
-  -- FIXME: LOL MAKE THIS A FUNCTION, NIMROD!
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDiffuse 0
-  let diffuseName = if not $ null textureName_
-                    then Just textureName_
-                    else Nothing
-  traceM $ show diffuseName
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeSpecular 0
-  let specularName = if not $ null textureName_
-                     then Just textureName_
-                     else Nothing
-
-  traceM $ show specularName
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeAmbient 0
-  let ambientName = if not $ null textureName_
-                    then Just textureName_
-                    else Nothing
-  traceM $ show ambientName
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeEmmisive 0
-  let emmisiveName = if not $ null textureName_
-                     then Just textureName_
-                     else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeHeight 0
-  let heightName = if not $ null textureName_
-                   then Just textureName_
-                   else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeNormals 0
-  let normalName = if not $ null textureName_
-                   then Just textureName_
-                   else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeShininess 0
-  let shininessName = if not $ null textureName_
-                      then Just textureName_
-                      else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDisplacement 0
-  let displacementName = if not $ null textureName_
-                         then Just textureName_
-                         else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeLightMap 0
-  let lightMapName = if not $ null textureName_
-                     then Just textureName_
-                     else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeReflection 0
-  let reflectionName = if not $ null textureName_
-                       then Just textureName_
-                       else Nothing
+  let matTex = fmap (mfilter $ not . null) . materialTexture mat
+  diffuseName      <- matTex TextureTypeDiffuse
+  specularName     <- matTex TextureTypeSpecular
+  ambientName      <- matTex TextureTypeAmbient
+  emmisiveName     <- matTex TextureTypeEmmisive
+  heightName       <- matTex TextureTypeHeight
+  normalName       <- matTex TextureTypeNormals
+  shininessName    <- matTex TextureTypeShininess
+  displacementName <- matTex TextureTypeDisplacement
+  lightMapName     <- matTex TextureTypeLightMap
+  reflectionName   <- matTex TextureTypeReflection
 
   return AssImpMesh
     { _assImpMeshVAO             = vao
