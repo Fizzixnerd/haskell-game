@@ -13,6 +13,7 @@ import Game.Types
 import Control.Lens
 import Graphics.Binding
 import Data.Maybe (fromJust)
+import Control.Monad (mfilter)
 import qualified Data.Vector as V (generateM, imapM_, unfoldrM, prescanl, findIndex, zip)
 import qualified Data.Vector.Storable as VS
 
@@ -55,8 +56,8 @@ massageAssImpMesh ptr = do
       getData n
         | i < 3     = peekElemOff vptr (3 * n'+i)
         | i < 6     = peekElemOff nptr (3 * n'+i-3)
-        | otherwise = fromJust (tptrRange (fromIntegral $ i-6)) & 
-                      (\(offs, tptr, uv) -> 
+        | otherwise = fromJust (tptrRange (fromIntegral $ i-6)) &
+                      (\(offs, tptr, uv) ->
                           if uv == 2 && offs == 1
                           -- FIXME: If textures are ever sane, remove this.
                           then (\x -> 1-x) <$> peekElemOff tptr (3*n' + fromIntegral offs)
@@ -96,56 +97,17 @@ marshalAssImpMesh sc ptr = do
 
   mat <- peekElemOff mats (fromIntegral idx)
 
-  -- FIXME: LOL MAKE THIS A FUNCTION, NIMROD!
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDiffuse 0
-  let diffuseName = if not $ null textureName_
-                    then Just textureName_
-                    else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeSpecular 0
-  let specularName = if not $ null textureName_
-                     then Just textureName_
-                     else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeAmbient 0
-  let ambientName = if not $ null textureName_
-                    then Just textureName_
-                    else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeEmmisive 0
-  let emmisiveName = if not $ null textureName_
-                     then Just textureName_
-                     else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeHeight 0
-  let heightName = if not $ null textureName_
-                   then Just textureName_
-                   else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeNormals 0
-  let normalName = if not $ null textureName_
-                   then Just textureName_
-                   else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeShininess 0
-  let shininessName = if not $ null textureName_
-                      then Just textureName_
-                      else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDisplacement 0
-  let displacementName = if not $ null textureName_
-                         then Just textureName_
-                         else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeLightMap 0
-  let lightMapName = if not $ null textureName_
-                     then Just textureName_
-                     else Nothing
-
-  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeReflection 0
-  let reflectionName = if not $ null textureName_
-                       then Just textureName_
-                       else Nothing
+  let matTex = fmap (mfilter (not . null) . Just) . materialTexture mat
+  diffuseName      <- matTex TextureTypeDiffuse
+  specularName     <- matTex TextureTypeSpecular
+  ambientName      <- matTex TextureTypeAmbient
+  emmisiveName     <- matTex TextureTypeEmmisive
+  heightName       <- matTex TextureTypeHeight
+  normalName       <- matTex TextureTypeNormals
+  shininessName    <- matTex TextureTypeShininess
+  displacementName <- matTex TextureTypeDisplacement
+  lightMapName     <- matTex TextureTypeLightMap
+  reflectionname   <- matTex TextureTypeReflection
 
   return AssImpMesh
     { _assImpMeshVAO             = vao
