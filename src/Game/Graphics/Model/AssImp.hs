@@ -57,28 +57,28 @@ massageAssImpMesh ptr = do
       (components, ptrs) = (fmap fst combined_, fmap snd combined_)
       offsets = V.prescanl' (+) 0 components
       chunkLen = fromIntegral $ sum components
-  vdata <- rawInterleave (fromIntegral numV) chunkLen (sizeOf (0 :: Float)) (V.zip3 ptrs components offsets)
 
+  vdata <- rawInterleave (fromIntegral numV) chunkLen (sizeOf (0 :: Float)) (V.zip3 ptrs components offsets)
   return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
   (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets) <- massageAssImpMesh ptr
-  let texOffsets' = V.map ((* sizeOf (0 :: CFloat)) . fromIntegral) texOffsets
+
+  let texData = V.zip uvs . fmap ((* sizeOf (0 :: CFloat)) . fromIntegral) $ texOffsets
+      flags   = defaultBufferAttribFlags
+      buffInit size_ ptr_ = initBufferObject size_ flags (castPtr ptr_)
+      stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
 
   vao <- genObjectName
-  let flags   = defaultBufferAttribFlags
-      buffInit size_ ptr_ = initBufferObject size_ flags (castPtr ptr_)
   vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
-  let
-    stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
-    texData = V.zip uvs texOffsets'
-    fullAttribInit loc_ numComponents_ offset_ = do
-      vertexArrayAttribCapability vao loc_ Enabled
-      vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized 0
-      vertexArrayVertexBuffer vao loc_ vbuf offset_ (fromIntegral stride)
-      vertexArrayAttribBinding vao loc_ loc_
+
+  let fullAttribInit loc_ numComponents_ offset_ = do
+        vertexArrayAttribCapability vao loc_ Enabled
+        vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized 0
+        vertexArrayVertexBuffer vao loc_ vbuf offset_ (fromIntegral stride)
+        vertexArrayAttribBinding vao loc_ loc_
 
   V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral i) (fromIntegral uv) (fromIntegral offset)) texData
   bindElementBuffer vao ibuf
@@ -118,53 +118,7 @@ marshalAssImpMesh sc ptr = do
     , _assImpMeshLightMapTexture = lightMapName
     , _assImpMeshReflectionTexture = reflectionName
     }
-{-
-marshalAssImpMesh' :: MeshPtr -> IO AssImpMesh
-marshalAssImpMesh' ptr = do
-  numV <- (\(CUInt x) -> x) <$> meshNumVertices ptr
-  vptr <- meshVertices ptr
-  nptr <- meshNormals ptr
-  tptrptr <- meshTextureCoords ptr
-  (faceptr, faceNum) <- bufferFaces ptr
 
-  vao <- genObjectName
-  let flags   = defaultBufferAttribFlags
-      m       = fromIntegral $ sizeOf (0 :: CFloat)
-      bufSize = fromIntegral $ 3 * m * numV
-      buffInit ptr_ = initBufferObject bufSize flags (castPtr ptr_)
-
-  vbuf <- buffInit vptr
-  nbuf <-buffInit nptr
-  tbufs <- flip V.unfoldrM 0 $ \i -> do
-    tptr <- peekElemOff tptrptr i
-    if tptr == nullPtr
-      then return Nothing
-      else buffInit tptr >>= (\x -> return $ Just (x, i+1))
-  ibuf <- initBufferObject (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) flags (castPtr faceptr)
-
-  let (mtbuf1,tbufrest) = maybe (Nothing, V.empty) (first Just) $ ClassyP.uncons tbufs
-      fullAttribInit loc_ buf_ = do
-        vertexArrayAttribCapability vao loc_ Enabled
-        vertexArrayAttribFormat vao loc_ 3 GLFloat NotNormalized 0
-        vertexArrayVertexBuffer vao loc_ buf_ 0 (fromIntegral $ 3 * sizeOf (0 :: CFloat))
-        vertexArrayAttribBinding vao loc_ loc_
-
-  fullAttribInit 0 vbuf
-  traverse_ (fullAttribInit 1) mtbuf1
-  fullAttribInit 2 nbuf
-  flip V.imapM_ tbufrest $ \i tbuf -> fullAttribInit (fromIntegral $ i+3) tbuf
-  bindElementBuffer vao ibuf
-
-  return AssImpMesh
-    { _assImpMeshVAO = vao
-    , _assImpMeshVertexBO = vbuf
-    , _assImpMeshTextureBO = tbufs
-    , _assImpMeshNormalBO = nbuf
-    , _assImpMeshIndexBO = ibuf
-    , _assImpMeshIndexBOType = UnsignedInt
-    , _assImpMeshIndexNum = fromIntegral faceNum
-    }
--}
 marshalAssImpScene :: ScenePtr -> IO AssImpScene
 marshalAssImpScene sc = do
   numMeshes <- fromIntegral <$> sceneNumMeshes sc
