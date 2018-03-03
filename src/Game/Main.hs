@@ -60,14 +60,14 @@ setupPhysics = do
   pl' <- newPlayer
   let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
   go <- P.getGhostObject $ pl ^. playerController
-  cam <- newCamera go 4
+  cam <- newCamera go 2
   cameraLookAtTarget cam
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
   withCameraTransform cam
     (\t -> do
         P.setIdentity t
-        P.setOrigin t 0 0 (-5)
+        P.setOrigin t 0 (-2) (-5)
         setCameraTransform cam t)
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
