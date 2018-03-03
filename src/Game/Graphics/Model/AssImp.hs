@@ -60,13 +60,8 @@ massageAssImpMesh ptr = do
           offs_   = i - fromIntegral (V.unsafeIndex offsets indx)
           uv_     = V.unsafeIndex components indx
           place   = 3 * n' + fromIntegral offs_
-  traceM $ show components
-  traceM $ show offsets
-  traceM $ show chunkLen
-  traceM $ show totalLen
 
   vdata <- VS.generateM totalLen getData
-  traceM $ show vdata
   return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
