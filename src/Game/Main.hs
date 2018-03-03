@@ -6,31 +6,31 @@
 
 module Game.Main where
 
+import qualified Asset.AssImp.Import as AI
+import qualified Asset.AssImp.Types as AI
 import           ClassyPrelude as ClassyP
 import           Control.Lens
 import           Control.Wire.Core
+import           Data.Maybe
 import qualified Data.ObjectName as ON
 import           FRP.Netwire
-import qualified FRP.Netwire.Input.GLFW      as N
-import           Game.Types
+import qualified FRP.Netwire.Input.GLFW as N
+import           Game.Entity
+import           Game.Entity.Camera
+import           Game.Entity.GiantFeaturelessPlane
+import           Game.Entity.Player
+import           Game.Events
+import           Game.Graphics.Model.AssImp
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
-import           Game.Events
-import           Game.World.Physics
-import           Game.Entity.Camera
-import           Game.Entity.Player
-import           Game.Entity.GiantFeaturelessPlane
-import           Game.Entity
-import           Graphics.Binding
-import           Linear                      as L
-import qualified Physics.Bullet as P
-import qualified Sound.OpenAL.AL as AL
-import qualified Sound.ALUT as AL
+import           Game.Types
 import           Game.Wires
-import           Game.Graphics.Model.AssImp
-import qualified Asset.AssImp.Types as AI
-import qualified Asset.AssImp.Import as AI
-import Data.Maybe
+import           Game.World.Physics
+import           Graphics.Binding
+import           Linear as L
+import qualified Physics.Bullet as P
+import qualified Sound.ALUT as AL
+import qualified Sound.OpenAL.AL as AL
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -84,15 +84,15 @@ setupPhysics = do
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw'''', pl, cam, theCubeE, theCubeRB)
 
-createTheCube :: IO (Entity s, P.RigidBody)
-createTheCube = do
-  cube <- P.newBoxShape 0.5 0.5 0.5
+createTheModel :: IO (Entity s, P.RigidBody)
+createTheModel = do
+  model <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
   P.setOrigin startXform 0 1 0
   -- Don't delete the ms!!  See below.
   ms <- P.new startXform
-  rbci <- P.newRigidBodyConstructionInfo 1 ms cube 0 1 0
+  rbci <- P.newRigidBodyConstructionInfo 1 ms model 0 1 0
   -- The MotionState ms now belongs to the cube.
   rb   <- P.newRigidBody rbci
   P.del startXform
@@ -101,7 +101,9 @@ createTheCube = do
   prog <- compileShaders
   (AssImpScene meshes) <- loadAssImpScene "res/models/Bayonetta 1/bayo_default.dae"
   vaoData <- forM meshes (\aim -> do 
-                             tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ (maybe "clock.png" id $ _assImpMeshMaterialTexture aim)
+                             tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ 
+                               -- FIXME: Hack of the century.
+                               (maybe "clock.png" id $ _assImpMeshMaterialTexture aim)
                              return $ ( _assImpMeshVAO aim
                                       , prog
                                       , Triangles
