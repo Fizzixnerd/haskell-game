@@ -10,9 +10,7 @@ import Foreign.C.Types
 import Foreign.Storable
 import Foreign.Ptr
 import Game.Types
-import Control.Lens
 import Graphics.Binding
-import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 
@@ -97,7 +95,7 @@ marshalAssImpMesh sc ptr = do
   let textureName = if not $ null textureName_
                     then Just textureName_
                     else Nothing
-    
+
   return AssImpMesh
     { _assImpMeshVAO             = vao
     , _assImpMeshBufferObject    = vbuf
