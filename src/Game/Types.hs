@@ -354,7 +354,8 @@ data Lfx s = Lfx
 newtype AssImpScene = AssImpScene
   { _assImpMeshes :: Vector AssImpMesh }
 
-data AssImpMesh = AssImpMesh
+{-
+data AssImpMesh' = AssImpMesh'
   { _assImpMeshVAO         :: VertexArrayObject
   , _assImpMeshVertexBO    :: BufferObject
   , _assImpMeshTextureBO   :: Vector BufferObject
@@ -362,6 +363,16 @@ data AssImpMesh = AssImpMesh
   , _assImpMeshIndexBO     :: BufferObject
   , _assImpMeshIndexBOType :: IndexType
   , _assImpMeshIndexNum    :: Word32
+  }
+-}
+
+data AssImpMesh = AssImpMesh
+  { _assImpMeshVAO            :: VertexArrayObject
+  , _assImpMeshBufferObject   :: BufferObject
+  , _assImpMeshTextureDetails :: Vector Word32
+  , _assImpMeshIndexBO        :: BufferObject
+  , _assImpMeshIndexBOType    :: IndexType
+  , _assImpMeshIndexNum       :: Word32
   }
 
 mconcat <$> mapM makeLenses
