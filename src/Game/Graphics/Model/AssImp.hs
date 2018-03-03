@@ -10,17 +10,44 @@ import Foreign.C.Types
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Ptr
-import Foreign.Marshal.Utils
 import Game.Types
-import Control.Lens
 import Graphics.Binding
-import Data.Maybe (fromJust)
 import Control.Monad (mfilter)
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 
 importAssImpFileGood :: FilePath -> IO ScenePtr
 importAssImpFileGood = importAndProcessFileGood
+
+rawInterleave :: (Storable a, Num a) => Int -> Vector (Ptr a) -> Vector Word32 -> Vector Word32 -> IO (VS.Vector a)
+rawInterleave numV ptrs componentSizes offsets = do
+  mems <- mallocForeignPtrArray totalLen
+  withForeignPtr mems $ \memptr ->
+    flip V.imapM_ ptrs $ \chunkIndex ptr_ ->
+      let compSize   = fromIntegral $ V.unsafeIndex componentSizes chunkIndex
+          elemOffset = fromIntegral $ V.unsafeIndex offsets chunkIndex
+      in forM_ [0..(compSize -1)] $ \componentIndex ->
+           -- FIXME: If textures are ever sane, remove this.
+           if compSize == 2 && componentIndex == 1
+           then forM_ [0..(numV-1)] $ \n -> do
+             x <- peekElemOff ptr_ (3 * n + componentIndex)
+             pokeElemOff memptr (chunkLen * n + componentIndex + elemOffset) x
+           else forM_ [0..(numV-1)] $ \n -> do
+             x <- peekElemOff ptr_ (3 * n + componentIndex)
+             pokeElemOff memptr (chunkLen * n + componentIndex + elemOffset) (1-x)
+
+  return $ VS.unsafeFromForeignPtr0 mems totalLen
+  where
+    chunkLen = fromIntegral $ sum componentSizes :: Int
+    totalLen = chunkLen * numV
+
+pokeNullTerminatedArrayBytes :: Storable a => Int -> Ptr a -> IO (Vector a)
+pokeNullTerminatedArrayBytes size ptr = flip V.unfoldrM 0 $ \i -> do
+  let movedPtr = ptr `plusPtr` (i * size)
+  nullB <- peek (castPtr movedPtr) :: IO Char
+  if nullB == '\0'
+    then return Nothing
+    else peek movedPtr >>= (\x -> return $ Just (x, i+1))
 
 -- Layout:
 -- 0: Vertex
@@ -31,16 +58,11 @@ massageAssImpMesh :: MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32,
 massageAssImpMesh ptr = do
   numV    <- (\(CUInt x) -> x) <$> meshNumVertices ptr
   numUVs  <- castPtr <$> meshNumUVComponents ptr :: IO (Ptr Word32)
-  vptr    <- castPtr <$> meshVertices ptr
+  vptr    <- castPtr <$> meshVertices ptr :: IO (Ptr Float)
   nptr    <- castPtr <$> meshNormals ptr
   tptrptr <- meshTextureCoords ptr
   (faceptr, faceNum) <- bufferFaces ptr
-  uvs_ :: Vector Word32 <- flip V.unfoldrM 0 $ \i -> do
-    let uvptr = numUVs `plusPtr` (i * sizeOf (0 :: CUInt))
-    nullB <- peek (castPtr uvptr) :: IO Char
-    if nullB == '\0'
-      then return Nothing
-      else peek uvptr >>= (\x -> return $ Just (x, i+1))
+  uvs_ <- pokeNullTerminatedArrayBytes (sizeOf (0 :: CUInt)) numUVs
   tptrs_ <- V.generateM (length uvs_) $ fmap castPtr . peekElemOff tptrptr
 
   let insertAround x y v = V.cons x . V.cons (V.head v) . V.cons y $ V.tail v
@@ -51,22 +73,14 @@ massageAssImpMesh ptr = do
                                             , uvs_'
                                             , V.scanl' (+) 0 uvs_')
       chunkLen = fromIntegral $ sum components
-      totalLen = chunkLen * fromIntegral numV
+  vdata <- rawInterleave (fromIntegral numV) ptrs components offsets
 
-  mems <- mallocForeignPtrArray totalLen :: IO (ForeignPtr Float)
-  withForeignPtr mems $ \memptr ->
-    flip V.imapM_ ptrs $ \chunkIndex ptr_ ->
-      forM_ [0..(numV-1)] $ \n -> do
-        let componentNum = V.unsafeIndex components chunkIndex
-            destPtr = plusPtr memptr $ (chunkLen * fromIntegral n + chunkIndex) * sizeOf (0 :: CFloat)
-            srcPtr  = plusPtr ptr_ $ 3 * sizeOf (0 :: CFloat) * fromIntegral n
-        copyBytes destPtr srcPtr (fromIntegral componentNum * sizeOf (0 :: CFloat))
-  let vdata = VS.unsafeFromForeignPtr0 mems totalLen
-  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
+  return (vdata, chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
   (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets) <- massageAssImpMesh ptr
+  traceM $ show uvs
   let texOffsets' = V.map ((* sizeOf (0 :: CFloat)) . fromIntegral) texOffsets
 
   vao <- genObjectName
