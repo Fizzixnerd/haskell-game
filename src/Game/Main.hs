@@ -6,12 +6,9 @@
 
 module Game.Main where
 
-import qualified Asset.AssImp.Import as AI
-import qualified Asset.AssImp.Types as AI
 import           ClassyPrelude as ClassyP
 import           Control.Lens
 import           Control.Wire.Core
-import           Data.Maybe
 import qualified Data.ObjectName as ON
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW as N
@@ -30,7 +27,6 @@ import           Graphics.Binding
 import           Linear as L
 import qualified Physics.Bullet as P
 import qualified Sound.ALUT as AL
-import qualified Sound.OpenAL.AL as AL
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -62,10 +58,10 @@ doGame initGS = void $ runGame initGS go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
-  (theCubeE, theCubeRB) <- createTheCube
+  (theModelE, theModelRB) <- createTheModel
   pw <- newPhysicsWorld
   pl' <- newPlayer
-  let pl = pl' & playerEntity . entityGraphics .~ (theCubeE ^. entityGraphics)
+  let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
   go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 4
   cameraLookAtTarget cam
@@ -79,10 +75,10 @@ setupPhysics = do
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
-  pw'''' <- addEntityToPhysicsWorld theCubeE pw'''
+  pw'''' <- addEntityToPhysicsWorld theModelE pw'''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw''''
   P.kccSetGravity (cam ^. cameraController) 0 0 0
-  return (pw'''', pl, cam, theCubeE, theCubeRB)
+  return (pw'''', pl, cam, theModelE, theModelRB)
 
 createTheModel :: IO (Entity s, P.RigidBody)
 createTheModel = do
