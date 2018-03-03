@@ -95,11 +95,58 @@ marshalAssImpMesh sc ptr = do
   idx <- meshMaterialIndex ptr
 
   mat <- peekElemOff mats (fromIntegral idx)
+
+  -- FIXME: LOL MAKE THIS A FUNCTION, NIMROD!
   (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDiffuse 0
-  let textureName = if not $ null textureName_
+  let diffuseName = if not $ null textureName_
                     then Just textureName_
                     else Nothing
-    
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeSpecular 0
+  let specularName = if not $ null textureName_
+                     then Just textureName_
+                     else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeAmbient 0
+  let ambientName = if not $ null textureName_
+                    then Just textureName_
+                    else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeEmmisive 0
+  let emmisiveName = if not $ null textureName_
+                     then Just textureName_
+                     else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeHeight 0
+  let heightName = if not $ null textureName_
+                   then Just textureName_
+                   else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeNormals 0
+  let normalName = if not $ null textureName_
+                   then Just textureName_
+                   else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeShininess 0
+  let shininessName = if not $ null textureName_
+                      then Just textureName_
+                      else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDisplacement 0
+  let displacementName = if not $ null textureName_
+                         then Just textureName_
+                         else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeLightMap 0
+  let lightMapName = if not $ null textureName_
+                     then Just textureName_
+                     else Nothing
+
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeReflection 0
+  let reflectionName = if not $ null textureName_
+                       then Just textureName_
+                       else Nothing
+
   return AssImpMesh
     { _assImpMeshVAO             = vao
     , _assImpMeshBufferObject    = vbuf
@@ -107,7 +154,16 @@ marshalAssImpMesh sc ptr = do
     , _assImpMeshIndexBO         = ibuf
     , _assImpMeshIndexBOType     = UnsignedInt
     , _assImpMeshIndexNum        = faceNum
-    , _assImpMeshMaterialTexture = textureName
+    , _assImpMeshDiffuseTexture  = diffuseName
+    , _assImpMeshSpecularTexture = specularName
+    , _assImpMeshAmbientTexture  = ambientName
+    , _assImpMeshEmmisiveTexture = emmisiveName
+    , _assImpMeshHeightTexture   = heightName
+    , _assImpMeshNormalTexture   = normalName
+    , _assImpMeshShininessTexture = shininessName
+    , _assImpMeshDisplacementTexture = displacementName
+    , _assImpMeshLightMapTexture = lightMapName
+    , _assImpMeshReflectionTexture = reflectionName
     }
 {-
 marshalAssImpMesh' :: MeshPtr -> IO AssImpMesh

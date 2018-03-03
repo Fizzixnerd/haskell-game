@@ -50,9 +50,8 @@ doGame initGS = void $ runGame initGS go
       _ <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
-      flip unlessM go $ use gameStateShouldClose
---      gssc <- use gameStateShouldClose
---      ClassyP.unless gssc go
+      unlessM (use gameStateShouldClose) $
+        go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
@@ -93,20 +92,20 @@ createTheModel = do
   P.del rbci
 
   prog <- compileShaders
-  let modelRoot = "res/models/Bayonetta 1/"
+  let modelRoot = "res" </> "models" </> "Bayonetta 1"
       modelName = "bayo_default.dae"
-      defaultTexture = "res/models/no_texture.png"
+      defaultTexture = "res" </> "models" </> "no_texture.png"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes (\aim -> do 
-                             tex <- loadPNGTexture $ 
-                                    maybe defaultTexture (\x -> modelRoot </> x) $
-                                    _assImpMeshMaterialTexture aim
+                             dif <- loadPNGTexture $ 
+                                    maybe defaultTexture (modelRoot </>) $
+                                    _assImpMeshDiffuseTexture aim
                              return $ VaoData
                                (_assImpMeshVAO aim)
                                prog
                                Triangles
                                (_assImpMeshIndexNum aim)
-                               (Just tex)
+                               (Just dif)
                                Nothing
                                Nothing
                                Nothing
@@ -119,7 +118,7 @@ createTheModel = do
                                Nothing)
 
   src :: AL.Source <- ON.genObjectName
-  sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
+  sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")
   AL.buffer src $= Just sbuf
 
   let e = Entity
@@ -132,11 +131,9 @@ createTheModel = do
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
             { _lfxScripts = fromList
-              [ \model_ -> return model_
-              , \model_ -> do
+              [ \model_ -> do
                   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
-                    \_ -> do
-                      setEntityLinearVelocity model_ (L.V3 0 6 0)
+                    const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
                   return model_
               ]
             }

@@ -371,13 +371,22 @@ data AssImpMesh' = AssImpMesh'
 -}
 
 data AssImpMesh = AssImpMesh
-  { _assImpMeshVAO             :: VertexArrayObject
-  , _assImpMeshBufferObject    :: BufferObject
-  , _assImpMeshTextureDetails  :: Vector Word32
-  , _assImpMeshIndexBO         :: BufferObject
-  , _assImpMeshIndexBOType     :: IndexType
-  , _assImpMeshIndexNum        :: Word32
-  , _assImpMeshMaterialTexture :: Maybe FilePath
+  { _assImpMeshVAO              :: VertexArrayObject
+  , _assImpMeshBufferObject     :: BufferObject
+  , _assImpMeshTextureDetails   :: Vector Word32
+  , _assImpMeshIndexBO          :: BufferObject
+  , _assImpMeshIndexBOType      :: IndexType
+  , _assImpMeshIndexNum         :: Word32
+  , _assImpMeshDiffuseTexture   :: Maybe FilePath
+  , _assImpMeshSpecularTexture  :: Maybe FilePath
+  , _assImpMeshAmbientTexture   :: Maybe FilePath
+  , _assImpMeshEmmisiveTexture  :: Maybe FilePath
+  , _assImpMeshHeightTexture    :: Maybe FilePath
+  , _assImpMeshNormalTexture    :: Maybe FilePath
+  , _assImpMeshShininessTexture :: Maybe FilePath
+  , _assImpMeshDisplacementTexture :: Maybe FilePath
+  , _assImpMeshLightMapTexture  :: Maybe FilePath
+  , _assImpMeshReflectionTexture :: Maybe FilePath
   }
 
 mconcat <$> mapM makeLenses
