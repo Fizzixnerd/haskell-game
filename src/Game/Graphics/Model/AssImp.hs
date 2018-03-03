@@ -101,16 +101,20 @@ marshalAssImpMesh sc ptr = do
   let diffuseName = if not $ null textureName_
                     then Just textureName_
                     else Nothing
+  traceM $ show diffuseName
 
   (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeSpecular 0
   let specularName = if not $ null textureName_
                      then Just textureName_
                      else Nothing
 
+  traceM $ show specularName
+
   (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeAmbient 0
   let ambientName = if not $ null textureName_
                     then Just textureName_
                     else Nothing
+  traceM $ show ambientName
 
   (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeEmmisive 0
   let emmisiveName = if not $ null textureName_
