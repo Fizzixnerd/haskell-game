@@ -97,12 +97,9 @@ createTheCube = do
 
   prog <- compileShaders
   assImpScene@(AssImpScene meshes) <- loadAssImpScene "res/models/simple-cube-2.obj"
-  -- [(vao, _, ebuf)]
   let vaoData = flip ClassyP.map meshes $ \aim -> (_assImpMeshVAO aim, prog, Triangles, _assImpMeshIndexNum aim)
+  tex <- loadPNGTexture "res/models/Bayonetta 1/" ++ ""
 
-    --  (objPoints', objIndices') <- loadObjVTN "res/models/simple-cube-2.obj"
-
-  tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
@@ -162,8 +159,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
     AL.distanceModel $= AL.InverseDistance
     (physicsWorld, player, cam, _, _) <- setupPhysics
 
-    -- no need because we already add the entity.
-    -- physicsWorld <- addRigidBodyToPhysicsWorld theCubeRB physicsWorld'
     ic <- N.mkInputControl win
     input <- liftIO $ N.getInput ic
     let sess = countSession_ 1
