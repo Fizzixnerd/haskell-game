@@ -55,9 +55,12 @@ massageAssImpMesh ptr = do
       getData n
         | i < 3     = peekElemOff vptr (3 * n'+i)
         | i < 6     = peekElemOff nptr (3 * n'+i-3)
-        | otherwise = fromJust (tptrRange (fromIntegral $ i-6)) & (\(offs, tptr, uv) -> if uv == 2 && offs == 1
-                                                                                        then (\x -> 1-x) <$> peekElemOff tptr (3*n' + fromIntegral offs) -- If textures are ever sane, remove this
-                                                                                        else peekElemOff tptr (3*n' + fromIntegral offs))
+        | otherwise = fromJust (tptrRange (fromIntegral $ i-6)) & 
+                      (\(offs, tptr, uv) -> 
+                          if uv == 2 && offs == 1
+                          -- FIXME: If textures are ever sane, remove this.
+                          then (\x -> 1-x) <$> peekElemOff tptr (3*n' + fromIntegral offs)
+                          else peekElemOff tptr (3*n' + fromIntegral offs))
         where
           (n', i) = n `divMod` chunkLen
 
@@ -89,7 +92,6 @@ marshalAssImpMesh sc ptr = do
   bindElementBuffer vao ibuf
 
   mats <- sceneMaterials sc
-  nMats <- sceneNumMaterials sc
   idx <- meshMaterialIndex ptr
 
   mat <- peekElemOff mats (fromIntegral idx)

@@ -54,9 +54,79 @@ loadPNGTexture fp = liftIO $ do
       return tobj
     
 
-data Simple2DSampler = Simple2DSampler deriving (Eq, Ord, Show)
+data Diffuse2DSampler = Diffuse2DSampler deriving (Eq, Ord, Show)
 
-instance TextureSampler Simple2DSampler where
-  type TextureSamplerTarget Simple2DSampler = TextureTarget2D
-  type TextureSamplerType   Simple2DSampler = 'SamplerFloat
+instance TextureSampler Diffuse2DSampler where
+  type TextureSamplerTarget Diffuse2DSampler = TextureTarget2D
+  type TextureSamplerType   Diffuse2DSampler = 'SamplerFloat
   texture tex _ = primTextureUnitBind tex 0
+
+data Specular2DSampler = Specular2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Specular2DSampler where
+  type TextureSamplerTarget Specular2DSampler = TextureTarget2D
+  type TextureSamplerType   Specular2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 1
+
+data Ambient2DSampler = Ambient2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Ambient2DSampler where
+  type TextureSamplerTarget Ambient2DSampler = TextureTarget2D
+  type TextureSamplerType   Ambient2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 2
+
+data Emmisive2DSampler = Emmisive2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Emmisive2DSampler where
+  type TextureSamplerTarget Emmisive2DSampler = TextureTarget2D
+  type TextureSamplerType   Emmisive2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 3
+
+data Height2DSampler = Height2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Height2DSampler where
+  type TextureSamplerTarget Height2DSampler = TextureTarget2D
+  type TextureSamplerType   Height2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 4
+
+data Normal2DSampler = Normal2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Normal2DSampler where
+  type TextureSamplerTarget Normal2DSampler = TextureTarget2D
+  type TextureSamplerType   Normal2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 5
+
+data Shininess2DSampler = Shininess2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Shininess2DSampler where
+  type TextureSamplerTarget Shininess2DSampler = TextureTarget2D
+  type TextureSamplerType   Shininess2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 6
+
+data Opacity2DSampler = Opacity2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Opacity2DSampler where
+  type TextureSamplerTarget Opacity2DSampler = TextureTarget2D
+  type TextureSamplerType   Opacity2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 7
+
+data Displacement2DSampler = Displacement2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Displacement2DSampler where
+  type TextureSamplerTarget Displacement2DSampler = TextureTarget2D
+  type TextureSamplerType   Displacement2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 8
+
+data LightMap2DSampler = LightMap2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler LightMap2DSampler where
+  type TextureSamplerTarget LightMap2DSampler = TextureTarget2D
+  type TextureSamplerType   LightMap2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 9
+
+data Reflection2DSampler = Reflection2DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler Reflection2DSampler where
+  type TextureSamplerTarget Reflection2DSampler = TextureTarget2D
+  type TextureSamplerType   Reflection2DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 10

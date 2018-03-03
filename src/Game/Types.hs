@@ -34,7 +34,6 @@ import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
 import           Foreign.Storable
-import           Game.Graphics.Texture.Loader
 import           Graphics.Binding
 import qualified Linear                       as L
 import qualified Physics.Bullet               as P
@@ -319,27 +318,28 @@ data Entity s = Entity
   , _entityRigidBody       :: Maybe RigidBody
   }
 
--- | When an `Entity' is loaded, its graphics data is stored here.
--- Note that `gfxWire' is constructed from a `GameWire s (Gfx s) ()'.
--- It is then combined with `arr (const <this Gfx s>)' to create the
--- final `Wire' seen below, which is more flexible.  This means the
--- `Wire' actually has speedy access to the `Gfx' object.
-
-data GfxTexture = GfxTexture
-  { _gfxTexture1D  :: ()
-  , _gfxTexture2D  :: Maybe (Simple2DSampler, TextureObject TextureTarget2D)
-  , _gfxTexture3D  :: ()
+data VaoData = VaoData
+  { _vaoDataVao                 :: VertexArrayObject
+  , _vaoDataProgram             :: Program
+  , _vaoDataPrimitiveMode       :: PrimitiveMode
+  , _vaoDataNumElements         :: Word32
+  , _vaoDataDiffuseTexture      :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataSpecularTexture     :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataAmbientTexture      :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataEmmisiveTexture     :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataHeightTexture       :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataNormalTexture       :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataShininessTexture    :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataOpacityTexture      :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataDisplacementTexture :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataLightMapTexture     :: Maybe (TextureObject TextureTarget2D)
+  , _vaoDataReflectionTexture   :: Maybe (TextureObject TextureTarget2D)
   } deriving (Eq, Ord, Show)
 
 data Gfx s = Gfx
-  { _gfxVaoData     :: Vector ( VertexArrayObject
-                              , Program
-                              , PrimitiveMode
-                              , Word32
-                              , Simple2DSampler
-                              , TextureObject TextureTarget2D)
-  , _gfxChildren    :: Vector (Gfx s)
-  }
+  { _gfxVaoData  :: Vector VaoData
+  , _gfxChildren :: Vector (Gfx s)
+  } deriving (Eq, Ord, Show)
 
 newtype CollisionObject = CollisionObject { _unCollisionObject :: P.CollisionObject }
 newtype RigidBody       = RigidBody       { _unRigidBody       :: P.RigidBody       }
@@ -387,7 +387,6 @@ mconcat <$> mapM makeLenses
   , ''ExpandObjVTN
   , ''Game
   , ''GameState
-  , ''GfxTexture
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
@@ -405,4 +404,5 @@ mconcat <$> mapM makeLenses
   , ''AssImpVertex
   , ''AssImpScene
   , ''AssImpMesh
+  , ''VaoData
   ]

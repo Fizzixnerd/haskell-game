@@ -1,8 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Game.Main where
 
@@ -95,17 +93,30 @@ createTheModel = do
   P.del rbci
 
   prog <- compileShaders
-  (AssImpScene meshes) <- loadAssImpScene "res/models/Bayonetta 1/bayo_default.dae"
+  let modelRoot = "res/models/Bayonetta 1/"
+      modelName = "bayo_default.dae"
+      defaultTexture = "res/models/no_texture.png"
+  (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes (\aim -> do 
-                             tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ 
-                               -- FIXME: Hack of the century.
-                               (maybe "clock.png" id $ _assImpMeshMaterialTexture aim)
-                             return $ ( _assImpMeshVAO aim
-                                      , prog
-                                      , Triangles
-                                      , _assImpMeshIndexNum aim
-                                      , Simple2DSampler
-                                      , tex))
+                             tex <- loadPNGTexture $ 
+                                    maybe defaultTexture (\x -> modelRoot </> x) $
+                                    _assImpMeshMaterialTexture aim
+                             return $ VaoData
+                               (_assImpMeshVAO aim)
+                               prog
+                               Triangles
+                               (_assImpMeshIndexNum aim)
+                               (Just tex)
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing
+                               Nothing)
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
@@ -121,12 +132,12 @@ createTheModel = do
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
             { _lfxScripts = fromList
-              [ \cube_ -> return cube_
-              , \cube_ -> do
-                  entityLocalClosestRayCast cube_ (L.V3 0 (-2) 0) $
+              [ \model_ -> return model_
+              , \model_ -> do
+                  entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
                     \_ -> do
-                      setEntityLinearVelocity cube_ (L.V3 0 6 0)
-                  return cube_
+                      setEntityLinearVelocity model_ (L.V3 0 6 0)
+                  return model_
               ]
             }
           , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
