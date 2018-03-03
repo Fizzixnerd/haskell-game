@@ -16,7 +16,7 @@ newPlayer = liftIO $ do
   pcgo :: P.PairCachingGhostObject <- P.new ()
   startXform <- P.new ((0, 0, 1, 0), (0, 0, 0))
   P.setIdentity startXform
-  P.setOrigin startXform 0 10 4
+  P.setOrigin startXform 0 0 4
   P.coSetWorldTransform pcgo startXform
   P.del startXform
 

@@ -50,7 +50,7 @@ doGame initGS = void $ runGame initGS go
       _ <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
-      unlessM (use gameStateShouldClose) $
+      unlessM (use gameStateShouldClose)
         go
 
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
@@ -67,7 +67,7 @@ setupPhysics = do
   withCameraTransform cam
     (\t -> do
         P.setIdentity t
-        P.setOrigin t 0 (-2) (-5)
+        P.setOrigin t 0 0 (-5)
         setCameraTransform cam t)
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
@@ -146,69 +146,68 @@ concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
 gameMain :: IO ()
-gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> do
-  withGraphicsContext defaultGraphicsContext
-    . withWindow defaultWindowConfig
-    $ \win -> do
-    contextCurrent $= Just win
+gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> 
+  withGraphicsContext defaultGraphicsContext . withWindow defaultWindowConfig
+  $ \win -> do
+  contextCurrent $= Just win
 
-    --cullFace $= Just Back
-    depthFunc $= Just DepthLess
-    -- Remember: we will eventually have to free the function pointer
-    -- that mkGLDEBUGPROC gives us!!!
-    debugMessageCallback $= Just simpleDebugFunc
+  --cullFace $= Just Back
+  depthFunc $= Just DepthLess
+  -- FIXME: we will eventually have to free the function pointer
+  -- that mkGLDEBUGPROC gives us!!!
+  debugMessageCallback $= Just simpleDebugFunc
 
-    clearColor $= color4 0 0 0.4 0
-    -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-    mdev <- AL.openDevice Nothing
-    let dev = case mdev of
-          Nothing -> error "Couldn't open the sound device."
-          Just dev_ -> dev_
-    mctxt <- AL.createContext dev []
-    let ctxt = case mctxt of
-          Nothing -> error "Couldn't create the sound context."
-          Just ctxt_ -> ctxt_
-    AL.currentContext $= Just ctxt
+  clearColor $= color4 0 0 0.4 0
+  -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
+  mdev <- AL.openDevice Nothing
+  let dev = case mdev of
+        Nothing -> error "Couldn't open the sound device."
+        Just dev_ -> dev_
+  mctxt <- AL.createContext dev []
+  let ctxt = case mctxt of
+        Nothing -> error "Couldn't create the sound context."
+        Just ctxt_ -> ctxt_
+  AL.currentContext $= Just ctxt
 
-    AL.distanceModel $= AL.InverseDistance
-    (physicsWorld, player, cam, _, _) <- setupPhysics
+  AL.distanceModel $= AL.InverseDistance
+  (physicsWorld, player, cam, _, _) <- setupPhysics
 
-    ic <- N.mkInputControl win
-    input <- liftIO $ N.getInput ic
-    let sess = countSession_ 1
-        ioData = initIOData & ioDataGLFWInputControl .~ ic
-                            & ioDataGLFWInputState .~ input
-                            & ioDataSession .~ sess
-                            & ioDataWindow .~ win
+  ic <- N.mkInputControl win
+  input <- liftIO $ N.getInput ic
+  let sess = countSession_ 1
+      ioData = initIOData & ioDataGLFWInputControl .~ ic
+                          & ioDataGLFWInputState .~ input
+                          & ioDataSession .~ sess
+                          & ioDataWindow .~ win
 
-        animationWire :: GameEffectWire s
-        animationWire = effectWire $ do
-          clear $ defaultClearBuffer & clearBufferColor .~ True
-                                     & clearBufferDepth .~ True
-          entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
-          entities' <- mapM animateEntity entities
-          gameStatePhysicsWorld . physicsWorldEntities .= entities'
+      animationWire :: GameEffectWire s
+      animationWire = effectWire $ do
+        clear $ defaultClearBuffer & clearBufferColor .~ True
+                                   & clearBufferDepth .~ True
+        entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
+        entities' <- mapM animateEntity entities
+        gameStatePhysicsWorld . physicsWorldEntities .= entities'
 
-        physicsWire :: GameEffectWire s
-        physicsWire = effectWire $ do
-          pw <- use gameStatePhysicsWorld
-          stepPhysicsWorld pw
+      physicsWire :: GameEffectWire s
+      physicsWire = effectWire $ do
+        pw <- use gameStatePhysicsWorld
+        stepPhysicsWorld pw
 
-        mainWires = fromList [ animationWire
-                             , playerHorizontalMovement >>> movePlayer
-                             , physicsWire
-                             , close
-                             , jump
-                             , camera
-                             , zoomCamera
-                             , turnPlayer
-                             ]
+      mainWires = fromList [ animationWire
+                           , playerHorizontalMovement >>> movePlayer
+                           , physicsWire
+                           , close
+                           , jump
+                           , camera
+                           , zoomCamera
+                           , turnPlayer
+                           ]
 
-        gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
-                                  & gameStatePlayer .~ player
-                                  & gameStateCamera .~ cam
-                                  & gameStateSoundDevice .~ dev
-                                  & gameStateSoundContext .~ ctxt
-                                  & gameStateWires .~ mainWires
-                                  & gameStateIOData .~ ioData
-    doGame gameState
+      gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+                                & gameStatePlayer .~ player
+                                & gameStateCamera .~ cam
+                                & gameStateSoundDevice .~ dev
+                                & gameStateSoundContext .~ ctxt
+                                & gameStateWires .~ mainWires
+                                & gameStateIOData .~ ioData
+  doGame gameState
