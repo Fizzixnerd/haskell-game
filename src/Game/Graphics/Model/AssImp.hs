@@ -66,8 +66,8 @@ massageAssImpMesh ptr = do
   vdata <- VS.generateM totalLen getData
   return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, uvs, offsets)
 
-marshalAssImpMesh :: MeshPtr -> IO AssImpMesh
-marshalAssImpMesh ptr = do
+marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
+marshalAssImpMesh sc ptr = do
   (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets) <- massageAssImpMesh ptr
   let texOffsets' = flip map texOffsets $ \n -> sizeOf (0 :: CFloat) * fromIntegral (6+n)
 
@@ -87,22 +87,34 @@ marshalAssImpMesh ptr = do
 
   fullAttribInit 0 3 0
   fullAttribInit 1 3 (fromIntegral $ 3 * sizeOf (0 :: Float))
-  flip V.imapM_ texData $ \i (uv, offset) -> fullAttribInit (fromIntegral $ i+2) (fromIntegral uv) (fromIntegral offset)
+  V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral $ i+2) (fromIntegral uv) (fromIntegral offset)) texData
   bindElementBuffer vao ibuf
+
+  mats <- sceneMaterials sc
+  nMats <- sceneNumMaterials sc
+  idx <- meshMaterialIndex ptr
+
+  mat <- peekElemOff mats (fromIntegral idx)
+  (_, textureName_, _, _, _, _, _, _) <- getMaterialTexture mat TextureTypeDiffuse 0
+  let textureName = if not $ null textureName_
+                    then Just textureName_
+                    else Nothing
+    
   return AssImpMesh
-    { _assImpMeshVAO            = vao
-    , _assImpMeshBufferObject   = vbuf
-    , _assImpMeshTextureDetails = uvs
-    , _assImpMeshIndexBO        = ibuf
-    , _assImpMeshIndexBOType    = UnsignedInt
-    , _assImpMeshIndexNum       = faceNum
+    { _assImpMeshVAO             = vao
+    , _assImpMeshBufferObject    = vbuf
+    , _assImpMeshTextureDetails  = uvs
+    , _assImpMeshIndexBO         = ibuf
+    , _assImpMeshIndexBOType     = UnsignedInt
+    , _assImpMeshIndexNum        = faceNum
+    , _assImpMeshMaterialTexture = textureName
     }
 
 marshalAssImpScene :: ScenePtr -> IO AssImpScene
 marshalAssImpScene sc = do
   numMeshes <- fromIntegral <$> sceneNumMeshes sc
   mptr <- sceneMeshes sc
-  fmap AssImpScene $ V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh
+  fmap AssImpScene $ V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh sc
 
 loadAssImpScene :: MonadIO m => FilePath -> m AssImpScene
 loadAssImpScene = liftIO . (importAssImpFileGood >=> marshalAssImpScene)

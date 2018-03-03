@@ -35,8 +35,8 @@ bindGfxTexture GfxTexture {..} = traverse_ (uncurry . flip $ texture) _gfxTextur
 
 drawGfxWithTransform :: L.M44 Float -> VPMatrix -> Gfx s -> Game s ()
 drawGfxWithTransform wrld vpm gfx = do
-  bindGfxTexture (gfx ^. gfxTextureBlob)
-  forM_ (gfx ^. gfxVaoData) $ \(vao, prog, mode, size) -> do
+  forM_ (gfx ^. gfxVaoData) $ \(vao, prog, mode, size, samp, tex) -> do
+    texture tex samp
     useProgram prog
     currentVertexArrayObject $= Just vao
     uniform prog UniformMVP (vpm L.!*! wrld)
