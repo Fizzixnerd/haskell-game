@@ -32,23 +32,25 @@ massageAssImpMesh ptr = do
   nptr <- castPtr <$> meshNormals ptr
   tptrptr <- meshTextureCoords ptr
   (faceptr, faceNum) <- bufferFaces ptr
-  uvs :: Vector Word32 <- flip V.unfoldrM 0 $ \i -> do
+  uvs_ :: Vector Word32 <- flip V.unfoldrM 0 $ \i -> do
     let uvptr = numUVs `plusPtr` (i * sizeOf (0 :: CUInt))
     nullB <- peek (castPtr uvptr) :: IO Char
     if nullB == '\0'
       then return Nothing
       else peek uvptr >>= (\x -> return $ Just (x, i+1))
-  tptrs <- V.generateM (length uvs) $ fmap castPtr . peekElemOff tptrptr
+  tptrs_ <- V.generateM (length uvs_) $ fmap castPtr . peekElemOff tptrptr
 
-  let chunkLen = fromIntegral $ sum uvs + 6
-      totalLen = chunkLen * fromIntegral numV
+  let totalLen = chunkLen * fromIntegral numV
+      chunkLen = fromIntegral $ sum uvs_ + 6
 
-      texOffsets = ClassyP.snoc (V.prescanl (+) 0 uvs) (fromIntegral $ chunkLen - 6)
-
+      (ptrs, components, offsets) = 
+  
+      offsets = ClassyP.cons 0 . ClassyP.cons 3 . (`ClassyP.snoc` fromIntegral chunkLen) $ V.prescanl (+) 0 uvs
+      tptrs = ClassyP.cons vptr . ClassyP.cons nptr $ tptrs_
       tptrRange n = do
-        i    <- subtract 1 <$> V.findIndex (> n) texOffsets
+        i    <- subtract 1 <$> V.findIndex (> n) offsets
         tptr <- ClassyP.index tptrs i
-        offs <- ClassyP.index texOffsets i
+        offs <- ClassyP.index offsets i
         uv   <- ClassyP.index uvs i
         return (n-offs, tptr, uv)
 
@@ -62,7 +64,7 @@ massageAssImpMesh ptr = do
           (n', i) = n `divMod` chunkLen
 
   vdata <- VS.generateM totalLen getData
-  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, uvs, texOffsets)
+  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, uvs, offsets)
 
 marshalAssImpMesh :: MeshPtr -> IO AssImpMesh
 marshalAssImpMesh ptr = do
