@@ -91,7 +91,7 @@ marshalAssImpMesh sc ptr = do
 
   mat <- peekElemOff mats (fromIntegral idx)
 
-  let matTex = fmap (mfilter (not . null) . Just) . materialTexture mat
+  let matTex = fmap (mfilter $ not . null) . materialTexture mat
   diffuseName      <- matTex TextureTypeDiffuse
   specularName     <- matTex TextureTypeSpecular
   ambientName      <- matTex TextureTypeAmbient
