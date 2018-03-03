@@ -318,22 +318,26 @@ data Entity s = Entity
   , _entityRigidBody       :: Maybe RigidBody
   }
 
+data TextureBundle s = TextureBundle
+  { _textureBundleDiffuseTexture      :: Maybe s
+  , _textureBundleSpecularTexture     :: Maybe s
+  , _textureBundleAmbientTexture      :: Maybe s
+  , _textureBundleEmmisiveTexture     :: Maybe s
+  , _textureBundleHeightTexture       :: Maybe s
+  , _textureBundleNormalTexture       :: Maybe s
+  , _textureBundleShininessTexture    :: Maybe s
+  , _textureBundleOpacityTexture      :: Maybe s
+  , _textureBundleDisplacementTexture :: Maybe s
+  , _textureBundleLightMapTexture     :: Maybe s
+  , _textureBundleReflectionTexture   :: Maybe s
+  } deriving (Eq, Ord, Show)
+
 data VaoData = VaoData
-  { _vaoDataVao                 :: VertexArrayObject
-  , _vaoDataProgram             :: Program
-  , _vaoDataPrimitiveMode       :: PrimitiveMode
-  , _vaoDataNumElements         :: Word32
-  , _vaoDataDiffuseTexture      :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataSpecularTexture     :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataAmbientTexture      :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataEmmisiveTexture     :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataHeightTexture       :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataNormalTexture       :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataShininessTexture    :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataOpacityTexture      :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataDisplacementTexture :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataLightMapTexture     :: Maybe (TextureObject TextureTarget2D)
-  , _vaoDataReflectionTexture   :: Maybe (TextureObject TextureTarget2D)
+  { _vaoDataVao            :: VertexArrayObject
+  , _vaoDataProgram        :: Program
+  , _vaoDataPrimitiveMode  :: PrimitiveMode
+  , _vaoDataNumElements    :: Word32
+  , _vaoDataTextureBundle  :: TextureBundle (TextureObject TextureTarget2D)
   } deriving (Eq, Ord, Show)
 
 data Gfx s = Gfx
@@ -358,18 +362,6 @@ data Lfx s = Lfx
 newtype AssImpScene = AssImpScene
   { _assImpMeshes :: Vector AssImpMesh }
 
-{-
-data AssImpMesh' = AssImpMesh'
-  { _assImpMeshVAO         :: VertexArrayObject
-  , _assImpMeshVertexBO    :: BufferObject
-  , _assImpMeshTextureBO   :: Vector BufferObject
-  , _assImpMeshNormalBO    :: BufferObject
-  , _assImpMeshIndexBO     :: BufferObject
-  , _assImpMeshIndexBOType :: IndexType
-  , _assImpMeshIndexNum    :: Word32
-  }
--}
-
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO              :: VertexArrayObject
   , _assImpMeshBufferObject     :: BufferObject
@@ -377,16 +369,7 @@ data AssImpMesh = AssImpMesh
   , _assImpMeshIndexBO          :: BufferObject
   , _assImpMeshIndexBOType      :: IndexType
   , _assImpMeshIndexNum         :: Word32
-  , _assImpMeshDiffuseTexture   :: Maybe FilePath
-  , _assImpMeshSpecularTexture  :: Maybe FilePath
-  , _assImpMeshAmbientTexture   :: Maybe FilePath
-  , _assImpMeshEmmisiveTexture  :: Maybe FilePath
-  , _assImpMeshHeightTexture    :: Maybe FilePath
-  , _assImpMeshNormalTexture    :: Maybe FilePath
-  , _assImpMeshShininessTexture :: Maybe FilePath
-  , _assImpMeshDisplacementTexture :: Maybe FilePath
-  , _assImpMeshLightMapTexture  :: Maybe FilePath
-  , _assImpMeshReflectionTexture :: Maybe FilePath
+  , _assImpMeshTextureBundle    :: TextureBundle FilePath
   }
 
 mconcat <$> mapM makeLenses
@@ -414,4 +397,5 @@ mconcat <$> mapM makeLenses
   , ''AssImpScene
   , ''AssImpMesh
   , ''VaoData
+  , ''TextureBundle
   ]
