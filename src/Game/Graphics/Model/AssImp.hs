@@ -9,6 +9,7 @@ import Asset.AssImp.Import
 import Foreign.C.Types
 import Foreign.Storable
 import Foreign.ForeignPtr
+import Foreign.Marshal.Array
 import Foreign.Ptr
 import Game.Types
 import Graphics.Binding
@@ -27,27 +28,14 @@ rawInterleave numV ptrs componentSizes offsets = do
       let compSize   = fromIntegral $ V.unsafeIndex componentSizes chunkIndex
           elemOffset = fromIntegral $ V.unsafeIndex offsets chunkIndex
       in forM_ [0..(compSize -1)] $ \componentIndex ->
-           -- FIXME: If textures are ever sane, remove this.
-           if compSize == 2 && componentIndex == 1
-           then forM_ [0..(numV-1)] $ \n -> do
+           forM_ [0..(numV-1)] $ \n -> do
              x <- peekElemOff ptr_ (3 * n + componentIndex)
              pokeElemOff memptr (chunkLen * n + componentIndex + elemOffset) x
-           else forM_ [0..(numV-1)] $ \n -> do
-             x <- peekElemOff ptr_ (3 * n + componentIndex)
-             pokeElemOff memptr (chunkLen * n + componentIndex + elemOffset) (1-x)
 
   return $ VS.unsafeFromForeignPtr0 mems totalLen
   where
     chunkLen = fromIntegral $ sum componentSizes :: Int
     totalLen = chunkLen * numV
-
-pokeNullTerminatedArrayBytes :: Storable a => Int -> Ptr a -> IO (Vector a)
-pokeNullTerminatedArrayBytes size ptr = flip V.unfoldrM 0 $ \i -> do
-  let movedPtr = ptr `plusPtr` (i * size)
-  nullB <- peek (castPtr movedPtr) :: IO Char
-  if nullB == '\0'
-    then return Nothing
-    else peek movedPtr >>= (\x -> return $ Just (x, i+1))
 
 -- Layout:
 -- 0: Vertex
@@ -62,16 +50,14 @@ massageAssImpMesh ptr = do
   nptr    <- castPtr <$> meshNormals ptr
   tptrptr <- meshTextureCoords ptr
   (faceptr, faceNum) <- bufferFaces ptr
-  uvs_ <- pokeNullTerminatedArrayBytes (sizeOf (0 :: CUInt)) numUVs
-  tptrs_ <- V.generateM (length uvs_) $ fmap castPtr . peekElemOff tptrptr
+  uvs_   <- V.fromList <$> peekArray 8 numUVs
+  tptrs_ <- fmap castPtr . V.fromList <$> peekArray 8 tptrptr
 
-  let insertAround x y v = V.cons x . V.cons (V.head v) . V.cons y $ V.tail v
-      (ptrs, components, offsets) = if null uvs_
-                                    then (V.fromList [vptr, nptr], V.fromList [3,3], V.fromList [0,3,6])
-                                    else let uvs_' = insertAround 3 3 uvs_
-                                         in ( insertAround vptr nptr tptrs_
-                                            , uvs_'
-                                            , V.scanl' (+) 0 uvs_')
+  let ptrs_       = V.cons vptr . V.cons nptr $ tptrs_
+      components_ = V.cons 3 . V.cons 3 $ uvs_
+      combined_   = V.filter ((/=0) . fst) $ V.zip components_ ptrs_
+      (components, ptrs) = (fmap fst combined_, fmap snd combined_)
+      offsets = V.prescanl' (+) 0 components
       chunkLen = fromIntegral $ sum components
   vdata <- rawInterleave (fromIntegral numV) ptrs components offsets
 
@@ -80,7 +66,6 @@ massageAssImpMesh ptr = do
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
   (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets) <- massageAssImpMesh ptr
-  traceM $ show uvs
   let texOffsets' = V.map ((* sizeOf (0 :: CFloat)) . fromIntegral) texOffsets
 
   vao <- genObjectName
