@@ -99,7 +99,7 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-
+{-
   (AssImpScene meshes) <- loadAssImpScene "res/models/Bayonetta 1/bayo_default.dae"
   vaoData <- forM meshes (\aim -> do
                              tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ (maybe "clock.png" id $ _assImpMeshMaterialTexture aim)
@@ -109,7 +109,16 @@ createTheCube = do
                                       , _assImpMeshIndexNum aim
                                       , Simple2DSampler
                                       , tex))
-
+-}
+  (AssImpScene meshes) <- loadAssImpScene "res/models/simple-cube-2.obj"
+  vaoData <- forM meshes (\aim -> do
+                             tex <- loadBMPTexture "res/models/simple-cube-2.bmp"
+                             return $ ( _assImpMeshVAO aim
+                                      , prog
+                                      , Triangles
+                                      , _assImpMeshIndexNum aim
+                                      , Simple2DSampler
+                                      , tex))
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf

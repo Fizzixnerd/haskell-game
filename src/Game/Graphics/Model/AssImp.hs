@@ -13,7 +13,7 @@ import Game.Types
 import Control.Lens
 import Graphics.Binding
 import Data.Maybe (fromJust)
-import qualified Data.Vector as V (generateM, imapM_, unfoldrM, prescanl, findIndex, zip)
+import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 
 importAssImpFileGood :: FilePath -> IO ScenePtr
@@ -40,31 +40,34 @@ massageAssImpMesh ptr = do
       else peek uvptr >>= (\x -> return $ Just (x, i+1))
   tptrs_ <- V.generateM (length uvs_) $ fmap castPtr . peekElemOff tptrptr
 
-  let totalLen = chunkLen * fromIntegral numV
-      chunkLen = fromIntegral $ sum uvs_ + 6
+  let insertAround x y v = V.cons x . V.cons (V.head v) . V.cons y $ V.tail v
+      (ptrs, components, offsets) = if null uvs_
+                                    then (V.fromList [vptr, nptr], V.fromList [3,3], V.fromList [0,3,6])
+                                    else let uvs_' = insertAround 3 3 uvs_
+                                         in ( insertAround vptr nptr tptrs_
+                                            , uvs_'
+                                            , V.scanl' (+) 0 uvs_')
+      chunkLen = fromIntegral $ sum components
+      totalLen = chunkLen * fromIntegral numV
 
-      (ptrs, components, offsets) = 
-  
-      offsets = ClassyP.cons 0 . ClassyP.cons 3 . (`ClassyP.snoc` fromIntegral chunkLen) $ V.prescanl (+) 0 uvs
-      tptrs = ClassyP.cons vptr . ClassyP.cons nptr $ tptrs_
-      tptrRange n = do
-        i    <- subtract 1 <$> V.findIndex (> n) offsets
-        tptr <- ClassyP.index tptrs i
-        offs <- ClassyP.index offsets i
-        uv   <- ClassyP.index uvs i
-        return (n-offs, tptr, uv)
-
-      getData n
-        | i < 3     = peekElemOff vptr (3 * n'+i)
-        | i < 6     = peekElemOff nptr (3 * n'+i-3)
-        | otherwise = fromJust (tptrRange (fromIntegral $ i-6)) & (\(offs, tptr, uv) -> if uv == 2 && offs == 1
-                                                                                        then (\x -> 1-x) <$> peekElemOff tptr (3*n' + fromIntegral offs) -- If textures are ever sane, remove this
-                                                                                        else peekElemOff tptr (3*n' + fromIntegral offs))
+      getData n = if uv_ == 2 && offs_ == 1
+                  then (\x -> 1-x) <$> peekElemOff ptr_ place
+                  else peekElemOff ptr_ place
         where
-          (n', i) = n `divMod` chunkLen
+          (n', i) = n `divMod` fromIntegral chunkLen
+          indx    = subtract 1 . fromMaybe (error "Index out of range in assimp") $  V.findIndex (> fromIntegral i) offsets
+          ptr_    = V.unsafeIndex ptrs indx
+          offs_   = i - fromIntegral (V.unsafeIndex offsets indx)
+          uv_     = V.unsafeIndex components indx
+          place   = 3 * n' + fromIntegral offs_
+  traceM $ show components
+  traceM $ show offsets
+  traceM $ show chunkLen
+  traceM $ show totalLen
 
   vdata <- VS.generateM totalLen getData
-  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, uvs, offsets)
+  traceM $ show vdata
+  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
