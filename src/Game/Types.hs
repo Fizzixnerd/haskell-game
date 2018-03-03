@@ -332,8 +332,12 @@ data GfxTexture = GfxTexture
   } deriving (Eq, Ord, Show)
 
 data Gfx s = Gfx
-  { _gfxVaoData     :: Vector (VertexArrayObject, Program, PrimitiveMode, Word32)
-  , _gfxTextureBlob :: GfxTexture
+  { _gfxVaoData     :: Vector ( VertexArrayObject
+                              , Program
+                              , PrimitiveMode
+                              , Word32
+                              , Simple2DSampler
+                              , TextureObject TextureTarget2D)
   , _gfxChildren    :: Vector (Gfx s)
   }
 
@@ -367,12 +371,13 @@ data AssImpMesh' = AssImpMesh'
 -}
 
 data AssImpMesh = AssImpMesh
-  { _assImpMeshVAO            :: VertexArrayObject
-  , _assImpMeshBufferObject   :: BufferObject
-  , _assImpMeshTextureDetails :: Vector Word32
-  , _assImpMeshIndexBO        :: BufferObject
-  , _assImpMeshIndexBOType    :: IndexType
-  , _assImpMeshIndexNum       :: Word32
+  { _assImpMeshVAO             :: VertexArrayObject
+  , _assImpMeshBufferObject    :: BufferObject
+  , _assImpMeshTextureDetails  :: Vector Word32
+  , _assImpMeshIndexBO         :: BufferObject
+  , _assImpMeshIndexBOType     :: IndexType
+  , _assImpMeshIndexNum        :: Word32
+  , _assImpMeshMaterialTexture :: Maybe FilePath
   }
 
 mconcat <$> mapM makeLenses

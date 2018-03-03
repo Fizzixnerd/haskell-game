@@ -30,6 +30,7 @@ import           Game.Wires
 import           Game.Graphics.Model.AssImp
 import qualified Asset.AssImp.Types as AI
 import qualified Asset.AssImp.Import as AI
+import Data.Maybe
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -98,11 +99,16 @@ createTheCube = do
   P.del rbci
 
   prog <- compileShaders
-  assImpScene@(AssImpScene meshes) <- loadAssImpScene "res/models/simple-cube-2.obj"
-  let vaoData = flip ClassyP.map meshes $ \aim -> (_assImpMeshVAO aim, prog, Triangles, _assImpMeshIndexNum aim)
-  tex <- loadPNGTexture "res/models/Bayonetta 1/" ++ ""
+  (AssImpScene meshes) <- loadAssImpScene "res/models/Bayonetta 1/bayo_default.dae"
+  vaoData <- forM meshes (\aim -> do 
+                             tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ (maybe "clock.png" id $ _assImpMeshMaterialTexture aim)
+                             return $ ( _assImpMeshVAO aim
+                                      , prog
+                                      , Triangles
+                                      , _assImpMeshIndexNum aim
+                                      , Simple2DSampler
+                                      , tex))
 
-  tex <- loadPNGTexture $ "res/models/Bayonetta 1/" ++ "clock.png"
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File "res/sound/africa-toto.wav")
   AL.buffer src $= Just sbuf
@@ -111,7 +117,6 @@ createTheCube = do
           { _entityChildren = empty
           , _entityGraphics = Just Gfx
             { _gfxVaoData = vaoData
-            , _gfxTextureBlob = GfxTexture () (Just (Simple2DSampler, tex)) ()
             , _gfxChildren = empty
             }
           , _entitySounds = Just Sfx
