@@ -1,8 +1,10 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Graphics.Binding.OpenGL.BufferObject where
 
@@ -11,10 +13,12 @@ import           Data.Bits ((.|.))
 import           Graphics.Binding.OpenGL.Boolean
 import           Graphics.Binding.OpenGL.DataType
 import           Graphics.Binding.OpenGL.ObjectName
+import           Graphics.Binding.OpenGL.Synchro
 import           Foreign
 import           Graphics.Binding.OpenGL.Utils
 import           Graphics.GL.Core45
 import           Graphics.GL.Types
+import qualified Data.Vector.Storable as VS
 
 newtype BufferObject = BufferObject
   { getBufferObjectGLuint :: GLuint
@@ -170,9 +174,12 @@ mapBuffer_ (BufferObject n) = glMapNamedBuffer n . marshalBufferAccess
 unmapBuffer :: MonadIO m => BufferObject -> m Bool
 unmapBuffer (BufferObject n) = fmap unmarshalGLboolean . glUnmapNamedBuffer $ n
 
-mapBufferRange :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
-mapBufferRange (BufferObject obj) offset leng flags
+mapBufferRange_ :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
+mapBufferRange_ (BufferObject obj) offset leng flags
   = glMapNamedBufferRange obj (fromIntegral offset) (fromIntegral leng) (marshalBufferObjectMapFlags flags)
+
+mapBufferRange :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Maybe (Ptr ()))
+mapBufferRange o off size flg = maybeNullPtr Nothing Just <$> mapBufferRange_ o off size flg
 
 clearBufferSubData :: MonadIO m => BufferObject -> SizedFormat -> BufferObjectOffset -> BufferObjectSize -> SizedFormat -> GLDataType -> Ptr () -> m ()
 clearBufferSubData (BufferObject obj) internalForm offset size form typ
@@ -191,3 +198,43 @@ bindBufferRange pt (BufferObjectIndex n) (BufferObject m) (BufferObjectOffset l)
 
 bindBufferBase :: MonadIO m => BufferBindPoint -> BufferObjectIndex -> BufferObject -> m ()
 bindBufferBase pt (BufferObjectIndex n) (BufferObject m) = glBindBufferBase (marshalBufferBindPoint pt) n m
+
+-- Very unsafe! Respect alignment!
+pokeBufferObject :: (Storable a, MonadIO m) => BufferObject -> VS.Vector a -> m ()
+pokeBufferObject bo dat = liftIO . VS.unsafeWith dat $ bufferSubData bo (fromIntegral $ VS.length dat) 0 . castPtr
+
+data PersistentBuffer a = PersistentBuffer
+  { _getPersistentBufferPtr    :: Ptr a
+  , _getPersistentBufferName   :: BufferObject
+  , _getPersistentBufferSync   :: GLsync
+  } deriving (Eq, Ord, Show)
+
+persistentBufferFlag :: GLenum
+persistentBufferFlag = GL_MAP_COHERENT_BIT .|. GL_MAP_PERSISTENT_BIT .|. GL_MAP_WRITE_BIT
+
+genPersistentBufferArray :: forall a m. (Storable a, MonadIO m) => Int -> m (Maybe (PersistentBuffer a))
+genPersistentBufferArray n = do
+  bufo@(BufferObject ident) <- genObjectName
+  glNamedBufferStorage ident size nullPtr persistentBufferFlag
+  ptr <- glMapNamedBufferRange ident 0 size persistentBufferFlag
+  return $ (\x -> PersistentBuffer (castPtr x) bufo nullPtr) <$> maybeNullPtr Nothing Just ptr
+  where
+    size = fromIntegral $ n * sizeOf (error "how are you seeing this" :: a)
+
+genPersistentBuffer :: (Storable a, MonadIO m) => m (Maybe (PersistentBuffer a))
+genPersistentBuffer = genPersistentBufferArray 1
+
+fencePersistentBuffer :: MonadIO m => PersistentBuffer a -> m (PersistentBuffer a)
+fencePersistentBuffer pb = do
+  sync <- lockGLFence (_getPersistentBufferSync pb)
+  return pb { _getPersistentBufferSync = sync}
+
+persistentBufferWrite :: (Storable a, MonadIO m) => Word64 -> a -> PersistentBuffer a -> m ()
+persistentBufferWrite timeout a PersistentBuffer {..} = liftIO $ do
+  waitGLFence timeout _getPersistentBufferSync
+  poke _getPersistentBufferPtr a
+
+persistentBufferWriteArray :: forall a m. (Storable a, MonadIO m) => Word64 -> VS.Vector a -> PersistentBuffer a -> m ()
+persistentBufferWriteArray timeout vec PersistentBuffer {..} = liftIO $ do
+  waitGLFence timeout _getPersistentBufferSync
+  VS.unsafeWith vec $ \srcptr -> copyBytes _getPersistentBufferPtr srcptr (VS.length vec * sizeOf (error "how?" :: a))
