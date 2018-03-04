@@ -96,6 +96,7 @@ marshalAssImpMesh sc ptr = do
   heightName       <- matTex TextureTypeHeight
   normalName       <- matTex TextureTypeNormals
   shininessName    <- matTex TextureTypeShininess
+  opacityName      <- matTex TextureTypeOpacity
   displacementName <- matTex TextureTypeDisplacement
   lightMapName     <- matTex TextureTypeLightMap
   reflectionName   <- matTex TextureTypeReflection
@@ -107,16 +108,19 @@ marshalAssImpMesh sc ptr = do
     , _assImpMeshIndexBO         = ibuf
     , _assImpMeshIndexBOType     = UnsignedInt
     , _assImpMeshIndexNum        = faceNum
-    , _assImpMeshDiffuseTexture  = diffuseName
-    , _assImpMeshSpecularTexture = specularName
-    , _assImpMeshAmbientTexture  = ambientName
-    , _assImpMeshEmmisiveTexture = emmisiveName
-    , _assImpMeshHeightTexture   = heightName
-    , _assImpMeshNormalTexture   = normalName
-    , _assImpMeshShininessTexture = shininessName
-    , _assImpMeshDisplacementTexture = displacementName
-    , _assImpMeshLightMapTexture = lightMapName
-    , _assImpMeshReflectionTexture = reflectionName
+    , _assImpMeshTextureBundle   = TextureBundle
+      { _textureBundleDiffuseTexture      = diffuseName
+      , _textureBundleSpecularTexture     = specularName
+      , _textureBundleAmbientTexture      = ambientName
+      , _textureBundleEmmisiveTexture     = emmisiveName
+      , _textureBundleHeightTexture       = heightName
+      , _textureBundleNormalTexture       = normalName
+      , _textureBundleShininessTexture    = shininessName
+      , _textureBundleOpacityTexture      = opacityName
+      , _textureBundleDisplacementTexture = displacementName
+      , _textureBundleLightMapTexture     = lightMapName
+      , _textureBundleReflectionTexture   = reflectionName
+      }
     }
 
 marshalAssImpScene :: ScenePtr -> IO AssImpScene

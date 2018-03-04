@@ -100,23 +100,13 @@ createTheModel = do
   vaoData <- forM meshes (\aim -> do
                              dif <- loadPNGTexture $
                                     maybe defaultTexture (modelRoot </>) $
-                                    _assImpMeshDiffuseTexture aim
+                                    aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
                              return $ VaoData
                                (_assImpMeshVAO aim)
                                prog
                                Triangles
                                (_assImpMeshIndexNum aim)
-                               (Just dif)
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing
-                               Nothing)
+                               (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif))
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")

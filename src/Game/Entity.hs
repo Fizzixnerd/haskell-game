@@ -1,3 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -31,20 +35,26 @@ getWorldPosition wt = do
       (CFloat x, CFloat y, CFloat z) <- P.getOrigin t
       return $ L.V3 x y z
 
+bindTextureBundle :: MonadIO m => TextureBundle (TextureObject TextureTarget2D) -> m ()
+bindTextureBundle TextureBundle {..} = do
+  within _textureBundleDiffuseTexture      Diffuse2DSampler
+  within _textureBundleSpecularTexture     Specular2DSampler
+  within _textureBundleAmbientTexture      Ambient2DSampler
+  within _textureBundleEmmisiveTexture     Emmisive2DSampler
+  within _textureBundleHeightTexture       Height2DSampler
+  within _textureBundleNormalTexture       Normal2DSampler
+  within _textureBundleShininessTexture    Shininess2DSampler
+  within _textureBundleOpacityTexture      Opacity2DSampler
+  within _textureBundleDisplacementTexture Displacement2DSampler
+  within _textureBundleLightMapTexture     LightMap2DSampler
+  within _textureBundleReflectionTexture   Reflection2DSampler
+  where
+    within x y = mapM_ (`texture` y) x
+
 drawGfxWithTransform :: L.M44 Float -> VPMatrix -> Gfx s -> Game s ()
 drawGfxWithTransform wrld vpm gfx = do
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
-    mapM_ (flip texture Diffuse2DSampler) _vaoDataDiffuseTexture
-    mapM_ (flip texture Specular2DSampler) _vaoDataSpecularTexture
-    mapM_ (flip texture Ambient2DSampler) _vaoDataAmbientTexture
-    mapM_ (flip texture Emmisive2DSampler) _vaoDataEmmisiveTexture
-    mapM_ (flip texture Height2DSampler) _vaoDataHeightTexture
-    mapM_ (flip texture Normal2DSampler) _vaoDataNormalTexture
-    mapM_ (flip texture Shininess2DSampler) _vaoDataShininessTexture
-    mapM_ (flip texture Opacity2DSampler) _vaoDataOpacityTexture
-    mapM_ (flip texture Displacement2DSampler) _vaoDataDisplacementTexture
-    mapM_ (flip texture LightMap2DSampler) _vaoDataLightMapTexture
-    mapM_ (flip texture Reflection2DSampler) _vaoDataReflectionTexture
+    bindTextureBundle _vaoDataTextureBundle
     useProgram _vaoDataProgram
     currentVertexArrayObject $= Just _vaoDataVao
     uniform _vaoDataProgram UniformMVP (vpm L.!*! wrld)
