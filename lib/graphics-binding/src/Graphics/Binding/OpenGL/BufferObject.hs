@@ -1,8 +1,10 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Graphics.Binding.OpenGL.BufferObject where
 
@@ -11,6 +13,7 @@ import           Data.Bits ((.|.))
 import           Graphics.Binding.OpenGL.Boolean
 import           Graphics.Binding.OpenGL.DataType
 import           Graphics.Binding.OpenGL.ObjectName
+import           Graphics.Binding.OpenGL.Synchro
 import           Foreign
 import           Graphics.Binding.OpenGL.Utils
 import           Graphics.GL.Core45
@@ -200,3 +203,38 @@ bindBufferBase pt (BufferObjectIndex n) (BufferObject m) = glBindBufferBase (mar
 pokeBufferObject :: (Storable a, MonadIO m) => BufferObject -> VS.Vector a -> m ()
 pokeBufferObject bo dat = liftIO . VS.unsafeWith dat $ bufferSubData bo (fromIntegral $ VS.length dat) 0 . castPtr
 
+data PersistentBuffer a = PersistentBuffer
+  { _getPersistentBufferPtr    :: Ptr a
+  , _getPersistentBufferName   :: BufferObject
+  , _getPersistentBufferSync   :: GLsync
+  } deriving (Eq, Ord, Show)
+
+persistentBufferFlag :: GLenum
+persistentBufferFlag = GL_MAP_COHERENT_BIT .|. GL_MAP_PERSISTENT_BIT .|. GL_MAP_WRITE_BIT
+
+genPersistentBufferArray :: forall a m. (Storable a, MonadIO m) => Int -> m (Maybe (PersistentBuffer a))
+genPersistentBufferArray n = do
+  bufo@(BufferObject ident) <- genObjectName
+  glNamedBufferStorage ident size nullPtr persistentBufferFlag
+  ptr <- glMapNamedBufferRange ident 0 size persistentBufferFlag
+  return $ (\x -> PersistentBuffer (castPtr x) bufo nullPtr) <$> maybeNullPtr Nothing Just ptr
+  where
+    size = fromIntegral $ n * sizeOf (error "how are you seeing this" :: a)
+
+genPersistentBuffer :: (Storable a, MonadIO m) => m (Maybe (PersistentBuffer a))
+genPersistentBuffer = genPersistentBufferArray 1
+
+fencePersistentBuffer :: MonadIO m => PersistentBuffer a -> m (PersistentBuffer a)
+fencePersistentBuffer pb = do
+  sync <- lockGLFence (_getPersistentBufferSync pb)
+  return pb { _getPersistentBufferSync = sync}
+
+persistentBufferWrite :: (Storable a, MonadIO m) => Word64 -> a -> PersistentBuffer a -> m ()
+persistentBufferWrite timeout a PersistentBuffer {..} = liftIO $ do
+  waitGLFence timeout _getPersistentBufferSync
+  poke _getPersistentBufferPtr a
+
+persistentBufferWriteArray :: forall a m. (Storable a, MonadIO m) => Word64 -> VS.Vector a -> PersistentBuffer a -> m ()
+persistentBufferWriteArray timeout vec PersistentBuffer {..} = liftIO $ do
+  waitGLFence timeout _getPersistentBufferSync
+  VS.unsafeWith vec $ \srcptr -> copyBytes _getPersistentBufferPtr srcptr (VS.length vec * sizeOf (error "how?" :: a))

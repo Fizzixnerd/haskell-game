@@ -36,6 +36,12 @@ import Graphics.Binding.OpenGL.BufferObject as X
   , copyBufferSubData
   , mapBufferRange
   , pokeBufferObject
+  , PersistentBuffer
+  , genPersistentBufferArray
+  , genPersistentBuffer
+  , fencePersistentBuffer
+  , persistentBufferWrite
+  , persistentBufferWriteArray
   )
 import Graphics.Binding.OpenGL.Shader as X
   ( VertexShader
@@ -61,6 +67,8 @@ import Graphics.Binding.OpenGL.Program as X
 import Graphics.Binding.OpenGL.Uniform as X
   ( DefaultBlock
   , Uniform(..)
+  , uniformBlockBinding
+  , persistentUniformBlockBinding
   )
 
 import Graphics.Binding.OpenGL.Texture as X
@@ -148,6 +156,8 @@ import Graphics.Binding.OpenGL.Rendering as X
   , clearBufferDepth
   , defaultClearBuffer
   )
+
+import Graphics.Binding.OpenGL.Synchro as X
 import Graphics.Binding.OpenGL.ObjectName as X
 import Graphics.Binding.GLFW.Window as X
 
