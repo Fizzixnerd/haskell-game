@@ -78,6 +78,8 @@ setupPhysics = do
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw'''', pl, cam, theModelE, theModelRB)
 
+
+
 createTheModel :: IO (Entity s, P.RigidBody)
 createTheModel = do
   model <- P.newBoxShape 0.5 0.5 0.5

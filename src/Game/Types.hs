@@ -32,6 +32,7 @@ import qualified Control.Monad.State.Strict   as MSS
 import qualified Control.Monad.Trans.Resource as RT
 import           Data.Dynamic
 import qualified Data.Map.Strict              as MS
+import qualified Data.Vector.Storable         as VS
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
@@ -377,6 +378,25 @@ data AssImpMesh = AssImpMesh
   , _assImpMeshTextureBundle    :: TextureBundle FilePath
   }
 
+data PointLight = PointLight
+  { _pointLightPosition :: L.V3 Float
+  , _pointLightStrength :: Float
+  } deriving (Eq, Ord, Show)
+
+instance Storable PointLight where
+  sizeOf _ = (1 + 3) * sizeOf (0 :: Float)
+  alignment _ = alignment (0 :: Float)
+  poke ptr (PointLight loc str) = do
+    pokeByteOff ptr 0 loc
+    pokeByteOff ptr (3 * sizeOf (0 :: Float)) str
+  peek ptr = do
+    loc <- peekByteOff ptr 0
+    str <- peekByteOff ptr (3 * sizeOf (0 :: Float))
+    return $ PointLight loc str
+
+newtype PointLightBundle = PointLightBundle
+  { _unPointLightBundle :: VS.Vector PointLight }
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''Entity
@@ -403,4 +423,5 @@ mconcat <$> mapM makeLenses
   , ''AssImpMesh
   , ''VaoData
   , ''TextureBundle
+  , ''PointLight
   ]
