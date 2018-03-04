@@ -41,8 +41,10 @@ void main() {
 
   vec3 diffuse = {0, 0, 0};
   vec3 specular = {0, 0, 0};
+  int i;
   for (i = 0, i < point_lights.num, i++) {
-    vec3 light_vector = normalize(point_lights.position[i] - pos.xyz);
+    vec3 light_vector = point_lights.intensity[i] *
+      normalize(point_lights.position[i] - pos.xyz);
     vec3 reflect_vector = reflect(-light_vector, norm);
 
     diffuse += max(dot(norm, light_vector), 0.0) * diffuse_color;
