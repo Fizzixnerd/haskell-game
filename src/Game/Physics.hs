@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -10,6 +11,8 @@ import ClassyPrelude
 import Physics.Bullet
 import Control.Monad.Trans.Resource
 import Data.Acquire
+import Control.Lens
+import Control.Lens.Internal.Setter
 
 type GetM m s a = forall b. (a -> m b) -> (s -> m b)
 --type Set' m s a = forall b. (b -> m a) -> (b -> s -> m s)
@@ -45,6 +48,7 @@ class (Monad m, SettableM m s a t, GettableM m s a t) => UpdatableM m s a t | a 
 (%=!) :: UpdatableM m s a t => a -> (t -> m t) -> (s -> m b) -> (s -> m b)
 (%=!) = updateM
 
+{-
 (^.!) :: GettableM m s a t => s -> a -> m t
 (^.!)  = flip $ flip getM return
 
@@ -53,7 +57,35 @@ useM s a f = s ^.! a >>= f
 
 (&!) :: Monad m => s -> (s -> m b) -> m ()
 s &! f = void . f $ s
+-}
 
+
+-- a -> f (m a)
+-- s -> f (m s)
+type OnlySetter m s a = Setter s (m s) () a
+
+makeOnlySetter :: Monad m => (s -> a -> m s) -> OnlySetter m s a
+makeOnlySetter set_ = taintedDot . flip set_ . flip untaintedDot ()
+
+class (Traversable f, Monad m) => Alien f m where
+  naturalize :: m (f a) -> f (m a)
+
+naturalJoin :: Alien f m => m (f (m a)) -> f (m a)
+naturalJoin = fmap join . naturalize
+
+instance Monad m => Alien Identity m where
+  naturalize = Identity . fmap runIdentity
+
+instance Monad m => Alien (Const (m a)) m where
+  naturalize = Const . join . fmap getConst
+
+type LensM m s t a b = forall f. Alien f m => (a -> f (m b)) -> s -> f (m t)
+
+lensM :: Monad m => (s -> m a) -> (s -> a -> m s) -> LensM m s s a a
+lensM get_ set_ f s = fmap ((set_ s) =<<) $ naturalJoin (f <$> get_ s)
+
+(^.!) :: Monad m => s -> LensM m s s a a -> m a
+(^.!) s l = getConst $ l (Const . return) s
 -- |
 
 {--

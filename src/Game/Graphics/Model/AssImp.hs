@@ -21,8 +21,8 @@ import qualified Data.Vector.Storable as VS
 importAssImpFileGood :: FilePath -> IO ScenePtr
 importAssImpFileGood = importAndProcessFileGood
 
-rawInterleave :: (Storable a, Num a) => Int -> Int -> Int -> Vector (Ptr a, Word32, Word32) -> IO (VS.Vector a)
-rawInterleave numV chunkLen elemSize ptrData = do
+rawInterleave :: forall a. (Storable a, Num a) => Int -> Int -> Vector (Ptr a, Word32, Word32) -> IO (VS.Vector a)
+rawInterleave numV chunkLen ptrData = do
   mems <- mallocForeignPtrArray totalLen
   withForeignPtr mems $
     \memptr -> V.forM_ ptrData $
@@ -33,13 +33,13 @@ rawInterleave numV chunkLen elemSize ptrData = do
 
   return $ VS.unsafeFromForeignPtr0 mems totalLen
   where
+    elemSize = sizeOf (error "how are you seeing this?" :: a)
     totalLen = chunkLen * numV
 
 -- Layout:
 -- 0: Vertex
--- 1: Texture channel 1
--- 2: Normal
--- 3+: remaining texture channels
+-- 1: Normal
+-- 2+: texture channels
 massageAssImpMesh :: MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32)
 massageAssImpMesh ptr = do
   numV    <- (\(CUInt x) -> x) <$> meshNumVertices ptr
@@ -58,7 +58,7 @@ massageAssImpMesh ptr = do
       offsets = V.prescanl' (+) 0 components
       chunkLen = fromIntegral $ sum components
 
-  vdata <- rawInterleave (fromIntegral numV) chunkLen (sizeOf (0 :: Float)) (V.zip3 ptrs components offsets)
+  vdata <- rawInterleave (fromIntegral numV) chunkLen (V.zip3 ptrs components offsets)
   return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
 
 marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
@@ -74,11 +74,11 @@ marshalAssImpMesh sc ptr = do
   vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
 
+  vertexArrayVertexBuffer vao 0 vbuf 0 (fromIntegral stride)
   let fullAttribInit loc_ numComponents_ offset_ = do
+        vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized offset_
         vertexArrayAttribCapability vao loc_ Enabled
-        vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized 0
-        vertexArrayVertexBuffer vao loc_ vbuf offset_ (fromIntegral stride)
-        vertexArrayAttribBinding vao loc_ loc_
+        vertexArrayAttribBinding vao loc_ 0
 
   V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral i) (fromIntegral uv) (fromIntegral offset)) texData
   bindElementBuffer vao ibuf
