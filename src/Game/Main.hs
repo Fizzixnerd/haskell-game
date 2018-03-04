@@ -147,7 +147,7 @@ concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
 gameMain :: IO ()
-gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> 
+gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
   withGraphicsContext defaultGraphicsContext . withWindow defaultWindowConfig
   $ \win -> do
   contextCurrent $= Just win
@@ -161,13 +161,9 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
   clearColor $= color4 0 0 0.4 0
   -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
   mdev <- AL.openDevice Nothing
-  let dev = case mdev of
-        Nothing -> error "Couldn't open the sound device."
-        Just dev_ -> dev_
+  let dev = fromMaybe (error "Couldn't open the sound device.") mdev
   mctxt <- AL.createContext dev []
-  let ctxt = case mctxt of
-        Nothing -> error "Couldn't create the sound context."
-        Just ctxt_ -> ctxt_
+  let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
   AL.currentContext $= Just ctxt
 
   AL.distanceModel $= AL.InverseDistance
