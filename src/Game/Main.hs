@@ -53,6 +53,7 @@ doGame initGS = void $ runGame initGS go
       unlessM (use gameStateShouldClose)
         go
 
+
 setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics = do
   (theModelE, theModelRB) <- createTheModel
@@ -96,8 +97,8 @@ createTheModel = do
       modelName = "bayo_default.dae"
       defaultTexture = "res" </> "models" </> "no_texture.png"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
-  vaoData <- forM meshes (\aim -> do 
-                             dif <- loadPNGTexture $ 
+  vaoData <- forM meshes (\aim -> do
+                             dif <- loadPNGTexture $
                                     maybe defaultTexture (modelRoot </>) $
                                     _assImpMeshDiffuseTexture aim
                              return $ VaoData
