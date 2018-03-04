@@ -32,7 +32,6 @@ import qualified Control.Monad.State.Strict   as MSS
 import qualified Control.Monad.Trans.Resource as RT
 import           Data.Dynamic
 import qualified Data.Map.Strict              as MS
-import qualified Data.Vector.Storable         as VS
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
@@ -393,9 +392,6 @@ instance Storable PointLight where
     loc <- peekByteOff ptr 0
     str <- peekByteOff ptr (3 * sizeOf (0 :: Float))
     return $ PointLight loc str
-
-newtype PointLightBundle = PointLightBundle
-  { _unPointLightBundle :: VS.Vector PointLight }
 
 mconcat <$> mapM makeLenses
   [ ''Camera
