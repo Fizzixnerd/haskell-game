@@ -15,6 +15,7 @@ import           Foreign
 import           Graphics.Binding.OpenGL.Utils
 import           Graphics.GL.Core45
 import           Graphics.GL.Types
+import qualified Data.Vector.Storable as VS
 
 newtype BufferObject = BufferObject
   { getBufferObjectGLuint :: GLuint
@@ -170,9 +171,12 @@ mapBuffer_ (BufferObject n) = glMapNamedBuffer n . marshalBufferAccess
 unmapBuffer :: MonadIO m => BufferObject -> m Bool
 unmapBuffer (BufferObject n) = fmap unmarshalGLboolean . glUnmapNamedBuffer $ n
 
-mapBufferRange :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
-mapBufferRange (BufferObject obj) offset leng flags
+mapBufferRange_ :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Ptr ())
+mapBufferRange_ (BufferObject obj) offset leng flags
   = glMapNamedBufferRange obj (fromIntegral offset) (fromIntegral leng) (marshalBufferObjectMapFlags flags)
+
+mapBufferRange :: MonadIO m => BufferObject -> BufferObjectOffset -> BufferObjectSize -> BufferObjectMapFlags -> m (Maybe (Ptr ()))
+mapBufferRange o off size flg = maybeNullPtr Nothing Just <$> mapBufferRange_ o off size flg
 
 clearBufferSubData :: MonadIO m => BufferObject -> SizedFormat -> BufferObjectOffset -> BufferObjectSize -> SizedFormat -> GLDataType -> Ptr () -> m ()
 clearBufferSubData (BufferObject obj) internalForm offset size form typ
@@ -191,3 +195,8 @@ bindBufferRange pt (BufferObjectIndex n) (BufferObject m) (BufferObjectOffset l)
 
 bindBufferBase :: MonadIO m => BufferBindPoint -> BufferObjectIndex -> BufferObject -> m ()
 bindBufferBase pt (BufferObjectIndex n) (BufferObject m) = glBindBufferBase (marshalBufferBindPoint pt) n m
+
+-- Very unsafe! Respect alignment!
+pokeBufferObject :: (Storable a, MonadIO m) => BufferObject -> VS.Vector a -> m ()
+pokeBufferObject bo dat = liftIO . VS.unsafeWith dat $ bufferSubData bo (fromIntegral $ VS.length dat) 0 . castPtr
+

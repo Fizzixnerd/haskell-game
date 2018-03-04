@@ -35,6 +35,7 @@ import Graphics.Binding.OpenGL.BufferObject as X
   , clearBufferSubData
   , copyBufferSubData
   , mapBufferRange
+  , pokeBufferObject
   )
 import Graphics.Binding.OpenGL.Shader as X
   ( VertexShader
