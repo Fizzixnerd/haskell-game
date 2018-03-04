@@ -74,11 +74,11 @@ marshalAssImpMesh sc ptr = do
   vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
 
+  vertexArrayVertexBuffer vao 0 vbuf 0 (fromIntegral stride)
   let fullAttribInit loc_ numComponents_ offset_ = do
+        vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized offset_
         vertexArrayAttribCapability vao loc_ Enabled
-        vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized 0
-        vertexArrayVertexBuffer vao loc_ vbuf offset_ (fromIntegral stride)
-        vertexArrayAttribBinding vao loc_ loc_
+        vertexArrayAttribBinding vao loc_ 0
 
   V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral i) (fromIntegral uv) (fromIntegral offset)) texData
   bindElementBuffer vao ibuf
