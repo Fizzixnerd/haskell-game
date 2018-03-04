@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -330,7 +332,7 @@ data TextureBundle s = TextureBundle
   , _textureBundleDisplacementTexture :: Maybe s
   , _textureBundleLightMapTexture     :: Maybe s
   , _textureBundleReflectionTexture   :: Maybe s
-  } deriving (Eq, Ord, Show)
+  } deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 emptyTextureBundle :: TextureBundle s
 emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing

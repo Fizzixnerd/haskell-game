@@ -49,7 +49,7 @@ bindTextureBundle TextureBundle {..} = do
   within _textureBundleLightMapTexture     LightMap2DSampler
   within _textureBundleReflectionTexture   Reflection2DSampler
   where
-    within x y = mapM_ (flip texture y) x
+    within x y = mapM_ (`texture` y) x
 
 drawGfxWithTransform :: L.M44 Float -> VPMatrix -> Gfx s -> Game s ()
 drawGfxWithTransform wrld vpm gfx = do
