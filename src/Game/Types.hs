@@ -441,7 +441,31 @@ instance Uniform PointLightBlock where
   type UniformLocationType PointLightBlock = DefaultBlock
   uniform prg _ cont = persistentUniformBlockBinding prg 1 cont
 
+data ShaderMaterial = ShaderMaterial
+  { _shaderMaterialDiffuseColor     :: L.V3 Float
+  , _shaderMaterialAmbientColor     :: L.V3 Float
+  , _shaderMaterialSpecularColor    :: L.V3 Float
+  , _shaderMaterialSpecularStrength :: Float
+  , _shaderMaterialSpecularExponent :: Float
+  } deriving (Eq, Ord, Show)
 
+instance Storable ShaderMaterial where
+  sizeOf _ = 11 * sizeOf (error "unreachable" :: Float)
+  alignment _ = 4 * alignment (error "unreachable" :: Float)
+  poke ptr ShaderMaterial {..} = do
+    pokeElemOff (castPtr ptr) 0 _shaderMaterialDiffuseColor
+    pokeElemOff (castPtr ptr) 1 _shaderMaterialAmbientColor
+    pokeElemOff (castPtr ptr) 2 _shaderMaterialSpecularColor
+    pokeElemOff (castPtr ptr) 9 _shaderMaterialSpecularStrength
+    pokeElemOff (castPtr ptr) 10 _shaderMaterialSpecularExponent
+  peek = error "ShaderMaterial: WHY YOU TRY TO PEEK!? B-BAKA!"
+
+data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
+
+instance Uniform ShaderMaterialBlock where
+  type UniformContents ShaderMaterialBlock = PersistentBuffer ShaderMaterial
+  type UniformLocationType ShaderMaterialBlock = DefaultBlock
+  uniform prg _ cont = persistentUniformBlockBinding prg 2 cont
 
 mconcat <$> mapM makeLenses
   [ ''Camera
