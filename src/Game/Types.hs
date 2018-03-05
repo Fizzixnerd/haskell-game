@@ -393,6 +393,13 @@ instance Storable PointLight where
     str <- peekByteOff ptr (3 * sizeOf (0 :: Float))
     return $ PointLight loc str
 
+data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
+
+instance Uniform PointLightBlock where
+  type UniformContents PointLightBlock = PersistentBuffer PointLight
+  type UniformLocationType PointLightBlock = DefaultBlock
+  uniform prg _ cont = persistentUniformBlockBinding prg 1 cont
+
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''Entity
