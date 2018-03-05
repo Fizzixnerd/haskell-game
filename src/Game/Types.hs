@@ -392,19 +392,19 @@ data AssImpMesh = AssImpMesh
   }
 
 data PointLight = PointLight
-  { _pointLightPosition :: L.V3 Float
+  { _pointLightPosition :: L.V4 Float
   , _pointLightIntensity :: Float
   } deriving (Eq, Ord, Show)
 
 instance Storable PointLight where
-  sizeOf _ = (1 + 3) * sizeOf (0 :: Float)
-  alignment _ = alignment (0 :: Float)
+  sizeOf _ = (1 + 4) * sizeOf (0 :: Float)
+  alignment = error "Please don't use this."
   poke ptr (PointLight loc str) = do
     pokeByteOff ptr 0 loc
-    pokeByteOff ptr (3 * sizeOf (0 :: Float)) str
+    pokeByteOff ptr (4 * sizeOf (0 :: Float)) str
   peek ptr = do
     loc <- peekByteOff ptr 0
-    str <- peekByteOff ptr (3 * sizeOf (0 :: Float))
+    str <- peekByteOff ptr (4 * sizeOf (0 :: Float))
     return $ PointLight loc str
 
 data PointLightBundle = PointLightBundle
@@ -441,10 +441,10 @@ maxPointLights :: Int
 maxPointLights = 128
 
 instance Storable PointLightBundle where
-  sizeOf _ = maxPointLights * 4 * sizeOf (0 :: Float) + sizeOf (0 :: Int)
-  alignment _ = 4 * alignment (0 :: Float)
+  sizeOf _ = maxPointLights * 5 * sizeOf (0 :: Float) + sizeOf (0 :: Int)
+  alignment = error "Please don't use this."
   poke ptr (PointLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
-    copyBytes ptr (castPtr lsPtr) $ min (maxPointLights * 4 * sizeOf (0 :: Float)) (length ls * sizeOf (0 :: Float) * 4)
+    copyBytes ptr (castPtr lsPtr) $ min (maxPointLights * 5 * sizeOf (0 :: Float)) (length ls * sizeOf (0 :: Float) * 5)
     poke (castPtr (ptr `plusPtr` (maxPointLights * 4 * sizeOf (0 :: Float)))) n
   peek = error "PointLightBundle: WHY YOU TRY TO PEEK!? B-BAKA!"
 
@@ -459,9 +459,9 @@ instance UniformBlock PointLightBlock (PersistentBuffer PointLightBundle) where
   bindBlock_ _ = bindFullPersistentBufferToPoint 1
 
 data ShaderMaterial = ShaderMaterial
-  { _shaderMaterialDiffuseColor     :: L.V3 Float
-  , _shaderMaterialAmbientColor     :: L.V3 Float
-  , _shaderMaterialSpecularColor    :: L.V3 Float
+  { _shaderMaterialDiffuseColor     :: L.V4 Float
+  , _shaderMaterialAmbientColor     :: L.V4 Float
+  , _shaderMaterialSpecularColor    :: L.V4 Float
   , _shaderMaterialSpecularStrength :: Float
   , _shaderMaterialSpecularExponent :: Float
   } deriving (Eq, Ord, Show)
