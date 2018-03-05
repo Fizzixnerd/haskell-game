@@ -20,7 +20,7 @@ type DefaultBlock = Program
 class Uniform a where
   type UniformContents a
   type UniformLocationType a
-  uniform :: (MonadIO m, Storable (UniformContents a)) => UniformLocationType a -> a -> UniformContents a -> m ()
+  uniform :: MonadIO m => UniformLocationType a -> a -> UniformContents a -> m ()
 
 uniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> BufferObject -> m ()
 uniformBlockBinding (Program a) (BufferObjectIndex b) (BufferObject c) = glUniformBlockBinding a b c

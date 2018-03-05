@@ -105,36 +105,38 @@ newtype EventRegister s = EventRegister
 type ScanCode = Int
 
 data GameState s = GameState
-  { _gameStateIOData        :: IOData
-  , _gameStateCamera        :: Camera s
-  , _gameStateActiveScripts :: Vector (Script s)
-  , _gameStateEventRegister :: EventRegister s
-  , _gameStateKeyEvent      :: GameWire s () (Event Key)
-  , _gameStateMousePosEvent :: GameWire s () (Event (Double, Double))
-  , _gameStatePhysicsWorld  :: PhysicsWorld s
-  , _gameStatePlayer        :: Player s
-  , _gameStateMouseSpeed    :: Float
-  , _gameStateShouldClose   :: Bool
-  , _gameStateSoundContext  :: AL.Context
-  , _gameStateSoundDevice   :: AL.Device
-  , _gameStateWires         :: Vector (GameWire s () ())
+  { _gameStateIOData                 :: IOData
+  , _gameStateCamera                 :: Camera s
+  , _gameStateActiveScripts          :: Vector (Script s)
+  , _gameStateEventRegister          :: EventRegister s
+  , _gameStateKeyEvent               :: GameWire s () (Event Key)
+  , _gameStateMousePosEvent          :: GameWire s () (Event (Double, Double))
+  , _gameStatePhysicsWorld           :: PhysicsWorld s
+  , _gameStatePlayer                 :: Player s
+  , _gameStateMouseSpeed             :: Float
+  , _gameStateShouldClose            :: Bool
+  , _gameStateSoundContext           :: AL.Context
+  , _gameStateSoundDevice            :: AL.Device
+  , _gameStateWires                  :: Vector (GameWire s () ())
+  , _gameStatePersistentBufferBundle :: PersistentBufferBundle
   }
 
 initGameState :: GameState s
 initGameState = GameState
-  { _gameStateIOData        = error "ioData not set"
-  , _gameStateCamera        = error "camera not set."
-  , _gameStateActiveScripts = empty
-  , _gameStateEventRegister = EventRegister mempty
-  , _gameStateMousePosEvent = error "mousePosEvent not set."
-  , _gameStateKeyEvent      = error "keyEvent not set."
-  , _gameStatePhysicsWorld  = error "physicsWorld not set."
-  , _gameStatePlayer        = error "player not set."
-  , _gameStateMouseSpeed    = 0.01
-  , _gameStateShouldClose   = False
-  , _gameStateSoundContext  = error "soundContext not set."
-  , _gameStateSoundDevice   = error "soundDevice not set."
-  , _gameStateWires         = empty
+  { _gameStateIOData                  = error "ioData not set"
+  , _gameStateCamera                  = error "camera not set."
+  , _gameStateActiveScripts           = empty
+  , _gameStateEventRegister           = EventRegister mempty
+  , _gameStateMousePosEvent           = error "mousePosEvent not set."
+  , _gameStateKeyEvent                = error "keyEvent not set."
+  , _gameStatePhysicsWorld            = error "physicsWorld not set."
+  , _gameStatePlayer                  = error "player not set."
+  , _gameStateMouseSpeed              = 0.01
+  , _gameStateShouldClose             = False
+  , _gameStateSoundContext            = error "soundContext not set."
+  , _gameStateSoundDevice             = error "soundDevice not set."
+  , _gameStateWires                   = empty
+  , _gameStatePersistentBufferBundle  = error "bufferBundle not set."
   }
 
 data Camera s = Camera
@@ -340,12 +342,18 @@ data TextureBundle s = TextureBundle
 emptyTextureBundle :: TextureBundle s
 emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
+data PersistentBufferBundle = PersistentBufferBundle
+  { _persistentBufferBundleShaderMaterialBuffer :: PersistentBuffer ShaderMaterial
+  , _persistentBufferBundleShaderCameraBuffer :: PersistentBuffer ShaderCamera
+  } deriving (Eq, Ord, Show)
+
 data VaoData = VaoData
   { _vaoDataVao            :: VertexArrayObject
   , _vaoDataProgram        :: Program
   , _vaoDataPrimitiveMode  :: PrimitiveMode
   , _vaoDataNumElements    :: Word32
   , _vaoDataTextureBundle  :: TextureBundle (TextureObject TextureTarget2D)
+  , _vaoDataShaderMaterial :: ShaderMaterial
   } deriving (Eq, Ord, Show)
 
 data Gfx s = Gfx
@@ -358,6 +366,7 @@ newtype RigidBody       = RigidBody       { _unRigidBody       :: P.RigidBody   
 
 type VPMatrix = L.M44 Float
 type VMatrix  = L.M44 Float
+type PMatrix  = L.M44 Float
 
 data Sfx s = Sfx
   { _sfxSources :: Vector AL.Source
@@ -371,13 +380,14 @@ newtype AssImpScene = AssImpScene
   { _assImpMeshes :: Vector AssImpMesh }
 
 data AssImpMesh = AssImpMesh
-  { _assImpMeshVAO              :: VertexArrayObject
-  , _assImpMeshBufferObject     :: BufferObject
-  , _assImpMeshTextureDetails   :: Vector Word32
-  , _assImpMeshIndexBO          :: BufferObject
-  , _assImpMeshIndexBOType      :: IndexType
-  , _assImpMeshIndexNum         :: Word32
-  , _assImpMeshTextureBundle    :: TextureBundle FilePath
+  { _assImpMeshVAO            :: VertexArrayObject
+  , _assImpMeshBufferObject   :: BufferObject
+  , _assImpMeshTextureDetails :: Vector Word32
+  , _assImpMeshIndexBO        :: BufferObject
+  , _assImpMeshIndexBOType    :: IndexType
+  , _assImpMeshIndexNum       :: Word32
+  , _assImpMeshTextureBundle  :: TextureBundle FilePath
+  , _assImpMeshShaderMaterial :: ShaderMaterial
   }
 
 data PointLight = PointLight
@@ -397,13 +407,13 @@ instance Storable PointLight where
     return $ PointLight loc str
 
 data PointLightBundle = PointLightBundle
-  { _pointLightsBundleLights :: VS.Vector PointLight
-  , _pointLightsBundleNum :: Int
+  { _pointLightBundleLights :: VS.Vector PointLight
+  , _pointLightBundleNum :: Int
   }
 
 data ShaderCamera = ShaderCamera
   { _shaderCameraMVP :: L.M44 Float
-  , _shaderCameraMV  :: L.M44 Float
+  , _shaderCameraVP  :: L.M44 Float
   , _shaderCameraP   :: L.M44 Float
   } deriving (Eq, Ord, Show)
 
@@ -495,4 +505,5 @@ mconcat <$> mapM makeLenses
   , ''TextureBundle
   , ''PointLight
   , ''PointLightBundle
+  , ''PersistentBufferBundle
   ]

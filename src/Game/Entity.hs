@@ -51,22 +51,45 @@ bindTextureBundle TextureBundle {..} = do
   where
     within x y = mapM_ (`texture` y) x
 
-drawGfxWithTransform :: L.M44 Float -> VPMatrix -> Gfx s -> Game s ()
-drawGfxWithTransform wrld vpm gfx = do
+drawGfxWithTransform :: L.M44 Float -> Camera s -> Gfx s -> Game s ()
+drawGfxWithTransform wrld cam gfx = do
+  vpm <- cameraVP cam
+  camVP <- cam ^. to cameraVP
+  let camMVP = camVP
+      shaderCam = ShaderCamera
+                  { _shaderCameraP = cam ^. to cameraP
+                  , _shaderCameraVP = camVP
+                  , _shaderCameraMVP = camMVP
+                  }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
     bindTextureBundle _vaoDataTextureBundle
     useProgram _vaoDataProgram
     currentVertexArrayObject $= Just _vaoDataVao
     uniform _vaoDataProgram UniformMVP (vpm L.!*! wrld)
-    drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
-  mapM_ (drawGfxWithTransform wrld vpm) $ gfx ^. gfxChildren
 
-drawEntity :: VPMatrix -> Entity s -> Game s ()
-drawEntity vpm e = case e ^. entityGraphics of
+    smpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer
+    persistentBufferWrite 1000 _vaoDataShaderMaterial smpb
+    -- FIXME:  What does this return??
+    uniform _vaoDataProgram ShaderMaterialBlock smpb
+
+    scpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderCameraBuffer
+    persistentBufferWrite 1000 shaderCam scpb
+    -- FIXME: What does this return?
+    uniform _vaoDataProgram CameraBlock scpb
+
+    drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
+    smpb' <- fencePersistentBuffer smpb
+    scpb' <- fencePersistentBuffer scpb
+    gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer .= smpb'
+    gameStatePersistentBufferBundle . persistentBufferBundleShaderCameraBuffer .= scpb'
+  mapM_ (drawGfxWithTransform wrld cam) $ gfx ^. gfxChildren
+
+drawEntity :: Camera s -> Entity s -> Game s ()
+drawEntity cam e = case e ^. entityGraphics of
   Nothing -> return ()
   Just gfx -> do
     wrld <- getWorldMatrix $ e ^. entityCollisionObject
-    drawGfxWithTransform wrld vpm gfx
+    drawGfxWithTransform wrld cam gfx
 
 playEntity :: Entity s -> Game s ()
 playEntity e = case e ^. entitySounds of
@@ -88,10 +111,9 @@ scriptEntity e = case e ^. entityLogic of
 animateEntity :: Entity s -> Game s (Entity s)
 animateEntity e = do
   cam <- use gameStateCamera
-  vpm <- cameraVP cam
   e' <- scriptEntity e
   playEntity e'
-  drawEntity vpm e'
+  drawEntity cam e'
   return e'
 
 setEntityLinearVelocity :: Entity s -> L.V3 Float -> Game s ()

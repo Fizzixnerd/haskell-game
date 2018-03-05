@@ -17,6 +17,7 @@ import Graphics.Binding
 import Control.Monad (mfilter)
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
+import qualified Linear as L
 
 importAssImpFileGood :: FilePath -> IO ScenePtr
 importAssImpFileGood = importAndProcessFileGood
@@ -101,6 +102,17 @@ marshalAssImpMesh sc ptr = do
   lightMapName     <- matTex TextureTypeLightMap
   reflectionName   <- matTex TextureTypeReflection
 
+  (Color3D dr dg db) <- materialColorDiffuse mat
+  let diffuseColor = L.V3 dr dg db
+  (Color3D ar ag ab) <- materialColorAmbient mat
+  let ambientColor = L.V3 ar ag ab
+  (Color3D sr sg sb) <- materialColorSpecular mat
+  let specularColor = L.V3 sr sg sb
+  specularStrength <- materialShininessStrength mat
+  specularExponent <- materialShininess mat
+
+
+
   return AssImpMesh
     { _assImpMeshVAO             = vao
     , _assImpMeshBufferObject    = vbuf
@@ -120,6 +132,13 @@ marshalAssImpMesh sc ptr = do
       , _textureBundleDisplacementTexture = displacementName
       , _textureBundleLightMapTexture     = lightMapName
       , _textureBundleReflectionTexture   = reflectionName
+      }
+    , _assImpMeshShaderMaterial = ShaderMaterial
+      { _shaderMaterialDiffuseColor = diffuseColor
+      , _shaderMaterialAmbientColor = ambientColor
+      , _shaderMaterialSpecularColor = specularColor
+      , _shaderMaterialSpecularStrength = specularStrength
+      , _shaderMaterialSpecularExponent = specularExponent
       }
     }
 

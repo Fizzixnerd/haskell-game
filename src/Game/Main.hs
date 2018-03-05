@@ -95,6 +95,25 @@ createTheModel = do
   P.del rbci
 
   prog <- compileShaders
+
+  -- Do point lights
+  let pointLight = PointLight
+                   { _pointLightPosition = V3 1 1 0
+                   , _pointLightIntensity = 1
+                   }
+      pointLightBundle = PointLightBundle
+                         { _pointLightBundleLights = singleton pointLight
+                         , _pointLightBundleNum = 1
+                         }
+
+  (Just lpb) <- genPersistentBuffer
+  persistentBufferWrite 1000 pointLightBundle lpb
+
+  uniform prog PointLightBlock lpb
+
+  (Just smpb) <- genPersistentBuffer
+  (Just cpb)  <- genPersistentBuffer
+
   let modelRoot = "res" </> "models" </> "Bayonetta 1"
       modelName = "bayo_default.dae"
       defaultTexture = "res" </> "models" </> "no_texture.png"
@@ -108,7 +127,12 @@ createTheModel = do
                                prog
                                Triangles
                                (_assImpMeshIndexNum aim)
-                               (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif))
+                               (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif)
+                               (_assImpMeshShaderMaterial aim) $ PersistentBufferBundle
+                                 smpb
+                                 cpb)
+
+
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")
   AL.buffer src $= Just sbuf
