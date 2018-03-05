@@ -37,12 +37,13 @@ bindPersistentBufferToPoint idx (PersistentBuffer _ _ n _) = bindBufferRange Buf
 bindFullPersistentBufferToPoint :: forall a m. (Storable a, MonadIO m) => BufferObjectIndex -> PersistentBuffer a -> m ()
 bindFullPersistentBufferToPoint idx (PersistentBuffer _ len n _) = bindBufferRange BufferUniform idx n 0 (fromIntegral $ len * sizeOf (error "unreachable" :: a))
 
-uniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> BufferObject -> m ()
-uniformBlockBinding (Program a) (BufferObjectIndex b) (BufferObject c) = glUniformBlockBinding a b c
+uniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> BufferObjectIndex -> m ()
+uniformBlockBinding (Program a) (BufferObjectIndex b) (BufferObjectIndex c) = glUniformBlockBinding a b c
 
+{-
 persistentUniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> PersistentBuffer a -> m ()
 persistentUniformBlockBinding prg indx (PersistentBuffer _ _ n _) = uniformBlockBinding prg indx n
-
+-}
 {-
 class GeneratableObjectName a => UniformBlock a where
   type UniformBlockContents a
