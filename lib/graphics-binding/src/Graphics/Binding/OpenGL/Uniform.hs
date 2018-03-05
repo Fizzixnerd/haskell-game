@@ -34,8 +34,14 @@ bindBlock a = liftIO . bindBlock_ a
 bindPersistentBufferToPoint :: MonadIO m => BufferObjectIndex -> PersistentBuffer a -> BufferObjectOffset -> BufferObjectSize -> m ()
 bindPersistentBufferToPoint idx (PersistentBuffer _ _ n _) = bindBufferRange BufferUniform idx n
 
+{-
 bindFullPersistentBufferToPoint :: forall a m. (Storable a, MonadIO m) => BufferObjectIndex -> PersistentBuffer a -> m ()
 bindFullPersistentBufferToPoint idx (PersistentBuffer _ len n _) = bindBufferRange BufferUniform idx n 0 (fromIntegral $ len * sizeOf (error "unreachable" :: a))
+-}
+
+bindFullPersistentBufferToPoint :: forall a m. (Storable a, MonadIO m) => BufferObjectIndex -> PersistentBuffer a -> m ()
+bindFullPersistentBufferToPoint idx (PersistentBuffer _ _ n _) = bindBufferBase BufferUniform idx n
+
 
 uniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> BufferObjectIndex -> m ()
 uniformBlockBinding (Program a) (BufferObjectIndex b) (BufferObjectIndex c) = glUniformBlockBinding a b c

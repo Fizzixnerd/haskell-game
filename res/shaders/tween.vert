@@ -25,10 +25,10 @@ layout (std140, binding = 1) uniform PointLights {
 
 layout (std140, binding = 2) uniform Material {
   vec3 diffuse_color;
-  vec3 ambient_color;
-  vec3 specular_color;
   float specular_strength;
+  vec3 ambient_color;
   float specular_exponent;
+  vec3 specular_color;
 } material;
 
 out VS_OUT {
@@ -37,10 +37,7 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  if (point_lights.num > 0) {
-      gl_Position = camera.mvp * vec4(position, 1) +
-        vec4(material.diffuse_color, 0) - vec4(material.diffuse_color, 0);
-      vs_out.uv = uv;
-      vs_out.lighting = vec3(0, 0, 0);
-    }
+  gl_Position = camera.mvp * vec4(position, 1);
+  vs_out.uv = uv;
+  vs_out.lighting = vec3(0, 0, 0);
 }
