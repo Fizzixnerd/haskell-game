@@ -420,7 +420,7 @@ data ShaderCamera = ShaderCamera
 
 instance Storable ShaderCamera where
   sizeOf _ = 3 * sizeOf (error "unreachable" :: L.M44 Float)
-  alignment _ = alignment (error "unreachable" :: L.M44 Float)
+  alignment = error "Please don't use this."
   poke ptr (ShaderCamera mvp vp p) = do
     pokeElemOff (castPtr ptr) 0 mvp
     pokeElemOff (castPtr ptr) 1 vp
