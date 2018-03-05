@@ -345,6 +345,7 @@ emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothi
 data PersistentBufferBundle = PersistentBufferBundle
   { _persistentBufferBundleShaderMaterialBuffer :: PersistentBuffer ShaderMaterial
   , _persistentBufferBundleShaderCameraBuffer :: PersistentBuffer ShaderCamera
+  , _persistentBufferBundlePointLightBundleBuffer :: PersistentBuffer PointLightBundle
   } deriving (Eq, Ord, Show)
 
 data VaoData = VaoData
@@ -431,7 +432,10 @@ data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 instance Uniform CameraBlock where
   type UniformContents CameraBlock = PersistentBuffer ShaderCamera
   type UniformLocationType CameraBlock = DefaultBlock
-  uniform prg _ cont = persistentUniformBlockBinding prg 0 cont
+  uniform prg _ cont = uniformBlockBinding prg 0 0
+
+instance UniformBlock CameraBlock (PersistentBuffer ShaderCamera) where
+  bindBlock_ _ = bindFullPersistentBufferToPoint 0
 
 maxPointLights :: Int
 maxPointLights = 128
@@ -449,7 +453,10 @@ data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
 instance Uniform PointLightBlock where
   type UniformContents PointLightBlock = PersistentBuffer PointLightBundle
   type UniformLocationType PointLightBlock = DefaultBlock
-  uniform prg _ cont = persistentUniformBlockBinding prg 1 cont
+  uniform prg _ cont = uniformBlockBinding prg 1 1
+
+instance UniformBlock PointLightBlock (PersistentBuffer PointLightBundle) where
+  bindBlock_ _ = bindFullPersistentBufferToPoint 1
 
 data ShaderMaterial = ShaderMaterial
   { _shaderMaterialDiffuseColor     :: L.V3 Float
@@ -475,7 +482,8 @@ data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 instance Uniform ShaderMaterialBlock where
   type UniformContents ShaderMaterialBlock = PersistentBuffer ShaderMaterial
   type UniformLocationType ShaderMaterialBlock = DefaultBlock
-  uniform prg _ cont = persistentUniformBlockBinding prg 2 cont
+  uniform prg _ cont = uniformBlockBinding prg 2 2
+
 instance UniformBlock ShaderMaterialBlock (PersistentBuffer ShaderMaterial) where
   bindBlock_ _ = bindFullPersistentBufferToPoint 2
 

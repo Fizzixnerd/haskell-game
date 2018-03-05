@@ -54,9 +54,9 @@ doGame initGS = void $ runGame initGS go
         go
 
 
-setupPhysics :: IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
-setupPhysics = do
-  (theModelE, theModelRB) <- createTheModel
+setupPhysics :: Program -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
+setupPhysics prog = do
+  (theModelE, theModelRB) <- createTheModel prog
   pw <- newPhysicsWorld
   pl' <- newPlayer
   let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
@@ -78,10 +78,8 @@ setupPhysics = do
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw'''', pl, cam, theModelE, theModelRB)
 
-
-
-createTheModel :: IO (Entity s, P.RigidBody)
-createTheModel = do
+createTheModel :: Program -> IO (Entity s, P.RigidBody)
+createTheModel prog = do
   model <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
@@ -93,26 +91,6 @@ createTheModel = do
   rb   <- P.newRigidBody rbci
   P.del startXform
   P.del rbci
-
-  prog <- compileShaders
-
-  -- Do point lights
-  let pointLight = PointLight
-                   { _pointLightPosition = V3 1 1 0
-                   , _pointLightIntensity = 1
-                   }
-      pointLightBundle = PointLightBundle
-                         { _pointLightBundleLights = singleton pointLight
-                         , _pointLightBundleNum = 1
-                         }
-
-  (Just lpb) <- genPersistentBuffer
-  persistentBufferWrite 1000 pointLightBundle lpb
-
-  uniform prog PointLightBlock lpb
-
-  (Just smpb) <- genPersistentBuffer
-  (Just cpb)  <- genPersistentBuffer
 
   let modelRoot = "res" </> "models" </> "Bayonetta 1"
       modelName = "bayo_default.dae"
@@ -128,9 +106,7 @@ createTheModel = do
                                Triangles
                                (_assImpMeshIndexNum aim)
                                (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif)
-                               (_assImpMeshShaderMaterial aim) $ PersistentBufferBundle
-                                 smpb
-                                 cpb)
+                               (_assImpMeshShaderMaterial aim))
 
 
   src :: AL.Source <- ON.genObjectName
@@ -161,6 +137,37 @@ createTheModel = do
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
+setupPersistentBuffers :: Program -> IO PersistentBufferBundle
+setupPersistentBuffers prog = do
+  -- Do point lights
+  let pointLight = PointLight
+                   { _pointLightPosition = V3 1 1 0
+                   , _pointLightIntensity = 1
+                   }
+      pointLightBundle = PointLightBundle
+                         { _pointLightBundleLights = singleton pointLight
+                         , _pointLightBundleNum = 1
+                         }
+
+  (Just plbpb) <- genPersistentBuffer
+  persistentBufferWrite 1000 pointLightBundle plbpb
+  uniform prog PointLightBlock plbpb
+  bindBlock PointLightBlock plbpb
+
+  (Just smpb) <- genPersistentBuffer
+  --persistentBufferWrite 1000 (ShaderMaterial (L.V3 1 1 1) (L.V3 1 1 1) (L.V3 1 1 1) 1 1) smpb
+  --bindBlock ShaderMaterialBlock smpb
+
+  (Just cpb)  <- genPersistentBuffer
+  --persistentBufferWrite 1000 (ShaderCamera L.identity L.identity L.identity) cpb
+  --bindBlock CameraBlock cpb
+
+  return PersistentBufferBundle
+    { _persistentBufferBundleShaderCameraBuffer = cpb
+    , _persistentBufferBundleShaderMaterialBuffer = smpb
+    , _persistentBufferBundlePointLightBundleBuffer = plbpb
+    }
+
 gameMain :: IO ()
 gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
   withGraphicsContext defaultGraphicsContext . withWindow defaultWindowConfig
@@ -181,8 +188,12 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
   let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
   AL.currentContext $= Just ctxt
 
+  prog <- compileShaders
+
   AL.distanceModel $= AL.InverseDistance
-  (physicsWorld, player, cam, _, _) <- setupPhysics
+  (physicsWorld, player, cam, _, _) <- setupPhysics prog
+
+  buffBundle <- setupPersistentBuffers prog
 
   ic <- N.mkInputControl win
   input <- liftIO $ N.getInput ic
@@ -222,4 +233,5 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
                                 & gameStateSoundContext .~ ctxt
                                 & gameStateWires .~ mainWires
                                 & gameStateIOData .~ ioData
+                                & gameStatePersistentBufferBundle .~ buffBundle
   doGame gameState

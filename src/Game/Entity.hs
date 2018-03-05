@@ -65,19 +65,20 @@ drawGfxWithTransform wrld cam gfx = do
     bindTextureBundle _vaoDataTextureBundle
     useProgram _vaoDataProgram
     currentVertexArrayObject $= Just _vaoDataVao
-    uniform _vaoDataProgram UniformMVP (vpm L.!*! wrld)
 
     smpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer
     persistentBufferWrite 1000 _vaoDataShaderMaterial smpb
-    -- FIXME:  What does this return??
     uniform _vaoDataProgram ShaderMaterialBlock smpb
+    bindBlock ShaderMaterialBlock smpb
 
     scpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderCameraBuffer
     persistentBufferWrite 1000 shaderCam scpb
-    -- FIXME: What does this return?
     uniform _vaoDataProgram CameraBlock scpb
+    bindBlock CameraBlock scpb
 
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
+
+    -- Done drawing; fence up baby.
     smpb' <- fencePersistentBuffer smpb
     scpb' <- fencePersistentBuffer scpb
     gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer .= smpb'
