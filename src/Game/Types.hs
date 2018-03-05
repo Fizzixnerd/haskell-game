@@ -398,7 +398,7 @@ data PointLight = PointLight
 
 instance Storable PointLight where
   sizeOf _ = (1 + 4) * sizeOf (0 :: Float)
-  alignment = error "Please don't use this."
+  alignment _ = 4 * alignment (error "unreachable":: Float)
   poke ptr (PointLight loc str) = do
     pokeByteOff ptr 0 loc
     pokeByteOff ptr (4 * sizeOf (0 :: Float)) str
@@ -420,7 +420,7 @@ data ShaderCamera = ShaderCamera
 
 instance Storable ShaderCamera where
   sizeOf _ = 3 * sizeOf (error "unreachable" :: L.M44 Float)
-  alignment = error "Please don't use this."
+  alignment _ = 4 * sizeOf (error "unreachable" :: L.M44 Float)
   poke ptr (ShaderCamera mvp vp p) = do
     pokeElemOff (castPtr ptr) 0 mvp
     pokeElemOff (castPtr ptr) 1 vp

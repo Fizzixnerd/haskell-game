@@ -32,12 +32,12 @@ layout (std140, binding = 2) uniform Material {
 } material;
 
 out VS_OUT {
-  vec3 lighting;
+  vec4 lighting;
   vec2 uv;
 } vs_out;
 
 void main() {
   gl_Position = camera.mvp * vec4(position, 1);
   vs_out.uv = uv;
-  vs_out.lighting = vec3(0, 0, 0);
+  vs_out.lighting = vec4(0, 0, 0, 0);
 }
