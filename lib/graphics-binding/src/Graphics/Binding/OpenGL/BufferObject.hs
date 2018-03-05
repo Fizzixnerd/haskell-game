@@ -205,6 +205,7 @@ pokeBufferObject bo dat = liftIO . VS.unsafeWith dat $ bufferSubData bo (fromInt
 
 data PersistentBuffer a = PersistentBuffer
   { _getPersistentBufferPtr    :: Ptr a
+  , _getPersistentBufferLength :: Int
   , _getPersistentBufferName   :: BufferObject
   , _getPersistentBufferSync   :: GLsync
   } deriving (Eq, Ord, Show)
@@ -217,7 +218,7 @@ genPersistentBufferArray n = do
   bufo@(BufferObject ident) <- genObjectName
   glNamedBufferStorage ident size nullPtr persistentBufferFlag
   ptr <- glMapNamedBufferRange ident 0 size persistentBufferFlag
-  return $ (\x -> PersistentBuffer (castPtr x) bufo nullPtr) <$> maybeNullPtr Nothing Just ptr
+  return $ (\x -> PersistentBuffer (castPtr x) n bufo nullPtr) <$> maybeNullPtr Nothing Just ptr
   where
     size = fromIntegral $ n * sizeOf (error "how are you seeing this" :: a)
 

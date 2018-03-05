@@ -69,6 +69,10 @@ import Graphics.Binding.OpenGL.Uniform as X
   , Uniform(..)
   , uniformBlockBinding
   , persistentUniformBlockBinding
+  , UniformBlock(..)
+  , bindBlock
+  , bindPersistentBufferToPoint
+  , bindFullPersistentBufferToPoint
   )
 
 import Graphics.Binding.OpenGL.Texture as X
