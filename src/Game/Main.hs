@@ -141,7 +141,7 @@ setupPersistentBuffers :: Program -> IO PersistentBufferBundle
 setupPersistentBuffers prog = do
   -- Do point lights
   let pointLight = PointLight
-                   { _pointLightPosition = V3 1 1 0
+                   { _pointLightPosition = V4 1 1 0 1
                    , _pointLightIntensity = 1
                    }
       pointLightBundle = PointLightBundle

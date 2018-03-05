@@ -103,11 +103,11 @@ marshalAssImpMesh sc ptr = do
   reflectionName   <- matTex TextureTypeReflection
 
   (Color3D dr dg db) <- materialColorDiffuse mat
-  let diffuseColor = L.V3 dr dg db
+  let diffuseColor = L.V4 dr dg db 0
   (Color3D ar ag ab) <- materialColorAmbient mat
-  let ambientColor = L.V3 ar ag ab
+  let ambientColor = L.V4 ar ag ab 0
   (Color3D sr sg sb) <- materialColorSpecular mat
-  let specularColor = L.V3 sr sg sb
+  let specularColor = L.V4 sr sg sb 0
   specularStrength <- materialShininessStrength mat
   specularExponent <- materialShininess mat
 
