@@ -32,10 +32,13 @@ import qualified Control.Monad.State.Strict   as MSS
 import qualified Control.Monad.Trans.Resource as RT
 import           Data.Dynamic
 import qualified Data.Map.Strict              as MS
+import qualified Data.Vector.Storable         as VS
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
 import           Foreign.Storable
+import           Foreign.Marshal.Utils
+import           Foreign.Ptr
 import           Graphics.Binding
 import qualified Linear                       as L
 import qualified Physics.Bullet               as P
@@ -379,7 +382,7 @@ data AssImpMesh = AssImpMesh
 
 data PointLight = PointLight
   { _pointLightPosition :: L.V3 Float
-  , _pointLightStrength :: Float
+  , _pointLightIntensity :: Float
   } deriving (Eq, Ord, Show)
 
 instance Storable PointLight where
@@ -393,12 +396,52 @@ instance Storable PointLight where
     str <- peekByteOff ptr (3 * sizeOf (0 :: Float))
     return $ PointLight loc str
 
+data PointLightBundle = PointLightBundle
+  { _pointLightsBundleLights :: VS.Vector PointLight
+  , _pointLightsBundleNum :: Int
+  }
+
+data ShaderCamera = ShaderCamera
+  { _shaderCameraMVP :: L.M44 Float
+  , _shaderCameraMV  :: L.M44 Float
+  , _shaderCameraP   :: L.M44 Float
+  } deriving (Eq, Ord, Show)
+
+instance Storable ShaderCamera where
+  sizeOf _ = 3 * sizeOf (error "unreachable" :: L.M44 Float)
+  alignment _ = alignment (error "unreachable" :: L.M44 Float)
+  poke ptr (ShaderCamera mvp vp p) = do
+    pokeElemOff (castPtr ptr) 0 mvp
+    pokeElemOff (castPtr ptr) 1 vp
+    pokeElemOff (castPtr ptr) 2 p
+  peek = error "ShaderCamera: WHY YOU TRY TO PEEK!? B-BAKA!"
+
+data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
+
+instance Uniform CameraBlock where
+  type UniformContents CameraBlock = PersistentBuffer ShaderCamera
+  type UniformLocationType CameraBlock = DefaultBlock
+  uniform prg _ cont = persistentUniformBlockBinding prg 0 cont
+
+maxPointLights :: Int
+maxPointLights = 128
+
+instance Storable PointLightBundle where
+  sizeOf _ = maxPointLights * 4 * sizeOf (0 :: Float) + sizeOf (0 :: Int)
+  alignment _ = 4 * alignment (0 :: Float)
+  poke ptr (PointLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
+    copyBytes ptr (castPtr lsPtr) $ min (maxPointLights * 4 * sizeOf (0 :: Float)) (length ls * sizeOf (0 :: Float) * 4)
+    poke (castPtr (ptr `plusPtr` (maxPointLights * 4 * sizeOf (0 :: Float)))) n
+  peek = error "PointLightBundle: WHY YOU TRY TO PEEK!? B-BAKA!"
+
 data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
 
 instance Uniform PointLightBlock where
-  type UniformContents PointLightBlock = PersistentBuffer PointLight
+  type UniformContents PointLightBlock = PersistentBuffer PointLightBundle
   type UniformLocationType PointLightBlock = DefaultBlock
   uniform prg _ cont = persistentUniformBlockBinding prg 1 cont
+
+
 
 mconcat <$> mapM makeLenses
   [ ''Camera
@@ -427,4 +470,5 @@ mconcat <$> mapM makeLenses
   , ''VaoData
   , ''TextureBundle
   , ''PointLight
+  , ''PointLightBundle
   ]
