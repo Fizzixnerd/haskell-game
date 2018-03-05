@@ -13,7 +13,7 @@ layout (std140, binding = 0) uniform Camera {
 } camera;
 
 struct PointLight {
-  vec3 position;
+  vec4 position;
   float intensity;
 };
 
@@ -24,9 +24,9 @@ layout (std140, binding = 1) uniform PointLights {
 } point_lights;
 
 layout (std140, binding = 2) uniform Material {
-  vec3 diffuse_color;
-  vec3 ambient_color;
-  vec3 specular_color;
+  vec4 diffuse_color;
+  vec4 ambient_color;
+  vec4 specular_color;
   float specular_strength;
   float specular_exponent;
 } material;
