@@ -37,10 +37,7 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  if (point_lights.num > 0) {
-      gl_Position = camera.mvp * vec4(position, 1) +
-        vec4(material.diffuse_color, 0) - vec4(material.diffuse_color, 0);
-      vs_out.uv = uv;
-      vs_out.lighting = vec3(0, 0, 0);
-    }
+  gl_Position = camera.mvp * vec4(position, 1);
+  vs_out.uv = uv;
+  vs_out.lighting = vec3(0, 0, 0);
 }

@@ -471,10 +471,10 @@ instance Storable ShaderMaterial where
   alignment _ = 4 * alignment (error "unreachable" :: Float)
   poke ptr ShaderMaterial {..} = do
     pokeByteOff (castPtr ptr) (0*m) _shaderMaterialDiffuseColor
-    pokeByteOff (castPtr ptr) (3*m) _shaderMaterialSpecularStrength
     pokeByteOff (castPtr ptr) (4*m) _shaderMaterialAmbientColor
-    pokeByteOff (castPtr ptr) (7*m) _shaderMaterialSpecularExponent
     pokeByteOff (castPtr ptr) (8*m) _shaderMaterialSpecularColor
+    pokeByteOff (castPtr ptr) (12*m) _shaderMaterialSpecularStrength
+    pokeByteOff (castPtr ptr) (16*m) _shaderMaterialSpecularExponent
     where
       m = sizeOf (error "unreachable" :: Float)
   peek = error "ShaderMaterial: WHY YOU TRY TO PEEK!? B-BAKA!"
