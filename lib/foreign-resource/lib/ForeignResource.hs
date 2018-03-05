@@ -20,19 +20,19 @@ module ForeignResource
   , ForeignResourceWrite(..)
   , resourceWrite
   , resourceWrite'
-  , (.=!)
-  , (&!)
+  , (!.=)
+  , (~&)
   , ForeignResourceUpdate(..)
   , resourceUpdate
   , resourceUpdate'
-  , (%=!)
+  , (!%=)
   )
 where
 
 import Data.Acquire as X
 import Control.Monad.IO.Class as X
 import Control.Monad.Trans.Resource as X
-import Control.Monad ((>=>))
+import Data.Functor (($>))
 
 class ForeignResource s a | s -> a where
   resource :: a -> Acquire s
@@ -76,13 +76,13 @@ resourceWrite s t = liftIO . resourceWrite_ s t
 resourceWrite' :: (MonadIO m, ForeignResourceWrite s () w) => s -> w -> m s
 resourceWrite' s = resourceWrite s ()
 
-infix 4 .=!
-(.=!) :: (MonadIO m, ForeignResourceWrite s t w) => t -> w -> (s -> m s) -> (s -> m s)
-t .=! w = ((\s -> resourceWrite s t w) >=>)
+infix 4 !.=
+(!.=) :: (MonadIO m, ForeignResourceWrite s t w) => t -> w -> s -> m s
+t !.= w = \s -> resourceWrite s t w
 
-infixl 1 &!
-(&!) :: Applicative m => s -> ((s -> m s) -> (s -> m s)) -> m s
-s &! f = f pure s
+infixl 1 ~&
+(~&) :: Functor f => s -> (s -> f s) -> f ()
+s ~& f = f s $> ()
 
 class (ForeignResourceRead s t a, ForeignResourceWrite s t a) => ForeignResourceUpdate s t a | t -> a where
   resourceUpdate_ :: t -> (a -> IO a) -> s -> IO s
@@ -93,7 +93,7 @@ resourceUpdate t f = liftIO . resourceUpdate_ t f
 resourceUpdate' :: (MonadIO m, ForeignResourceUpdate s () a) => (a -> IO a) -> s -> m s
 resourceUpdate' = resourceUpdate ()
 
-infix 4 %=!
-(%=!) :: (MonadIO m, ForeignResourceUpdate s t a) => t -> (a -> IO a) -> (s -> m s) -> (s -> m s)
-t %=! f = (resourceUpdate t f >=>)
+infix 4 !%=
+(!%=) :: (MonadIO m, ForeignResourceUpdate s t a) => t -> (a -> IO a) -> s -> m s
+(!%=) = resourceUpdate
 
