@@ -26,7 +26,7 @@ packages:
   - ./lib/assimp-hs
   - ./lib/graphics-binding
   - ./lib/netwire-input-glfw
-  - ./lib/foreign-objects
+  - ./lib/foreign-resource
 # - some-directory
 # - https://example.com/foo/bar/baz-0.0.2.tar.gz
 # - location:
@@ -52,6 +52,7 @@ extra-deps:
 - lib/assimp-hs
 - lib/graphics-binding
 - lib/netwire-input-glfw
+- lib/foreign-resource
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

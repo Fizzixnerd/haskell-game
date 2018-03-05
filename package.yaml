@@ -21,6 +21,7 @@ description:         Please see the README on Github at <https://github.com/Fizz
 
 dependencies:
 - ALUT
+- foreign-resource
 - assimp-hs
 - FontyFruity
 - GLFW-b

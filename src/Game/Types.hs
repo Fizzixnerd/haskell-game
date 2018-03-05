@@ -476,6 +476,8 @@ instance Uniform ShaderMaterialBlock where
   type UniformContents ShaderMaterialBlock = PersistentBuffer ShaderMaterial
   type UniformLocationType ShaderMaterialBlock = DefaultBlock
   uniform prg _ cont = persistentUniformBlockBinding prg 2 cont
+instance UniformBlock ShaderMaterialBlock (PersistentBuffer ShaderMaterial) where
+  bindBlock_ _ = bindFullPersistentBufferToPoint 2
 
 mconcat <$> mapM makeLenses
   [ ''Camera

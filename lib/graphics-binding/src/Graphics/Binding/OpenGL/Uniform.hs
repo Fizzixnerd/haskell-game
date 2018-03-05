@@ -1,9 +1,11 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Graphics.Binding.OpenGL.Uniform where
 
@@ -12,6 +14,7 @@ import Graphics.Binding.OpenGL.Utils
 import Graphics.Binding.OpenGL.Program
 import Graphics.Binding.OpenGL.ObjectName
 import Graphics.Binding.OpenGL.BufferObject
+import Graphics.Binding.OpenGL.DataType
 import Foreign.Ptr
 -- Row major!
 
@@ -22,11 +25,23 @@ class Uniform a where
   type UniformLocationType a
   uniform :: MonadIO m => UniformLocationType a -> a -> UniformContents a -> m ()
 
+class UniformBlock a b where
+  bindBlock_ :: a -> b -> IO ()
+
+bindBlock :: (UniformBlock a b, MonadIO m) => a -> b -> m ()
+bindBlock a = liftIO . bindBlock_ a
+
+bindPersistentBufferToPoint :: MonadIO m => BufferObjectIndex -> PersistentBuffer a -> BufferObjectOffset -> BufferObjectSize -> m ()
+bindPersistentBufferToPoint idx (PersistentBuffer _ _ n _) = bindBufferRange BufferUniform idx n
+
+bindFullPersistentBufferToPoint :: forall a m. (Storable a, MonadIO m) => BufferObjectIndex -> PersistentBuffer a -> m ()
+bindFullPersistentBufferToPoint idx (PersistentBuffer _ len n _) = bindBufferRange BufferUniform idx n 0 (fromIntegral $ len * sizeOf (error "unreachable" :: a))
+
 uniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> BufferObject -> m ()
 uniformBlockBinding (Program a) (BufferObjectIndex b) (BufferObject c) = glUniformBlockBinding a b c
 
 persistentUniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> PersistentBuffer a -> m ()
-persistentUniformBlockBinding prg indx (PersistentBuffer _ n _) = uniformBlockBinding prg indx n
+persistentUniformBlockBinding prg indx (PersistentBuffer _ _ n _) = uniformBlockBinding prg indx n
 
 {-
 class GeneratableObjectName a => UniformBlock a where
