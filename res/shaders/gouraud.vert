@@ -25,10 +25,10 @@ layout (std140, binding = 1) uniform PointLights {
 
 layout (std140, binding = 2) uniform Material {
   vec3 diffuse_color;
-  float specular_strength;
   vec3 ambient_color;
-  float specular_exponent;
   vec3 specular_color;
+  float specular_strength;
+  float specular_exponent;
 } material;
 
 out VS_OUT {
