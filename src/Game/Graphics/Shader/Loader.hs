@@ -26,12 +26,12 @@ makeShader shaderPath = liftIO $ do
 compileShaders :: MonadIO m => m Program
 compileShaders = liftIO $ do
   (vertexShader :: VertexShader) <- makeShader $
-                                    "res" </> "shaders" </> "shader.vsh"
+                                    "res" </> "shaders" </> "gouraud.vert"
 --  tessellationControlShader <- makeShader "res/shaders/shader.tcs" G.TessControlShader
 --  tessellationEvaluationShader <- makeShader "res/shaders/shader.tes" G.TessEvaluationShader
 --  geometryShader <- makeShader "res/shaders/shader.gs" G.GeometryShader
   (fragmentShader :: FragmentShader) <- makeShader $
-                                        "res" </> "shaders" </> "shader.fsh"
+                                        "res" </> "shaders" </> "gouraud.frag"
 
   program <- genName'
   attachShader program vertexShader

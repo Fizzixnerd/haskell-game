@@ -421,7 +421,7 @@ data PointLightBundle = PointLightBundle
 
 data ShaderCamera = ShaderCamera
   { _shaderCameraMVP :: L.M44 Float
-  , _shaderCameraVP  :: L.M44 Float
+  , _shaderCameraMV  :: L.M44 Float
   , _shaderCameraP   :: L.M44 Float
   } deriving (Eq, Ord, Show)
 

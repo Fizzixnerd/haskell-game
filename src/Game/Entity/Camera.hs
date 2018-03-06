@@ -229,11 +229,8 @@ cameraVP cam = do
   pos <- getCameraPosition cam
   tar <- getCameraTargetPosition cam
   let camView = L.lookAt pos tar vup
-
-  --  camModel <- getCameraOpenGLMatrix cam
   return $ (cam ^. to cameraP)  L.!*! fmap (fmap (\(CFloat x) -> x)) camView
     where
-        -- Projection matrix : custom fov, 16:9 ratio, display range : 0.1 unit <-> 10000 units
       vup = L.V3 0 1 0
 
 cameraV :: MonadIO m => Camera s -> m VMatrix
@@ -241,7 +238,7 @@ cameraV cam = do
   pos <- getCameraPosition cam
   tar <- getCameraTargetPosition cam
   let vup = L.V3 0 1 0
-  return $ (fmap (\(CFloat x) -> x)) <$> L.lookAt pos tar vup
+  return $ fmap (\(CFloat x) -> x) <$> L.lookAt pos tar vup
 
 cameraP :: Camera s -> PMatrix
 cameraP cam = L.perspective cfov (16/9) 0.1 100

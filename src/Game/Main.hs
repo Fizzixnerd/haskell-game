@@ -142,7 +142,7 @@ setupWritableBuffers :: Program -> IO WritableBufferBundle
 setupWritableBuffers prog = do
   -- Do point lights
   let pointLight = PointLight
-                   { _pointLightPosition = V4 1 1 0 1
+                   { _pointLightPosition = V4 100 100 0 1
                    , _pointLightIntensity = 1
                    }
       pointLightBundle = PointLightBundle
@@ -151,9 +151,9 @@ setupWritableBuffers prog = do
                          }
 
   plbpb <- genName'
---  writableBufferWrite pointLightBundle plbpb
---  uniform prog PointLightBlock plbpb
---  bindBlock PointLightBlock plbpb
+  writableBufferWrite pointLightBundle plbpb
+  uniform prog PointLightBlock plbpb
+  bindBlock PointLightBlock plbpb
 
   smpb <- genName'
 --  uniform prog ShaderMaterialBlock smpb
