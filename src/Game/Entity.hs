@@ -59,7 +59,7 @@ drawGfxWithTransform wrld cam gfx = do
       shaderCam = ShaderCamera
                   { _shaderCameraP = cam ^. to cameraP
                   , _shaderCameraVP = camVP
-                  , _shaderCameraMVP = camMVP
+                  , _shaderCameraMVP = camMVP L.!*! wrld
                   }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
     bindTextureBundle _vaoDataTextureBundle
