@@ -3,7 +3,7 @@
 module Game.Physics where
 
 import ClassyPrelude
-import ForeignResource
+import Foreign.Resource
 
 -- Example: persistent uniform buffers in OpenGL. They can be attached to binding points (so those binding points are foreign resources to which we can write uniform buffer names), and they have content that we can update.
 

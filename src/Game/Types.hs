@@ -44,6 +44,7 @@ import qualified Linear                       as L
 import qualified Physics.Bullet               as P
 import qualified Sound.OpenAL                 as AL
 import           Text.Printf
+import           Data.Typeable
 
 type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
@@ -118,7 +119,7 @@ data GameState s = GameState
   , _gameStateSoundContext           :: AL.Context
   , _gameStateSoundDevice            :: AL.Device
   , _gameStateWires                  :: Vector (GameWire s () ())
-  , _gameStatePersistentBufferBundle :: PersistentBufferBundle
+  , _gameStateWritableBufferBundle :: WritableBufferBundle
   }
 
 initGameState :: GameState s
@@ -136,7 +137,7 @@ initGameState = GameState
   , _gameStateSoundContext            = error "soundContext not set."
   , _gameStateSoundDevice             = error "soundDevice not set."
   , _gameStateWires                   = empty
-  , _gameStatePersistentBufferBundle  = error "bufferBundle not set."
+  , _gameStateWritableBufferBundle  = error "bufferBundle not set."
   }
 
 data Camera s = Camera
@@ -342,10 +343,10 @@ data TextureBundle s = TextureBundle
 emptyTextureBundle :: TextureBundle s
 emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
-data PersistentBufferBundle = PersistentBufferBundle
-  { _persistentBufferBundleShaderMaterialBuffer :: PersistentBuffer ShaderMaterial
-  , _persistentBufferBundleShaderCameraBuffer :: PersistentBuffer ShaderCamera
-  , _persistentBufferBundlePointLightBundleBuffer :: PersistentBuffer PointLightBundle
+data WritableBufferBundle = WritableBufferBundle
+  { _writableBufferBundleShaderMaterialBuffer :: WritableBuffer ShaderMaterial
+  , _writableBufferBundleShaderCameraBuffer :: WritableBuffer ShaderCamera
+  , _writableBufferBundlePointLightBundleBuffer :: WritableBuffer PointLightBundle
   } deriving (Eq, Ord, Show)
 
 data VaoData = VaoData
@@ -397,7 +398,7 @@ data PointLight = PointLight
   } deriving (Eq, Ord, Show)
 
 instance Storable PointLight where
-  sizeOf _ = (1 + 4) * sizeOf (0 :: Float)
+  sizeOf _ = (4 + 4) * sizeOf (0 :: Float)
   alignment _ = 4 * alignment (error "unreachable":: Float)
   poke ptr (PointLight loc str) = do
     pokeByteOff ptr 0 loc
@@ -406,6 +407,12 @@ instance Storable PointLight where
     loc <- peekByteOff ptr 0
     str <- peekByteOff ptr (4 * sizeOf (0 :: Float))
     return $ PointLight loc str
+
+instance GLSized PointLight where
+  gSize_ _ = sizeOf (error "unreachable" :: PointLight)
+
+instance GLWritable PointLight where
+  gPoke_ = poke
 
 data PointLightBundle = PointLightBundle
   { _pointLightBundleLights :: VS.Vector PointLight
@@ -418,45 +425,45 @@ data ShaderCamera = ShaderCamera
   , _shaderCameraP   :: L.M44 Float
   } deriving (Eq, Ord, Show)
 
-instance Storable ShaderCamera where
-  sizeOf _ = 3 * sizeOf (error "unreachable" :: L.M44 Float)
-  alignment _ = 4 * sizeOf (error "unreachable" :: L.M44 Float)
-  poke ptr (ShaderCamera mvp vp p) = do
+instance GLSized ShaderCamera where
+  gSize_ _ = 3 * sizeOf (error "unreachable" :: L.M44 Float)
+
+instance GLWritable ShaderCamera where
+  gPoke_ ptr (ShaderCamera mvp vp p) = do
     pokeElemOff (castPtr ptr) 0 mvp
     pokeElemOff (castPtr ptr) 1 vp
     pokeElemOff (castPtr ptr) 2 p
-  peek = error "ShaderCamera: WHY YOU TRY TO PEEK!? B-BAKA!"
 
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
 instance Uniform CameraBlock where
-  type UniformContents CameraBlock = PersistentBuffer ShaderCamera
+  type UniformContents CameraBlock = WritableBuffer ShaderCamera
   type UniformLocationType CameraBlock = DefaultBlock
   uniform prg _ _ = uniformBlockBinding prg 0 0
 
-instance UniformBlock CameraBlock (PersistentBuffer ShaderCamera) where
-  bindBlock_ _ = bindFullPersistentBufferToPoint 0
+instance UniformBlock CameraBlock (WritableBuffer ShaderCamera) where
+  bindBlock_ _ = bindFullWritableBufferToPoint 0
 
 maxPointLights :: Int
 maxPointLights = 128
 
-instance Storable PointLightBundle where
-  sizeOf _ = maxPointLights * 5 * sizeOf (0 :: Float) + sizeOf (0 :: Int)
-  alignment = error "Please don't use this."
-  poke ptr (PointLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
-    copyBytes ptr (castPtr lsPtr) $ min (maxPointLights * 5 * sizeOf (0 :: Float)) (length ls * sizeOf (0 :: Float) * 5)
-    poke (castPtr (ptr `plusPtr` (maxPointLights * 4 * sizeOf (0 :: Float)))) n
-  peek = error "PointLightBundle: WHY YOU TRY TO PEEK!? B-BAKA!"
+instance GLSized PointLightBundle where
+  gSize_ _ = maxPointLights * gSize (Proxy :: Proxy PointLight) + sizeOf (0 :: Int)
+
+instance GLWritable PointLightBundle where
+  gPoke_ ptr (PointLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
+    copyBytes ptr (castPtr lsPtr) $ gSize (Proxy :: Proxy PointLight) * min maxPointLights (length ls)
+    poke (castPtr (ptr `plusPtr` (maxPointLights * gSize (Proxy :: Proxy PointLight) ))) n
 
 data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
 
 instance Uniform PointLightBlock where
-  type UniformContents PointLightBlock = PersistentBuffer PointLightBundle
+  type UniformContents PointLightBlock = WritableBuffer PointLightBundle
   type UniformLocationType PointLightBlock = DefaultBlock
   uniform prg _ _ = uniformBlockBinding prg 1 1
 
-instance UniformBlock PointLightBlock (PersistentBuffer PointLightBundle) where
-  bindBlock_ _ = bindFullPersistentBufferToPoint 1
+instance UniformBlock PointLightBlock (WritableBuffer PointLightBundle) where
+  bindBlock_ _ = bindFullWritableBufferToPoint 1
 
 data ShaderMaterial = ShaderMaterial
   { _shaderMaterialDiffuseColor     :: L.V4 Float
@@ -466,28 +473,28 @@ data ShaderMaterial = ShaderMaterial
   , _shaderMaterialSpecularExponent :: Float
   } deriving (Eq, Ord, Show)
 
-instance Storable ShaderMaterial where
-  sizeOf _ = 11 * sizeOf (error "unreachable" :: Float)
-  alignment _ = 4 * alignment (error "unreachable" :: Float)
-  poke ptr ShaderMaterial {..} = do
-    pokeByteOff (castPtr ptr) (0*m) _shaderMaterialDiffuseColor
-    pokeByteOff (castPtr ptr) (4*m) _shaderMaterialAmbientColor
-    pokeByteOff (castPtr ptr) (8*m) _shaderMaterialSpecularColor
-    pokeByteOff (castPtr ptr) (12*m) _shaderMaterialSpecularStrength
-    pokeByteOff (castPtr ptr) (16*m) _shaderMaterialSpecularExponent
+instance GLSized ShaderMaterial where
+  gSize_ _ = 16 * sizeOf (error "unreachable" :: Float)
+
+instance GLWritable ShaderMaterial where
+  gPoke_ ptr ShaderMaterial {..} = do
+    pokeByteOff ptr (0*m) _shaderMaterialDiffuseColor
+    pokeByteOff ptr (4*m) _shaderMaterialAmbientColor
+    pokeByteOff ptr (8*m) _shaderMaterialSpecularColor
+    pokeByteOff ptr (12*m) _shaderMaterialSpecularStrength
+    pokeByteOff ptr (13*m) _shaderMaterialSpecularExponent
     where
       m = sizeOf (error "unreachable" :: Float)
-  peek = error "ShaderMaterial: WHY YOU TRY TO PEEK!? B-BAKA!"
 
 data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 
 instance Uniform ShaderMaterialBlock where
-  type UniformContents ShaderMaterialBlock = PersistentBuffer ShaderMaterial
+  type UniformContents ShaderMaterialBlock = WritableBuffer ShaderMaterial
   type UniformLocationType ShaderMaterialBlock = DefaultBlock
   uniform prg _ _ = uniformBlockBinding prg 2 2
 
-instance UniformBlock ShaderMaterialBlock (PersistentBuffer ShaderMaterial) where
-  bindBlock_ _ = bindFullPersistentBufferToPoint 2
+instance UniformBlock ShaderMaterialBlock (WritableBuffer ShaderMaterial) where
+  bindBlock_ _ = bindFullWritableBufferToPoint 2
 
 mconcat <$> mapM makeLenses
   [ ''Camera
@@ -517,5 +524,5 @@ mconcat <$> mapM makeLenses
   , ''TextureBundle
   , ''PointLight
   , ''PointLightBundle
-  , ''PersistentBufferBundle
+  , ''WritableBufferBundle
   ]

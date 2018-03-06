@@ -8,7 +8,7 @@ import Graphics.GL.Types as X
   , GLdouble
   )
 
-import Graphics.Binding.OpenGL.BufferObject as X
+import Graphics.Binding.OpenGL.Types as X
   ( BufferObjectMapType(..)
   , BufferObjectSize(..)
   , BufferObjectOffset(..)
@@ -27,55 +27,26 @@ import Graphics.Binding.OpenGL.BufferObject as X
   , mapUnsynchronized
   , mapDynamic
   , clientStorage
-  , genBufferObject
-  , initBufferObject
-  , bufferSubData
-  , mapBuffer
-  , unmapBuffer
-  , clearBufferSubData
-  , copyBufferSubData
-  , mapBufferRange
-  , pokeBufferObject
+  , DefaultBlock
+  , Uniform(..)
+  , UniformBlock(..)
+  , bindBlock
   , PersistentBuffer
-  , genPersistentBufferArray
-  , genPersistentBuffer
-  , fencePersistentBuffer
-  , persistentBufferWrite
-  , persistentBufferWriteArray
-  )
-import Graphics.Binding.OpenGL.Shader as X
-  ( VertexShader
+  , VertexShader
   , TessEvalShader
   , TessControlShader
   , FragmentShader
   , ComputeShader
   , Shader
-  , compileShader
-  , shaderDeleteStatus
-  , shaderSource
-  )
-import Graphics.Binding.OpenGL.Program as X
-  ( programDeleteStatus
-  , attachShader
-  , linkProgram
-  , validateProgram
-  , currentProgram
-  , useProgram
+  , IndexType(..)
+  , PrimitiveMode(..)
+  , ClearBuffer()
+  , clearBufferColor
+  , clearBufferStencil
+  , clearBufferDepth
+  , defaultClearBuffer
   , Program
-  )
-
-import Graphics.Binding.OpenGL.Uniform as X
-  ( DefaultBlock
-  , Uniform(..)
-  , uniformBlockBinding
-  , UniformBlock(..)
-  , bindBlock
-  , bindPersistentBufferToPoint
-  , bindFullPersistentBufferToPoint
-  )
-
-import Graphics.Binding.OpenGL.Texture as X
-  ( TextureTarget(..)
+  , TextureTarget(..)
   , createTexture
   , TextureTarget1D(..)
   , TextureTarget2D(..)
@@ -98,18 +69,80 @@ import Graphics.Binding.OpenGL.Texture as X
   , genTextureName
   , genTextureNames
   , TextureUnit(..)
-  , primTextureUnitBind
-  , textureParameterf
-  , textureParameteri
   , TextureSampler(..)
   , texture
+  , SizedFormat(..)
+  , GLDataType(..)
+  , Capability(..)
+  , SamplerType(..)
+  , VertexArrayObject
+  , AttribLocation(..)
+  , UniformLocation(..)
+  , PrimUniform(..)
+  , primMarshal
+  , primMarshalArray
+  , DepthFunc(..)
+  , Color4(..)
+  , DebugSource(..)
+  , DebugType(..)
+  , DebugSeverity(..)
+  , DebugID(..)
+  , DebugCallbackFun
+  , Face(..)
+  , GLSized(..)
+  , gSize
+  , GLWritable(..)
+  , gPoke
+  , GLReadable(..)
+  , gPeek
+  , UniformBlock(..)
+  , bindBlock
+  , WritableBuffer
+  )
+
+import Graphics.Binding.OpenGL.BufferObject as X
+  ( initBufferObject
+  , bufferSubData
+  , mapBuffer
+  , unmapBuffer
+  , clearBufferSubData
+  , copyBufferSubData
+  , mapBufferRange
+  , fencePersistentBuffer
+  , persistentBufferWrite
+  , writableBufferWrite
+  )
+
+import Graphics.Binding.OpenGL.Shader as X
+  ( compileShader
+  , shaderDeleteStatus
+  , shaderSource
+  )
+import Graphics.Binding.OpenGL.Program as X
+  ( programDeleteStatus
+  , attachShader
+  , linkProgram
+  , validateProgram
+  , currentProgram
+  , useProgram
+  )
+
+import Graphics.Binding.OpenGL.Uniform as X
+  ( uniformBlockBinding
+  , bindPersistentBufferToPoint
+  , bindFullPersistentBufferToPoint
+  , bindFullWritableBufferToPoint
+  )
+
+import Graphics.Binding.OpenGL.Texture as X
+  ( primTextureUnitBind
+  , textureParameterf
+  , textureParameteri
   , primTextureUnitBind_
   , primTextureUnitBind
   )
 import Graphics.Binding.OpenGL.VertexArray as X
-  ( VertexArrayObject
-  , AttribLocation(..)
-  , currentVertexArrayObject
+  ( currentVertexArrayObject
   , vertexArrayAttribBinding
   , vertexArrayVertexBuffer
   , vertexArrayAttribFormat
@@ -117,51 +150,21 @@ import Graphics.Binding.OpenGL.VertexArray as X
   , bindElementBuffer
   )
 
-import Graphics.Binding.OpenGL.DataType as X
-  ( SizedFormat(..)
-  , GLDataType(..)
-  , Capability(..)
-  , SamplerType(..)
-  )
-
-import Graphics.Binding.OpenGL.PrimUniform as X
-  ( UniformLocation(..)
-  , PrimUniform(..)
-  , primMarshal
-  , primMarshalArray
-  )
-
 import Graphics.Binding.OpenGL.Window as X
-  ( DepthFunc(..)
-  , depthFunc
-  , Color4(..)
+  ( depthFunc
   , color4
   , clearColor
-  , DebugSource(..)
-  , DebugType(..)
-  , DebugSeverity(..)
-  , DebugID(..)
   , debugMessageCallback
-  , DebugCallbackFun
-  , Face(..)
   , cullFace
   , simpleDebugFunc
   )
 
 import Graphics.Binding.OpenGL.Rendering as X
-  ( IndexType(..)
-  , drawElements
-  , PrimitiveMode(..)
+  ( drawElements
   , clear
-  , ClearBuffer()
-  , clearBufferColor
-  , clearBufferStencil
-  , clearBufferDepth
-  , defaultClearBuffer
   )
 
 import Graphics.Binding.OpenGL.Synchro as X
-import Graphics.Binding.OpenGL.ObjectName as X
 import Graphics.Binding.GLFW.Window as X
 
 import Data.StateVar as X

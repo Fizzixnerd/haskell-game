@@ -1,32 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Graphics.Binding.OpenGL.VertexArray where
 
 import Data.StateVar
-import Graphics.Binding.OpenGL.Boolean
-import Graphics.Binding.OpenGL.BufferObject
-import Graphics.Binding.OpenGL.DataType
-import Graphics.Binding.OpenGL.ObjectName
-import Foreign
+import Graphics.Binding.OpenGL.Types
 import Graphics.Binding.OpenGL.Utils
-import Graphics.GL.Types
 import Graphics.GL.Core45
 
-newtype VertexArrayObject = VertexArrayObject
-  { getVertexArrayObjectGLuint :: GLuint
-  } deriving (Eq, Ord, Show, Storable)
-
-instance ObjectName VertexArrayObject where
-  isObjectName (VertexArrayObject n) = unmarshalGLboolean <$> glIsBuffer n
-  deleteObjectNames ns = liftIO . withArrayLen ns $ \len ptr -> glDeleteVertexArrays (fromIntegral len) (castPtr ptr)
-
-instance GeneratableObjectName VertexArrayObject where
-  genObjectNames_ n = fmap VertexArrayObject <$> (liftIO . allocaArray n $ \ptr -> glCreateVertexArrays (fromIntegral n) ptr >> peekArray n ptr)
-
-newtype AttribLocation = AttribLocation { getAttribLocationGLuint :: GLuint } deriving (Eq, Ord, Show, Num)
-
---------------------------------------------
 currentVertexArrayObject :: StateVar (Maybe VertexArrayObject)
 currentVertexArrayObject = makeStateVar get' set'
   where

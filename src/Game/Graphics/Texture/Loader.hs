@@ -52,7 +52,7 @@ loadPNGTexture fp = liftIO $ do
       textureParameteri tobj TextureMagFilter GL_NEAREST
       textureParameteri tobj TextureCompareFunc GL_LEQUAL
       return tobj
-    
+
 
 data Diffuse2DSampler = Diffuse2DSampler deriving (Eq, Ord, Show)
 

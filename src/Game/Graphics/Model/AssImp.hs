@@ -18,6 +18,7 @@ import Control.Monad (mfilter)
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import qualified Linear as L
+import Foreign.Resource
 
 importAssImpFileGood :: FilePath -> IO ScenePtr
 importAssImpFileGood = importAndProcessFileGood
@@ -71,7 +72,7 @@ marshalAssImpMesh sc ptr = do
       buffInit size_ ptr_ = initBufferObject size_ flags (castPtr ptr_)
       stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
 
-  vao <- genObjectName
+  vao <- genName'
   vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
 

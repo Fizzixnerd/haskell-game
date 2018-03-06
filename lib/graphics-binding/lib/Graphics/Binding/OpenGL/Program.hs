@@ -3,22 +3,10 @@
 module Graphics.Binding.OpenGL.Program where
 
 import Graphics.GL.Core45
-import Graphics.GL.Types
-import Graphics.Binding.OpenGL.Shader
-import Graphics.Binding.OpenGL.ObjectName
 import Data.StateVar
 import Graphics.Binding.OpenGL.Utils
-import Graphics.Binding.OpenGL.Boolean
+import Graphics.Binding.OpenGL.Types
 import Data.ByteString
-
-newtype Program = Program { getProgramGLuint :: GLuint } deriving (Eq, Ord, Show)
-
-instance ObjectName Program where
-  isObjectName (Program n) = unmarshalGLboolean <$> glIsProgram n
-  deleteObjectName (Program n) = glDeleteProgram n
-
-instance GeneratableObjectName Program where
-  genObjectName_ = Program <$> glCreateProgram
 
 programDeleteStatus :: MonadIO m => Program -> m Bool
 programDeleteStatus (Program n) = unmarshalGLboolean <$> foreignPoke (glGetProgramiv n GL_DELETE_STATUS)
