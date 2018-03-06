@@ -20,12 +20,16 @@ module Foreign.Resource
   , ForeignWrite(..)
   , writeR
   , writeR'
-  , (!.=)
+  , (.$=)
+  , ($=)
+  , (<$=)
   , (~&)
   , ForeignUpdate(..)
   , updateR
   , updateR'
-  , (!%=)
+  , (.$=%)
+  , ($=%)
+  , (<$=%)
   , ForeignName(..)
   , genName
   , genName'
@@ -41,7 +45,7 @@ import Data.Acquire as X (Acquire, mkAcquire, mkAcquireType, ReleaseType(..))
 import Data.Acquire
 import Control.Monad.IO.Class as X
 import Control.Monad.Trans.Resource as X
-import Data.Functor (($>))
+import Data.Functor (void)
 import Data.Foldable
 
 class ForeignName r a | r -> a where
@@ -114,13 +118,21 @@ writeR s t = liftIO . writeR_ s t
 writeR' :: (MonadIO m, ForeignWrite s () w) => s -> w -> m s
 writeR' s = writeR s ()
 
-infix 4 !.=
-(!.=) :: (MonadIO m, ForeignWrite s t w) => t -> w -> s -> m s
-t !.= w = \s -> writeR s t w
+infix 4 .$=
+(.$=) :: (MonadIO m, ForeignWrite s t w) => t -> w -> s -> m s
+t .$= w = \s -> writeR s t w
+
+infix 4 $=
+($=) :: (MonadIO m, ForeignWrite s () w) => s -> w -> m ()
+s $= w = void (writeR s () w)
+
+infix 4 <$=
+(<$=) :: (MonadIO m, ForeignWrite s () w) => s -> w -> m s
+s <$= w = writeR s () w
 
 infixl 1 ~&
 (~&) :: Functor f => s -> (s -> f s) -> f ()
-s ~& f = f s $> ()
+s ~& f = void (f s)
 
 class (ForeignRead s t a, ForeignWrite s t a) => ForeignUpdate s t a | t -> a where
   updateR_ :: t -> (a -> IO a) -> s -> IO s
@@ -131,7 +143,14 @@ updateR t f = liftIO . updateR_ t f
 updateR' :: (MonadIO m, ForeignUpdate s () a) => (a -> IO a) -> s -> m s
 updateR' = updateR ()
 
-infix 4 !%=
-(!%=) :: (MonadIO m, ForeignUpdate s t a) => t -> (a -> IO a) -> s -> m s
-(!%=) = updateR
+infix 4 .$=%
+(.$=%) :: (MonadIO m, ForeignUpdate s t a) => t -> (a -> IO a) -> s -> m s
+(.$=%) = updateR
 
+infix 4 <$=%
+(<$=%) :: (MonadIO m, ForeignUpdate s () a) => s -> (a -> IO a) -> m s
+s <$=% f = updateR () f s
+
+infix 4 $=%
+($=%) :: (MonadIO m, ForeignUpdate s () a) => s -> (a -> IO a) -> m ()
+s $=% f = void (updateR () f s)
