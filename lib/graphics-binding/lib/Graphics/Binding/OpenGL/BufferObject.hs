@@ -12,6 +12,7 @@ import           Graphics.GL.Core45
 import           Graphics.Binding.OpenGL.Types
 import           Foreign.Resource
 import           Data.Typeable
+import           Control.Lens
 
 initBufferObject :: MonadIO m
                  => BufferObjectSize
@@ -92,3 +93,20 @@ persistentBufferWrite :: (GLWritable a, MonadIO m) => Word64 -> a -> PersistentB
 persistentBufferWrite timeout a PersistentBuffer {..} = liftIO $ do
   waitGLFence timeout _getPersistentBufferSync
   gPoke _getPersistentBufferPtr a
+
+instance GLWritable a => ForeignName (WritableBuffer a) () where
+  genName_ _ = WritableBuffer <$> genName (size, attribflags)
+    where
+      size = fromIntegral $ gSize (Proxy :: Proxy a)
+      attribflags = defaultBufferAttribFlags & mapDynamic .~ True
+
+  isName_ (WritableBuffer bufo) = isName_ bufo
+
+  deleteName_ (WritableBuffer bufo) = deleteName_ bufo
+
+writableBufferWrite :: forall a m. (GLWritable a, MonadIO m) => a -> WritableBuffer a -> m ()
+writableBufferWrite foo (WritableBuffer (SizedBufferObject n))= liftIO $ allocaBytes size $ \ptr -> do
+  gPoke ptr foo
+  glNamedBufferSubData n 0 (fromIntegral size) (castPtr ptr)
+  where
+    size = gSize (Proxy :: Proxy a)

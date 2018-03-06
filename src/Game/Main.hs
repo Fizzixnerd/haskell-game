@@ -138,8 +138,8 @@ createTheModel prog = do
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
-setupPersistentBuffers :: Program -> IO PersistentBufferBundle
-setupPersistentBuffers prog = do
+setupWritableBuffers :: Program -> IO WritableBufferBundle
+setupWritableBuffers prog = do
   -- Do point lights
   let pointLight = PointLight
                    { _pointLightPosition = V4 1 1 0 1
@@ -151,12 +151,12 @@ setupPersistentBuffers prog = do
                          }
 
   plbpb <- genName'
-  persistentBufferWrite 1000 pointLightBundle plbpb
-  uniform prog PointLightBlock plbpb
-  bindBlock PointLightBlock plbpb
+--  writableBufferWrite pointLightBundle plbpb
+--  uniform prog PointLightBlock plbpb
+--  bindBlock PointLightBlock plbpb
 
   smpb <- genName'
-  uniform prog ShaderMaterialBlock smpb
+--  uniform prog ShaderMaterialBlock smpb
 
   --persistentBufferWrite 1000 (ShaderMaterial (L.V3 1 1 1) (L.V3 1 1 1) (L.V3 1 1 1) 1 1) smpb
   --bindBlock ShaderMaterialBlock smpb
@@ -166,10 +166,10 @@ setupPersistentBuffers prog = do
   --persistentBufferWrite 1000 (ShaderCamera L.identity L.identity L.identity) cpb
   --bindBlock CameraBlock cpb
 
-  return PersistentBufferBundle
-    { _persistentBufferBundleShaderCameraBuffer = cpb
-    , _persistentBufferBundleShaderMaterialBuffer = smpb
-    , _persistentBufferBundlePointLightBundleBuffer = plbpb
+  return WritableBufferBundle
+    { _writableBufferBundleShaderCameraBuffer = cpb
+    , _writableBufferBundleShaderMaterialBuffer = smpb
+    , _writableBufferBundlePointLightBundleBuffer = plbpb
     }
 
 gameMain :: IO ()
@@ -197,7 +197,7 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
   AL.distanceModel $= AL.InverseDistance
   (physicsWorld, player, cam, _, _) <- setupPhysics prog
 
-  buffBundle <- setupPersistentBuffers prog
+  buffBundle <- setupWritableBuffers prog
 
   ic <- N.mkInputControl win
   input <- liftIO $ N.getInput ic
@@ -237,5 +237,5 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
                                 & gameStateSoundContext .~ ctxt
                                 & gameStateWires .~ mainWires
                                 & gameStateIOData .~ ioData
-                                & gameStatePersistentBufferBundle .~ buffBundle
+                                & gameStateWritableBufferBundle .~ buffBundle
   doGame gameState

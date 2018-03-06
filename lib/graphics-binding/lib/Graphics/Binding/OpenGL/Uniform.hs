@@ -16,5 +16,8 @@ bindPersistentBufferToPoint idx (PersistentBuffer _ n _) = bindSizedBufferRange 
 bindFullPersistentBufferToPoint :: forall a m. (GLWritable a, MonadIO m) => BufferObjectIndex -> PersistentBuffer a -> m ()
 bindFullPersistentBufferToPoint idx (PersistentBuffer _ n _) = bindSizedBufferRange BufferUniform idx n 0 (gSize (Proxy :: Proxy a))
 
+bindFullWritableBufferToPoint :: forall a m. (GLWritable a, MonadIO m) => BufferObjectIndex -> WritableBuffer a -> m ()
+bindFullWritableBufferToPoint idx (WritableBuffer n) = bindSizedBufferRange BufferUniform idx n 0 (gSize (Proxy :: Proxy a))
+
 uniformBlockBinding :: MonadIO m => Program -> BufferObjectIndex -> BufferObjectIndex -> m ()
 uniformBlockBinding (Program a) (BufferObjectIndex b) (BufferObjectIndex c) = glUniformBlockBinding a b c

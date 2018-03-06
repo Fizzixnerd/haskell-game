@@ -197,6 +197,10 @@ persistentBufferMapFlag = BufferObjectMapFlags MapWrite True True False False Fa
 persistentBufferObjectFlag :: BufferObjectAttribFlags
 persistentBufferObjectFlag = BufferObjectAttribFlags MapWrite True True False False
 
+data WritableBuffer a = WritableBuffer
+  { _getWritableBufferName :: SizedBufferObject
+  } deriving (Eq, Ord, Show)
+
 -- * Primitive uniform operations. Note that everything is transposed by default.
 
 newtype UniformLocation = UniformLocation

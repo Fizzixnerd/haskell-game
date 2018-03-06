@@ -119,7 +119,7 @@ data GameState s = GameState
   , _gameStateSoundContext           :: AL.Context
   , _gameStateSoundDevice            :: AL.Device
   , _gameStateWires                  :: Vector (GameWire s () ())
-  , _gameStatePersistentBufferBundle :: PersistentBufferBundle
+  , _gameStateWritableBufferBundle :: WritableBufferBundle
   }
 
 initGameState :: GameState s
@@ -137,7 +137,7 @@ initGameState = GameState
   , _gameStateSoundContext            = error "soundContext not set."
   , _gameStateSoundDevice             = error "soundDevice not set."
   , _gameStateWires                   = empty
-  , _gameStatePersistentBufferBundle  = error "bufferBundle not set."
+  , _gameStateWritableBufferBundle  = error "bufferBundle not set."
   }
 
 data Camera s = Camera
@@ -343,10 +343,10 @@ data TextureBundle s = TextureBundle
 emptyTextureBundle :: TextureBundle s
 emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
-data PersistentBufferBundle = PersistentBufferBundle
-  { _persistentBufferBundleShaderMaterialBuffer :: PersistentBuffer ShaderMaterial
-  , _persistentBufferBundleShaderCameraBuffer :: PersistentBuffer ShaderCamera
-  , _persistentBufferBundlePointLightBundleBuffer :: PersistentBuffer PointLightBundle
+data WritableBufferBundle = WritableBufferBundle
+  { _writableBufferBundleShaderMaterialBuffer :: WritableBuffer ShaderMaterial
+  , _writableBufferBundleShaderCameraBuffer :: WritableBuffer ShaderCamera
+  , _writableBufferBundlePointLightBundleBuffer :: WritableBuffer PointLightBundle
   } deriving (Eq, Ord, Show)
 
 data VaoData = VaoData
@@ -437,12 +437,12 @@ instance GLWritable ShaderCamera where
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
 instance Uniform CameraBlock where
-  type UniformContents CameraBlock = PersistentBuffer ShaderCamera
+  type UniformContents CameraBlock = WritableBuffer ShaderCamera
   type UniformLocationType CameraBlock = DefaultBlock
   uniform prg _ cont = uniformBlockBinding prg 0 0
 
-instance UniformBlock CameraBlock (PersistentBuffer ShaderCamera) where
-  bindBlock_ _ = bindFullPersistentBufferToPoint 0
+instance UniformBlock CameraBlock (WritableBuffer ShaderCamera) where
+  bindBlock_ _ = bindFullWritableBufferToPoint 0
 
 maxPointLights :: Int
 maxPointLights = 128
@@ -458,12 +458,12 @@ instance GLWritable PointLightBundle where
 data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
 
 instance Uniform PointLightBlock where
-  type UniformContents PointLightBlock = PersistentBuffer PointLightBundle
+  type UniformContents PointLightBlock = WritableBuffer PointLightBundle
   type UniformLocationType PointLightBlock = DefaultBlock
   uniform prg _ cont = uniformBlockBinding prg 1 1
 
-instance UniformBlock PointLightBlock (PersistentBuffer PointLightBundle) where
-  bindBlock_ _ = bindFullPersistentBufferToPoint 1
+instance UniformBlock PointLightBlock (WritableBuffer PointLightBundle) where
+  bindBlock_ _ = bindFullWritableBufferToPoint 1
 
 data ShaderMaterial = ShaderMaterial
   { _shaderMaterialDiffuseColor     :: L.V4 Float
@@ -489,12 +489,12 @@ instance GLWritable ShaderMaterial where
 data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 
 instance Uniform ShaderMaterialBlock where
-  type UniformContents ShaderMaterialBlock = PersistentBuffer ShaderMaterial
+  type UniformContents ShaderMaterialBlock = WritableBuffer ShaderMaterial
   type UniformLocationType ShaderMaterialBlock = DefaultBlock
   uniform prg _ cont = uniformBlockBinding prg 2 2
 
-instance UniformBlock ShaderMaterialBlock (PersistentBuffer ShaderMaterial) where
-  bindBlock_ _ = bindFullPersistentBufferToPoint 2
+instance UniformBlock ShaderMaterialBlock (WritableBuffer ShaderMaterial) where
+  bindBlock_ _ = bindFullWritableBufferToPoint 2
 
 mconcat <$> mapM makeLenses
   [ ''Camera
@@ -524,5 +524,5 @@ mconcat <$> mapM makeLenses
   , ''TextureBundle
   , ''PointLight
   , ''PointLightBundle
-  , ''PersistentBufferBundle
+  , ''WritableBufferBundle
   ]

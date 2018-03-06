@@ -57,30 +57,30 @@ drawGfxWithTransform wrld cam gfx = do
   camVP <- cam ^. to cameraVP
   let camMVP = camVP
       shaderCam = ShaderCamera
-                  { _shaderCameraP = L.transpose $ cam ^. to cameraP
-                  , _shaderCameraVP = L.transpose camVP
-                  , _shaderCameraMVP = L.transpose camMVP
+                  { _shaderCameraP = cam ^. to cameraP
+                  , _shaderCameraVP = camVP
+                  , _shaderCameraMVP = camMVP
                   }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
     bindTextureBundle _vaoDataTextureBundle
     useProgram _vaoDataProgram
     currentVertexArrayObject $= Just _vaoDataVao
 
-    smpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer
-    persistentBufferWrite 1000 _vaoDataShaderMaterial smpb
+{-
+    smpb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer
+    writableBufferWrite 1000 _vaoDataShaderMaterial smpb
     bindBlock ShaderMaterialBlock smpb
-
-    scpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderCameraBuffer
-    persistentBufferWrite 1000 shaderCam scpb
+-}
+    scpb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer
+    writableBufferWrite shaderCam scpb
     bindBlock CameraBlock scpb
-
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
 
     -- Done drawing; fence up baby.
-    smpb' <- fencePersistentBuffer smpb
-    scpb' <- fencePersistentBuffer scpb
-    gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer .= smpb'
-    gameStatePersistentBufferBundle . persistentBufferBundleShaderCameraBuffer .= scpb'
+--    smpb' <- fenceWritableBuffer smpb
+--    scpb' <- fenceWritableBuffer scpb
+--    gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer .= smpb'
+--    gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer .= scpb'
   mapM_ (drawGfxWithTransform wrld cam) $ gfx ^. gfxChildren
 
 drawEntity :: Camera s -> Entity s -> Game s ()

@@ -97,6 +97,7 @@ import Graphics.Binding.OpenGL.Types as X
   , gPeek
   , UniformBlock(..)
   , bindBlock
+  , WritableBuffer
   )
 
 import Graphics.Binding.OpenGL.BufferObject as X
@@ -109,6 +110,7 @@ import Graphics.Binding.OpenGL.BufferObject as X
   , mapBufferRange
   , fencePersistentBuffer
   , persistentBufferWrite
+  , writableBufferWrite
   )
 
 import Graphics.Binding.OpenGL.Shader as X
@@ -129,6 +131,7 @@ import Graphics.Binding.OpenGL.Uniform as X
   ( uniformBlockBinding
   , bindPersistentBufferToPoint
   , bindFullPersistentBufferToPoint
+  , bindFullWritableBufferToPoint
   )
 
 import Graphics.Binding.OpenGL.Texture as X
