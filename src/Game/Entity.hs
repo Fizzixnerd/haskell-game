@@ -66,13 +66,13 @@ drawGfxWithTransform wrld cam gfx = do
     useProgram _vaoDataProgram
     currentVertexArrayObject $= Just _vaoDataVao
 
-    smpb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer
-    writableBufferWrite _vaoDataShaderMaterial smpb
-    bindBlock ShaderMaterialBlock smpb
+    smwb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer
+    writableBufferWrite _vaoDataShaderMaterial smwb
+    bindBlock ShaderMaterialBlock smwb
 
-    scpb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer
-    writableBufferWrite shaderCam scpb
-    bindBlock CameraBlock scpb
+    scwb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer
+    writableBufferWrite shaderCam scwb
+    bindBlock CameraBlock scwb
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
 
     -- Done drawing; fence up baby.

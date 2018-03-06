@@ -23,11 +23,11 @@ layout (std140, binding = 1) uniform PointLights {
 } point_lights;
 
 layout (std140, binding = 2, align = 16) uniform Material {
-  layout (offset = 0) vec4 diffuse_color;
-  layout (offset = 16) vec4 ambient_color;
-  layout (offset = 32) vec4 specular_color;
-  layout (offset = 48) float specular_strength;
-  layout (offset = 52) float specular_exponent;
+  layout (offset = 192) vec4 diffuse_color;
+  layout (offset = 208) vec4 ambient_color;
+  layout (offset = 224) vec4 specular_color;
+  layout (offset = 240) float specular_strength;
+  layout (offset = 244) float specular_exponent;
 } material;
 
 out VS_OUT {
@@ -52,13 +52,13 @@ void main() {
     vec3 reflect_vector = reflect(-light_vector, norm);
 
     diffuse += max(dot(norm, light_vector), 0.0) * material.diffuse_color.rgb;
-        specular += pow(max(dot(reflect_vector, view_vector), 0.0),
-                  material.specular_exponent) *
-          material.specular_strength * material.specular_color.rgb;
-
+    specular += pow(max(dot(reflect_vector, view_vector), 0.0),
+                    material.specular_exponent) *
+      material.specular_strength * material.specular_color.rgb;
   }
 
-  vs_out.lighting = material.ambient_color.rgb + diffuse + specular;
+  vec3 ambient = material.ambient_color.rgb;
+  vs_out.lighting = ambient + diffuse + specular;
   vs_out.uv = uv;
   gl_Position = pos * camera.p;
 }
