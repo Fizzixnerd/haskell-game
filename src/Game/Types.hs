@@ -432,7 +432,7 @@ data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 instance Uniform CameraBlock where
   type UniformContents CameraBlock = PersistentBuffer ShaderCamera
   type UniformLocationType CameraBlock = DefaultBlock
-  uniform prg _ cont = uniformBlockBinding prg 0 0
+  uniform prg _ _ = uniformBlockBinding prg 0 0
 
 instance UniformBlock CameraBlock (PersistentBuffer ShaderCamera) where
   bindBlock_ _ = bindFullPersistentBufferToPoint 0
@@ -453,7 +453,7 @@ data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
 instance Uniform PointLightBlock where
   type UniformContents PointLightBlock = PersistentBuffer PointLightBundle
   type UniformLocationType PointLightBlock = DefaultBlock
-  uniform prg _ cont = uniformBlockBinding prg 1 1
+  uniform prg _ _ = uniformBlockBinding prg 1 1
 
 instance UniformBlock PointLightBlock (PersistentBuffer PointLightBundle) where
   bindBlock_ _ = bindFullPersistentBufferToPoint 1
@@ -484,7 +484,7 @@ data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 instance Uniform ShaderMaterialBlock where
   type UniformContents ShaderMaterialBlock = PersistentBuffer ShaderMaterial
   type UniformLocationType ShaderMaterialBlock = DefaultBlock
-  uniform prg _ cont = uniformBlockBinding prg 2 2
+  uniform prg _ _ = uniformBlockBinding prg 2 2
 
 instance UniformBlock ShaderMaterialBlock (PersistentBuffer ShaderMaterial) where
   bindBlock_ _ = bindFullPersistentBufferToPoint 2
