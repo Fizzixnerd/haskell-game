@@ -8,31 +8,69 @@ module ForeignResource
   ( module X
   , ForeignResource(..)
   , resource'
-  , newResource
-  , newResource'
-  , newLongResource
-  , newLongResource'
-  , withResource
-  , withResource'
-  , ForeignResourceRead(..)
-  , resourceRead
-  , resourceRead'
-  , ForeignResourceWrite(..)
-  , resourceWrite
-  , resourceWrite'
+  , allocR
+  , allocR'
+  , allocLongR
+  , allocLongR'
+  , withR
+  , withR'
+  , ForeignRead(..)
+  , readR
+  , readR'
+  , ForeignWrite(..)
+  , writeR
+  , writeR'
   , (!.=)
   , (~&)
-  , ForeignResourceUpdate(..)
-  , resourceUpdate
-  , resourceUpdate'
+  , ForeignUpdate(..)
+  , updateR
+  , updateR'
   , (!%=)
+  , ForeignName(..)
+  , genName
+  , genName'
+  , genNames
+  , genNames'
+  , isName
+  , deleteName
+  , deleteNames
   )
 where
 
-import Data.Acquire as X
+import Data.Acquire as X (Acquire, mkAcquire, mkAcquireType, ReleaseType(..))
+import Data.Acquire
 import Control.Monad.IO.Class as X
 import Control.Monad.Trans.Resource as X
 import Data.Functor (($>))
+import Data.Foldable
+
+class ForeignName r a | r -> a where
+  genName_    :: a -> IO r
+  genNames_    :: Int -> a -> IO [r]
+  isName_     :: r -> IO Bool
+  deleteName_ :: r -> IO ()
+  deleteNames_ :: [r] -> IO ()
+
+  genName_ = fmap head . genNames 1
+  genNames_ n = traverse genName_ . replicate n
+  deleteName_ = deleteNames_ . (:[])
+  deleteNames_ = traverse_ deleteName_
+
+genName :: (MonadIO m, ForeignName r a) => a -> m r
+genName = liftIO . genName_
+genNames :: (MonadIO m, ForeignName r a) => Int -> a -> m [r]
+genNames n = liftIO . genNames_ n
+isName :: (MonadIO m, ForeignName r a) => r -> m Bool
+isName = liftIO . isName_
+deleteName :: (MonadIO m, ForeignName r a) => r -> m ()
+deleteName = liftIO . deleteName_
+deleteNames :: (MonadIO m, ForeignName r a) => [r] -> m ()
+deleteNames = liftIO . deleteNames_
+
+genName' :: (MonadIO m, ForeignName r ()) => m r
+genName' = liftIO . genName_ $ ()
+genNames' :: (MonadIO m, ForeignName r ()) => Int -> m [r]
+genNames' = liftIO . flip genNames_ ()
 
 class ForeignResource s a | s -> a where
   resource :: a -> Acquire s
@@ -40,60 +78,60 @@ class ForeignResource s a | s -> a where
 resource' :: ForeignResource s () => Acquire s
 resource' = resource ()
 
-newResource :: (MonadResource m, ForeignResource s a) => a -> m (ReleaseKey, s)
-newResource = allocateAcquire . resource
+allocR :: (MonadResource m, ForeignResource s a) => a -> m (ReleaseKey, s)
+allocR = allocateAcquire . resource
 
-newResource' :: (MonadResource m, ForeignResource s ()) => m (ReleaseKey, s)
-newResource' = newResource ()
+allocR' :: (MonadResource m, ForeignResource s ()) => m (ReleaseKey, s)
+allocR' = allocR ()
 
-newLongResource :: (MonadResource m, ForeignResource s a) => a -> m s
-newLongResource = fmap snd . newResource
+allocLongR :: (MonadResource m, ForeignResource s a) => a -> m s
+allocLongR = fmap snd . allocR
 
-newLongResource' :: (MonadResource m, ForeignResource s ()) => m s
-newLongResource' = newLongResource ()
+allocLongR' :: (MonadResource m, ForeignResource s ()) => m s
+allocLongR' = allocLongR ()
 
-withResource :: (MonadBaseControl IO m, ForeignResource s a) => a -> (s -> m b) -> m b
-withResource a = with (resource a)
+withR :: (MonadBaseControl IO m, ForeignResource s a) => a -> (s -> m b) -> m b
+withR a = with (resource a)
 
-withResource' :: (MonadBaseControl IO m, ForeignResource s ()) => (s -> m b) -> m b
-withResource' = with resource'
+withR' :: (MonadBaseControl IO m, ForeignResource s ()) => (s -> m b) -> m b
+withR' = with resource'
 
-class ForeignResourceRead s t r | t -> r where
-  resourceRead_ :: s -> t -> IO r
+class ForeignRead s t r | t -> r where
+  readR_ :: s -> t -> IO r
 
-resourceRead :: (MonadIO m, ForeignResourceRead s t r) => s -> t -> m r
-resourceRead s = liftIO . resourceRead_ s
+readR :: (MonadIO m, ForeignRead s t r) => s -> t -> m r
+readR s = liftIO . readR_ s
 
-resourceRead' :: (MonadIO m, ForeignResourceRead s () r) => s -> m r
-resourceRead' s = resourceRead s ()
+readR' :: (MonadIO m, ForeignRead s () r) => s -> m r
+readR' s = readR s ()
 
-class ForeignResourceWrite s t w | t -> w where
-  resourceWrite_ :: s -> t -> w -> IO s
+class ForeignWrite s t w | t -> w where
+  writeR_ :: s -> t -> w -> IO s
 
-resourceWrite :: (MonadIO m, ForeignResourceWrite s t w) => s -> t -> w -> m s
-resourceWrite s t = liftIO . resourceWrite_ s t
+writeR :: (MonadIO m, ForeignWrite s t w) => s -> t -> w -> m s
+writeR s t = liftIO . writeR_ s t
 
-resourceWrite' :: (MonadIO m, ForeignResourceWrite s () w) => s -> w -> m s
-resourceWrite' s = resourceWrite s ()
+writeR' :: (MonadIO m, ForeignWrite s () w) => s -> w -> m s
+writeR' s = writeR s ()
 
 infix 4 !.=
-(!.=) :: (MonadIO m, ForeignResourceWrite s t w) => t -> w -> s -> m s
-t !.= w = \s -> resourceWrite s t w
+(!.=) :: (MonadIO m, ForeignWrite s t w) => t -> w -> s -> m s
+t !.= w = \s -> writeR s t w
 
 infixl 1 ~&
 (~&) :: Functor f => s -> (s -> f s) -> f ()
 s ~& f = f s $> ()
 
-class (ForeignResourceRead s t a, ForeignResourceWrite s t a) => ForeignResourceUpdate s t a | t -> a where
-  resourceUpdate_ :: t -> (a -> IO a) -> s -> IO s
+class (ForeignRead s t a, ForeignWrite s t a) => ForeignUpdate s t a | t -> a where
+  updateR_ :: t -> (a -> IO a) -> s -> IO s
 
-resourceUpdate :: (MonadIO m, ForeignResourceUpdate s t a) => t -> (a -> IO a) -> s -> m s
-resourceUpdate t f = liftIO . resourceUpdate_ t f
+updateR :: (MonadIO m, ForeignUpdate s t a) => t -> (a -> IO a) -> s -> m s
+updateR t f = liftIO . updateR_ t f
 
-resourceUpdate' :: (MonadIO m, ForeignResourceUpdate s () a) => (a -> IO a) -> s -> m s
-resourceUpdate' = resourceUpdate ()
+updateR' :: (MonadIO m, ForeignUpdate s () a) => (a -> IO a) -> s -> m s
+updateR' = updateR ()
 
 infix 4 !%=
-(!%=) :: (MonadIO m, ForeignResourceUpdate s t a) => t -> (a -> IO a) -> s -> m s
-(!%=) = resourceUpdate
+(!%=) :: (MonadIO m, ForeignUpdate s t a) => t -> (a -> IO a) -> s -> m s
+(!%=) = updateR
 

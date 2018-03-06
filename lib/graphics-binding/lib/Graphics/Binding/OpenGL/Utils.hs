@@ -4,8 +4,6 @@ module Graphics.Binding.OpenGL.Utils
   ( module X
   , withForeignBufferBS
   , withByteString
-  , BitAnd(..)
-  , BitOr(..)
   , maybeNullPtr
   , foreignPoke
   , unsafeWithVecLen
@@ -24,7 +22,6 @@ import Foreign as X
   )
 import           Control.Monad                      (void)
 import           Control.Monad.IO.Class       as X
-import           Data.Bits
 import           Data.ByteString
 import qualified Data.ByteString.Internal     as BI (create)
 import qualified Data.ByteString.Unsafe       as BU (unsafeUseAsCStringLen)
@@ -52,17 +49,6 @@ withByteString :: ByteString -> (Ptr GLchar -> GLsizei -> IO b) -> IO b
 withByteString bs act =
    BU.unsafeUseAsCStringLen bs $ \(ptr, size) ->
       act (castPtr ptr) (fromIntegral size)
-
-newtype BitAnd a = BitAnd { getBitAnd :: a } deriving (Eq, Ord, Show)
-newtype BitOr a = BitOr { getBitOr :: a } deriving (Eq, Ord, Show)
-
-instance (Bits a) => Monoid (BitAnd a) where
-  mempty = BitAnd zeroBits
-  mappend x y = BitAnd $ getBitAnd x .&. getBitAnd y
-
-instance (Bits a) => Monoid (BitOr a) where
-  mempty = BitOr zeroBits
-  mappend x y = BitOr $ getBitOr x .&. getBitOr y
 
 maybeNullPtr :: b -> (Ptr a -> b) -> Ptr a -> b
 maybeNullPtr n f ptr | ptr == nullPtr = n

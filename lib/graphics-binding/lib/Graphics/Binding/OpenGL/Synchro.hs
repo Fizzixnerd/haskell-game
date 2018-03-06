@@ -8,8 +8,11 @@ import Graphics.GL.Types
 import ClassyPrelude
 import Foreign.Ptr
 
+deleteFence :: MonadIO m => GLsync -> m ()
+deleteFence sync = when (nullPtr /= sync) (glDeleteSync sync)
+
 lockGLFence :: MonadIO m => GLsync -> m GLsync
-lockGLFence sync = when (nullPtr /= sync) (glDeleteSync sync) >> glFenceSync GL_SYNC_GPU_COMMANDS_COMPLETE 0
+lockGLFence sync = deleteFence sync >> glFenceSync GL_SYNC_GPU_COMMANDS_COMPLETE 0
 
 waitGLFence :: MonadIO m => Word64 -> GLsync -> m ()
 waitGLFence n sync = when (nullPtr /= sync) go

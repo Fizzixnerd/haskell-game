@@ -30,17 +30,8 @@ dependencies:
 - vector
 - linear
 - bytestring
+- foreign-resource
 
 library:
-  source-dirs: src
-
-tests:
-  graphics-binding-test:
-    main:                Spec.hs
-    source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - graphics-binding
+  source-dirs: lib
+  exposed-modules: Graphics.Binding
