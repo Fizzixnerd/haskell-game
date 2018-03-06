@@ -26,4 +26,4 @@ dependencies:
 library:
   source-dirs: lib
   exposed-modules:
-    - ForeignResource
+    - Foreign.Resource

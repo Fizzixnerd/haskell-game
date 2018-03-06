@@ -10,9 +10,9 @@ import           Foreign
 import           Graphics.Binding.OpenGL.Utils
 import           Graphics.GL.Core45
 import           Graphics.Binding.OpenGL.Types
-import           ForeignResource
+import           Foreign.Resource
 import           Data.Typeable
-import Debug.Trace
+
 initBufferObject :: MonadIO m
                  => BufferObjectSize
                  -> BufferObjectAttribFlags
@@ -70,9 +70,6 @@ bindSizedBufferRange pt (BufferObjectIndex n) (SizedBufferObject m) (BufferObjec
 
 instance GLWritable a => ForeignName (PersistentBuffer a) () where
   genName_ _ = do
-    traceM $ show $ marshalBufferObjectMapFlags persistentBufferMapFlag
-    traceM $ show $ marshalBufferObjectAttribFlags persistentBufferObjectFlag
-    traceM $ show persistentBufferFlagRaw
     bufo <- genName (size, persistentBufferObjectFlag)
     ptr <- mapSizedBufferRange_ bufo 0 size persistentBufferMapFlag
     return $ PersistentBuffer (castPtr ptr) bufo nullPtr

@@ -26,7 +26,7 @@ import qualified Data.Vector.Storable as VS
 import Graphics.Binding.OpenGL.Utils
 import Foreign.Marshal.Array
 import Data.Bits
-import ForeignResource
+import Foreign.Resource
 import Data.Typeable
 
 -- * Bit helpers

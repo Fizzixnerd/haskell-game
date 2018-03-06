@@ -57,9 +57,9 @@ drawGfxWithTransform wrld cam gfx = do
   camVP <- cam ^. to cameraVP
   let camMVP = camVP
       shaderCam = ShaderCamera
-                  { _shaderCameraP = cam ^. to cameraP
-                  , _shaderCameraVP = camVP
-                  , _shaderCameraMVP = camMVP
+                  { _shaderCameraP = L.transpose $ cam ^. to cameraP
+                  , _shaderCameraVP = L.transpose camVP
+                  , _shaderCameraMVP = L.transpose camMVP
                   }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
     bindTextureBundle _vaoDataTextureBundle
@@ -68,12 +68,10 @@ drawGfxWithTransform wrld cam gfx = do
 
     smpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderMaterialBuffer
     persistentBufferWrite 1000 _vaoDataShaderMaterial smpb
-    uniform _vaoDataProgram ShaderMaterialBlock smpb
     bindBlock ShaderMaterialBlock smpb
 
     scpb <- use $ gameStatePersistentBufferBundle . persistentBufferBundleShaderCameraBuffer
     persistentBufferWrite 1000 shaderCam scpb
-    uniform _vaoDataProgram CameraBlock scpb
     bindBlock CameraBlock scpb
 
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt

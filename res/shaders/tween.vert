@@ -37,7 +37,7 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  gl_Position = camera.mvp * vec4(position, 1);
+  gl_Position = camera.mvp * vec4(position.xyz, 1);
   vs_out.uv = uv;
   vs_out.lighting = vec4(0, 0, 0, 0);
 }

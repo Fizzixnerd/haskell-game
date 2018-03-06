@@ -25,6 +25,7 @@ import           Graphics.Binding
 import           Linear as L
 import qualified Physics.Bullet as P
 import qualified Sound.ALUT as AL
+import           Foreign.Resource
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -149,16 +150,19 @@ setupPersistentBuffers prog = do
                          , _pointLightBundleNum = 1
                          }
 
-  (Just plbpb) <- genPersistentBuffer
+  plbpb <- genName'
   persistentBufferWrite 1000 pointLightBundle plbpb
   uniform prog PointLightBlock plbpb
   bindBlock PointLightBlock plbpb
 
-  (Just smpb) <- genPersistentBuffer
+  smpb <- genName'
+  uniform prog ShaderMaterialBlock smpb
+
   --persistentBufferWrite 1000 (ShaderMaterial (L.V3 1 1 1) (L.V3 1 1 1) (L.V3 1 1 1) 1 1) smpb
   --bindBlock ShaderMaterialBlock smpb
 
-  (Just cpb)  <- genPersistentBuffer
+  cpb  <- genName'
+  uniform prog CameraBlock cpb
   --persistentBufferWrite 1000 (ShaderCamera L.identity L.identity L.identity) cpb
   --bindBlock CameraBlock cpb
 

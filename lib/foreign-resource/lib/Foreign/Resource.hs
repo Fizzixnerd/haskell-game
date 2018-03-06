@@ -4,7 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
-module ForeignResource
+module Foreign.Resource
   ( module X
   , ForeignResource(..)
   , resource'

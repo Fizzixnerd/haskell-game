@@ -11,11 +11,12 @@ import           ClassyPrelude
 import           Graphics.Binding
 import           Text.Printf
 import           Linear
+import           Foreign.Resource
 
 makeShader :: (Shader t, MonadIO m) => FilePath -> m t
 makeShader shaderPath = liftIO $ do
   shaderText <- readFile shaderPath
-  shader <- genObjectName
+  shader <- genName'
   shaderSource shader $= shaderText
   mlog <- compileShader shader
   case mlog of
@@ -32,7 +33,7 @@ compileShaders = liftIO $ do
   (fragmentShader :: FragmentShader) <- makeShader $
                                         "res" </> "shaders" </> "tween.frag"
 
-  program <- genObjectName
+  program <- genName'
   attachShader program vertexShader
 --  G.attachShader program tessellationControlShader
 --  G.attachShader program tessellationEvaluationShader
@@ -43,8 +44,8 @@ compileShaders = liftIO $ do
   mlogV <- validateProgram program
   forM_ mlogV $ printf "%s\n\n" . show
 
-  deleteObjectName fragmentShader
-  deleteObjectName vertexShader
+  deleteName fragmentShader
+  deleteName vertexShader
   return program
 
 data UniformMVP = UniformMVP deriving (Eq, Show, Ord)
