@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TupleSections #-}
+-- {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -12,7 +12,7 @@ import ClassyPrelude
 import Game.Types
 import Game.Entity.Camera
 import Graphics.Binding
-import Game.Graphics.Shader.Loader
+-- import Game.Graphics.Shader.Loader
 import Game.Graphics.Texture.Loader
 import qualified Linear as L
 import Control.Lens
@@ -21,7 +21,7 @@ import qualified Physics.Bullet as P
 import Foreign.C.Types
 
 getWorldMatrix :: MonadIO m => CollisionObject -> m (L.M44 Float)
-getWorldMatrix wt = do
+getWorldMatrix wt =
   liftIO $ bracket (P.coAllocateWorldTransform $ wt ^. unCollisionObject) P.del $
     \t -> do
       (CFloat i, CFloat j, CFloat k, CFloat r) <- P.getRotation t
@@ -29,7 +29,7 @@ getWorldMatrix wt = do
       return $ L.mkTransformation (L.Quaternion r (L.V3 i j k)) (L.V3 x y z)
 
 getWorldPosition :: MonadIO m => CollisionObject -> m (L.V3 Float)
-getWorldPosition wt = do
+getWorldPosition wt =
   liftIO $ bracket (P.coAllocateWorldTransform $ wt ^. unCollisionObject) P.del $
     \t -> do
       (CFloat x, CFloat y, CFloat z) <- P.getOrigin t
@@ -53,27 +53,26 @@ bindTextureBundle TextureBundle {..} = do
 
 drawGfxWithTransform :: L.M44 Float -> Camera s -> Gfx s -> Game s ()
 drawGfxWithTransform wrld cam gfx = do
-  vpm <- cameraVP cam
+  -- vpm <- cameraVP cam
+  camV <- cam ^. to cameraV
   camVP <- cam ^. to cameraVP
-  let camMVP = camVP
-      shaderCam = ShaderCamera
+  let shaderCam = ShaderCamera
                   { _shaderCameraP = cam ^. to cameraP
-                  , _shaderCameraVP = camVP
-                  , _shaderCameraMVP = camMVP L.!*! wrld
+                  , _shaderCameraMV = camV L.!*! wrld
+                  , _shaderCameraMVP = camVP L.!*! wrld
                   }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
     bindTextureBundle _vaoDataTextureBundle
     useProgram _vaoDataProgram
     currentVertexArrayObject $= Just _vaoDataVao
 
-{-
-    smpb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer
-    writableBufferWrite 1000 _vaoDataShaderMaterial smpb
-    bindBlock ShaderMaterialBlock smpb
--}
-    scpb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer
-    writableBufferWrite shaderCam scpb
-    bindBlock CameraBlock scpb
+    smwb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer
+    writableBufferWrite _vaoDataShaderMaterial smwb
+    bindBlock ShaderMaterialBlock smwb
+
+    scwb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer
+    writableBufferWrite shaderCam scwb
+    bindBlock CameraBlock scwb
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
 
     -- Done drawing; fence up baby.

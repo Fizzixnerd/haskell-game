@@ -1,7 +1,7 @@
 #version 450 core
 
 in VS_OUT {
-  vec4 lighting;
+  vec3 lighting;
   vec2 uv;
 } fs_in;
 

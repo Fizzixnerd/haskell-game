@@ -7,9 +7,9 @@ layout (location = 1) in vec3 normal;
 layout (location = 2) in vec2 uv;
 
 layout (std140, binding = 0) uniform Camera {
-  mat4 mvp;
-  mat4 mv;
-  mat4 p;
+  layout (offset = 0) mat4 mvp;
+  layout (offset = 64) mat4 mv;
+  layout (offset = 128) mat4 p;
 } camera;
 
 struct PointLight {
@@ -18,17 +18,16 @@ struct PointLight {
 };
 
 layout (std140, binding = 1) uniform PointLights {
-  // xyz is position; w is intensity.
   PointLight[MAX_POINT_LIGHTS] lights;
   int num;
 } point_lights;
 
-layout (std140, binding = 2) uniform Material {
-  vec4 diffuse_color;
-  vec4 ambient_color;
-  vec4 specular_color;
-  float specular_strength;
-  float specular_exponent;
+layout (std140, binding = 2, align = 16) uniform Material {
+  layout (offset = 192) vec4 diffuse_color;
+  layout (offset = 208) vec4 ambient_color;
+  layout (offset = 224) vec4 specular_color;
+  layout (offset = 240) float specular_strength;
+  layout (offset = 244) float specular_exponent;
 } material;
 
 out VS_OUT {
@@ -37,28 +36,29 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  vec4 pos = camera.mv * vec4(position, 1);
+  vec4 pos = vec4(position, 1) * camera.mv;
 
   vec3 view_vector = normalize(- pos.xyz);
 
   // Calculate the normal in view space.
-  vec3 norm = normalize(mat3(camera.mv) * normal);
+  vec3 norm = normalize(normal * mat3(camera.mv));
 
   vec3 diffuse = {0, 0, 0};
   vec3 specular = {0, 0, 0};
   int i;
-  for (i = 0; i < point_lights.num; i++) {
-    vec3 light_vector_normed = normalize(point_lights.lights[i].position - pos.xyz);
+  for (i = 0; i < min(point_lights.num, MAX_POINT_LIGHTS); i++) {
+    vec3 light_vector_normed = normalize(point_lights.lights[i].position.xyz - pos.xyz);
     vec3 light_vector = point_lights.lights[i].intensity * light_vector_normed;
-    vec3 reflect_vector = reflect(-light_vector_normed, norm);
+    vec3 reflect_vector = reflect(-light_vector, norm);
 
-    diffuse += max(dot(norm, light_vector), 0.0) * material.diffuse_color;
+    diffuse += max(dot(norm, light_vector), 0.0) * material.diffuse_color.rgb;
     specular += pow(max(dot(reflect_vector, view_vector), 0.0),
                     material.specular_exponent) *
-      material.specular_strength * material.specular_color;
+      material.specular_strength * material.specular_color.rgb;
   }
 
-  vs_out.lighting = material.ambient_color + diffuse + specular;
+  vec3 ambient = material.ambient_color.rgb;
+  vs_out.lighting = ambient + diffuse + specular;
   vs_out.uv = uv;
-  gl_Position = camera.p * pos;
+  gl_Position = pos * camera.p;
 }

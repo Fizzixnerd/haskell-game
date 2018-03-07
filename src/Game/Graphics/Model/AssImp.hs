@@ -112,8 +112,6 @@ marshalAssImpMesh sc ptr = do
   specularStrength <- materialShininessStrength mat
   specularExponent <- materialShininess mat
 
-
-
   return AssImpMesh
     { _assImpMeshVAO             = vao
     , _assImpMeshBufferObject    = vbuf
