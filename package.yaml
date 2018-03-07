@@ -21,7 +21,7 @@ description:         Please see the README on Github at <https://github.com/Fizz
 
 dependencies:
 - ALUT
-- foreign-resource
+- foreign-resource-hs
 - assimp-hs
 - FontyFruity
 - GLFW-b
@@ -50,7 +50,7 @@ dependencies:
 - netwire-input
 - netwire-input-glfw
 - plugin
-- graphics-binding
+- haskell-graphics-binding
 - resourcet
 - safe-exceptions
 - singletons
