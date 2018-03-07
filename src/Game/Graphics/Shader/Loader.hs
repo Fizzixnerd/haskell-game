@@ -1,12 +1,10 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude#-}
 
 module Game.Graphics.Shader.Loader where
 
-import           Game.Types
 import           ClassyPrelude
 import           Graphics.Binding
 import           Text.Printf
@@ -27,17 +25,16 @@ compileShaders :: MonadIO m => m Program
 compileShaders = liftIO $ do
   (vertexShader :: VertexShader) <- makeShader $
                                     "res" </> "shaders" </> "phong.vert"
---  tessellationControlShader <- makeShader "res/shaders/shader.tcs" G.TessControlShader
---  tessellationEvaluationShader <- makeShader "res/shaders/shader.tes" G.TessEvaluationShader
---  geometryShader <- makeShader "res/shaders/shader.gs" G.GeometryShader
+  --  tessellationControlShader <- makeShader "res/shaders/shader.tcs" G.TessControlShader
+  --  tessellationEvaluationShader <- makeShader "res/shaders/shader.tes" G.TessEvaluationShader
+  --  geometryShader <- makeShader "res/shaders/shader.gs" G.GeometryShader
   (fragmentShader :: FragmentShader) <- makeShader $
                                         "res" </> "shaders" </> "phong.frag"
-
   program <- genName'
   attachShader program vertexShader
---  G.attachShader program tessellationControlShader
---  G.attachShader program tessellationEvaluationShader
---  G.attachShader program geometryShader
+  --  G.attachShader program tessellationControlShader
+  --  G.attachShader program tessellationEvaluationShader
+  --  G.attachShader program geometryShader
   attachShader program fragmentShader
   mlogL <- linkProgram program
   forM_ mlogL $ printf "%s\n\n" . show

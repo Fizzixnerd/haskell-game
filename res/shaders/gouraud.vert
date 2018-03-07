@@ -1,6 +1,6 @@
 #version 450 core
 
-#define MAX_POINT_LIGHTS 128
+#define MAX_POINT_LIGHTS 1
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
@@ -57,7 +57,7 @@ void main() {
       material.specular_strength * material.specular_color.rgb;
   }
 
-  vec3 ambient = material.ambient_color.rgb;
+  vec3 ambient = vec3(0.1, 0.1, 0.1);
   vs_out.lighting = ambient + diffuse + specular;
   vs_out.uv = uv;
   gl_Position = pos * camera.p;
