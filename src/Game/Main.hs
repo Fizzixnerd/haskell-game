@@ -56,7 +56,7 @@ doGame initGS = void $ runGame initGS go
         go
 
 
-setupPhysics :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
+setupPhysics :: ShaderPipeline -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics prog = do
   (theModelE, theModelRB) <- createTheModel prog
   pw <- newPhysicsWorld
@@ -80,8 +80,8 @@ setupPhysics prog = do
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw'''', pl, cam, theModelE, theModelRB)
 
-createTheModel :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) -> IO (Entity s, P.RigidBody)
-createTheModel prog = do
+createTheModel :: ShaderPipeline -> IO (Entity s, P.RigidBody)
+createTheModel pipeline = do
   model <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
@@ -104,7 +104,7 @@ createTheModel prog = do
                                     aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
                              return $ VaoData
                                (_assImpMeshVAO aim)
-                               prog
+                               pipeline
                                Triangles
                                (_assImpMeshIndexNum aim)
                                (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif)
@@ -157,10 +157,12 @@ setupDynamicBuffers (_, vertexShader, _) = do
   bindBlock vertexShader PointLightBlock
 
   smdb <- genName'
---  ShaderMaterialBlock $= smdb
+  ShaderMaterialBlock $= smdb
+  bindBlock vertexShader ShaderMaterialBlock
 
   cdb  <- genName'
   CameraBlock $= cdb
+  bindBlock vertexShader CameraBlock
 
   return DynamicBufferBundle
     { _dynamicBufferBundleShaderCameraBuffer = cdb
@@ -176,7 +178,6 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> go
       allocLongR defaultGraphicsContext :: ResIO ()
       win <- allocLongR defaultWindowConfig
       CurrentContext $= Just win
-
       --cullFace $= Just Back
       DepthTest $= Just DepthLess
       -- FIXME: we will eventually have to free the function pointer
@@ -190,13 +191,12 @@ gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> go
       mctxt <- AL.createContext dev []
       let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
       AL.currentContext AL.$= Just ctxt
-
-      prog <- compilePipeline
+      fullLine@(pipeline, vertexShader, fragmentShader) <- compilePipeline
 
       AL.distanceModel AL.$= AL.InverseDistance
-      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics prog)
+      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics pipeline)
 
-      buffBundle <- liftIO (setupDynamicBuffers prog)
+      buffBundle <- liftIO (setupDynamicBuffers fullLine)
 
       ic <- liftIO $ N.mkInputControl win
       input <- liftIO $ N.getInput ic

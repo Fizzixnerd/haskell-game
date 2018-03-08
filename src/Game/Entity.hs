@@ -63,18 +63,16 @@ drawGfxWithTransform wrld cam gfx = do
                   , _shaderCameraMVP = camVP L.!*! wrld
                   }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
-    let (pipeline, vertexShader, _) = _vaoDataShaderPipeline
     bindTextureBundle _vaoDataTextureBundle
-    ActivePipeline $= Just pipeline
+    ActivePipeline $= Just _vaoDataShaderPipeline
     ActiveVertexArrayObject $= Just _vaoDataVao
 
     smdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderMaterialBuffer
     smdb ~& FullBufferWrite .$= _vaoDataShaderMaterial
-    bindBlock vertexShader ShaderMaterialBlock
 
     scdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderCameraBuffer
     scdb ~& FullBufferWrite .$= shaderCam
-    bindBlock vertexShader CameraBlock
+
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
 
   mapM_ (drawGfxWithTransform wrld cam) $ gfx ^. gfxChildren

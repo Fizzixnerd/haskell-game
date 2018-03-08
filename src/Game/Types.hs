@@ -345,7 +345,7 @@ data DynamicBufferBundle = DynamicBufferBundle
 
 data VaoData = VaoData
   { _vaoDataVao            :: VertexArrayObject
-  , _vaoDataShaderPipeline :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader)
+  , _vaoDataShaderPipeline :: ShaderPipeline
   , _vaoDataPrimitiveMode  :: PrimitiveMode
   , _vaoDataNumElements    :: Word32
   , _vaoDataTextureBundle  :: TextureBundle (TextureObject TextureTarget2D)

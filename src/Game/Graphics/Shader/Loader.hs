@@ -11,13 +11,17 @@ import           Graphics.Binding
 import           Text.Printf
 import           Foreign.Resource
 
-makeShader :: forall t m. (ShaderType t, MonadIO m) => FilePath -> m (ShaderStage t)
-makeShader shaderPath = liftIO $ do
-  shaderText <- readFile shaderPath
+makeShader :: forall t m. (ShaderType t, MonadThrow m, MonadIO m) => FilePath -> m (ShaderStage t)
+makeShader shaderPath = do
+  shaderText <- liftIO $ readFile shaderPath
   shader <- genName shaderText
-  mlog <- readR GLCompilationStatus shader
+  mlog <- readR GLInfoLog shader
   case mlog of
-    Nothing -> return shader
+    Nothing -> do
+      mlog' <- readR GLValidateStatus shader
+      case mlog' of
+        Nothing -> return shader
+        Just log'' -> error $ printf "%s\n\n" (show log'')
     Just log' -> error $ printf "%s\n\n" (show log')
 
 compilePipeline :: MonadIO m => m (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader)

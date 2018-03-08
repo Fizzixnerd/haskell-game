@@ -6,6 +6,8 @@ layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in vec2 uv;
 
+layout(row_major) uniform;
+
 layout (std140, binding = 0) uniform Camera {
   layout (offset = 0) mat4 mvp;
   layout (offset = 64) mat4 mv;
@@ -36,7 +38,7 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-  gl_Position = vec4(position, 1) * camera.mvp;
+  gl_Position = camera.mvp * vec4(position, 1);
   vs_out.uv = uv;
   vs_out.lighting = vec3(0, 1, 0);
 }
