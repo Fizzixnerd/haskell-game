@@ -104,6 +104,9 @@ marshalAssImpMesh sc ptr = do
   lightMapName     <- matTex TextureTypeLightMap
   reflectionName   <- matTex TextureTypeReflection
 
+  meshName_ <- peekAIString <=< meshName $ ptr
+  traceM $ show (meshName_, diffuseName, specularName)
+
   (Color3D dr dg db) <- materialColorDiffuse mat
   let diffuseColor = L.V4 dr dg db 0
   (Color3D ar ag ab) <- materialColorAmbient mat
