@@ -55,9 +55,9 @@ doGame initGS = void $ runGame initGS go
       unlessM (use gameStateShouldClose)
         go
 
-setupPhysics :: ShaderPipeline -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
-setupPhysics pipeline = do
-  (theModelE, theModelRB) <- createTheModel pipeline
+setupPhysics :: (ShaderPipeline, ShaderPipeline) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
+setupPhysics ps = do
+  (theModelE, theModelRB) <- createTheModel ps
   pw <- newPhysicsWorld
   pl' <- newPlayer
   let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
@@ -78,8 +78,8 @@ setupPhysics pipeline = do
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw'''', pl, cam, theModelE, theModelRB)
 
-createTheModel :: ShaderPipeline -> IO (Entity s, P.RigidBody)
-createTheModel pipeline = do
+createTheModel :: (ShaderPipeline, ShaderPipeline) -> IO (Entity s, P.RigidBody)
+createTheModel (phong, normalMap) = do
   model <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
@@ -100,14 +100,20 @@ createTheModel pipeline = do
     dif <- loadPNGTexture $
            maybe defaultTexture (modelRoot </>) $
            aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
+    norm_ <- sequence $
+             loadPNGTexture . (modelRoot </>) <$>
+             aim ^. assImpMeshTextureBundle . textureBundleNormalTexture
+    let pipeline = if isJust norm_
+                   then normalMap
+                   else phong
     return $ VaoData
       (_assImpMeshVAO aim)
       pipeline
       Triangles
       (_assImpMeshIndexNum aim)
-      (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif)
+      (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif
+                          & textureBundleNormalTexture .~ norm_)
       (_assImpMeshShaderMaterial aim)
-
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")
@@ -137,8 +143,8 @@ createTheModel pipeline = do
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
-setupDynamicBuffers :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) -> IO DynamicBufferBundle
-setupDynamicBuffers (_, vertexShader, _) = do
+setupDynamicBuffers :: (ShaderStage 'VertexShader, ShaderStage 'VertexShader) -> IO DynamicBufferBundle
+setupDynamicBuffers (phong, normalMap) = do
   -- Do point lights
   let pointLight = PointLight
                    { _pointLightPosition = V4 100 100 0 1
@@ -152,15 +158,18 @@ setupDynamicBuffers (_, vertexShader, _) = do
   plbdb <- genName'
   plbdb ~& FullBufferWrite .$= pointLightBundle
   PointLightBlock $= plbdb
-  bindBlock vertexShader PointLightBlock
+  bindBlock phong PointLightBlock
+  bindBlock normalMap PointLightBlock
 
   smdb <- genName'
   ShaderMaterialBlock $= smdb
-  bindBlock vertexShader ShaderMaterialBlock
+  bindBlock phong ShaderMaterialBlock
+  bindBlock normalMap PointLightBlock
 
   cdb  <- genName'
   CameraBlock $= cdb
-  bindBlock vertexShader CameraBlock
+  bindBlock phong CameraBlock
+  bindBlock normalMap CameraBlock
 
   return DynamicBufferBundle
     { _dynamicBufferBundleShaderCameraBuffer = cdb
@@ -189,12 +198,12 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       mctxt <- AL.createContext dev []
       let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
       AL.currentContext AL.$= Just ctxt
-      fullLine@(pipeline, vertexShader, fragmentShader) <- compilePipeline
+      ((pPhong, vPhong, _), (pNormalMap, vNormalMap, _)) <- compilePipeline
 
       AL.distanceModel AL.$= AL.InverseDistance
-      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics pipeline)
+      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pPhong, pNormalMap))
 
-      buffBundle <- liftIO (setupDynamicBuffers fullLine)
+      buffBundle <- liftIO $ setupDynamicBuffers (vPhong, vNormalMap)
 
       ic <- liftIO $ N.mkInputControl win
       input <- liftIO $ N.getInput ic
