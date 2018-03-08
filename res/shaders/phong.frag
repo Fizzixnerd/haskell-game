@@ -1,6 +1,6 @@
 #version 450 core
 
-#define MAX_POINT_LIGHTS 128
+#define MAX_POINT_LIGHTS 4
 
 layout (std140, binding = 0) uniform Camera {
   mat4 mvp;
@@ -18,6 +18,13 @@ layout (std140, binding = 1) uniform PointLights {
   int num;
 } point_lights;
 
+layout (std140, binding = 2) uniform Material {
+  vec4 diffuse_color;
+  vec4 ambient_color;
+  vec4 specular_color;
+  float specular_strength;
+  float specular_exponent;
+} material;
 
 in VS_OUT {
   vec3 pos;
@@ -28,18 +35,9 @@ in VS_OUT {
   float intensity;
 } fs_in;
 
-
-layout (std140, binding = 2) uniform Material {
-  vec4 diffuse_color;
-  vec4 ambient_color;
-  vec4 specular_color;
-  float specular_strength;
-  float specular_exponent;
-} material;
+layout (binding = 0) uniform sampler2D diffuse_sampler;
 
 out vec3 color;
-
-layout (binding = 0) uniform sampler2D diffuse_sampler;
 
 void main() {
   vec3 N = normalize(fs_in.norm);
@@ -52,8 +50,8 @@ void main() {
     vec3 L = normalize(fs_in.light);
     vec3 R = reflect(-L, N);
 
-    diffuse += max(dot(N,L), 0) * material.diffuse_color.rgb;
-    specular += pow(max(dot(R, V), 0), material.specular_exponent) *
+    diffuse += max(dot(N, L), 0.0) * material.diffuse_color.rgb;
+    specular += pow(max(dot(R, V), 0.0), material.specular_exponent) *
       material.specular_strength * material.specular_color.rgb;
   }
   vec3 ambient = material.ambient_color.rgb;

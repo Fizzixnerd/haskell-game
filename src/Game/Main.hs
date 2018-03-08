@@ -68,7 +68,7 @@ setupPhysics prog = do
   withCameraTransform cam $ \t -> do
     P.setIdentity t
     P.setOrigin t 0 0 (-5)
-    setCameraTransform cam t)
+    setCameraTransform cam t
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''

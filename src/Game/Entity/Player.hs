@@ -23,7 +23,8 @@ newPlayer = liftIO $ do
   playerShape <- P.newCapsuleShape 1 1
   let stepHeight = 0.35
   controller <- P.newKinematicCharacterController pcgo playerShape stepHeight
-  P.setLinearDamping controller 0.5
+  P.setLinearDamping controller 0.9
+  P.setAngularDamping controller 0.9
   go <- P.getGhostObject controller
   P.setCollisionShape go playerShape
   P.setUp controller 0 1 0
@@ -35,7 +36,7 @@ newPlayer = liftIO $ do
           , _entityRigidBody = Nothing
           , _entityCollisionObject = CollisionObject (P.toCollisionObject go)
           }
-  return Player 
+  return Player
     { _playerController = controller
     , _playerEntity = e
     }
@@ -52,7 +53,7 @@ allocatePlayerTransform p = liftIO $
 
 getPlayerOrientation :: MonadIO m => Player s -> m (L.Quaternion CFloat)
 getPlayerOrientation p = liftIO $ do
-  (i, j, k, r) <- withPlayerTransform p (\t -> P.getRotation t)
+  (i, j, k, r) <- withPlayerTransform p P.getRotation
   return $ L.Quaternion r (L.V3 i j k)
 
 setPlayerOrientation :: MonadIO m => Player s -> L.Quaternion CFloat -> m ()
@@ -66,9 +67,9 @@ withPlayerTransform :: MonadIO m => Player s -> (P.Transform -> IO b) -> m b
 withPlayerTransform p f = liftIO $ bracket (allocatePlayerTransform p) P.del f
 
 getPlayerPosition :: MonadIO m => Player s -> m (L.V3 CFloat)
-getPlayerPosition p = withPlayerTransform p (\t -> do
-                                                (x, y, z) <- P.getOrigin t
-                                                return $ L.V3 x y z)
+getPlayerPosition p = withPlayerTransform p $ \t -> do
+  (x, y, z) <- P.getOrigin t
+  return $ L.V3 x y z
 
 getPlayerOpenGLMatrix :: MonadIO m => Player s -> m (L.M44 CFloat)
 getPlayerOpenGLMatrix p = withPlayerTransform p P.getOpenGLMatrix
