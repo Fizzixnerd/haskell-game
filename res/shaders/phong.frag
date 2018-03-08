@@ -1,7 +1,18 @@
 #version 450 core
 
 #define MAX_POINT_LIGHTS 4
+
 layout (row_major) uniform;
+
+layout (location = 0) in VS_OUT {
+  vec3 pos;
+  vec3 norm;
+  vec3 view;
+  vec2 uv;
+  vec3[MAX_POINT_LIGHTS] light;
+  float[MAX_POINT_LIGHTS] intensity;
+} fs_in;
+
 
 layout (std140, binding = 0) uniform Camera {
   mat4 mvp;
@@ -26,15 +37,6 @@ layout (std140, binding = 2) uniform Material {
   float specular_strength;
   float specular_exponent;
 } material;
-
-in VS_OUT {
-  vec3 pos;
-  vec3 norm;
-  vec3 view;
-  vec2 uv;
-  vec3[MAX_POINT_LIGHTS] light;
-  float[MAX_POINT_LIGHTS] intensity;
-} fs_in;
 
 layout (binding = 0) uniform sampler2D diffuse_sampler;
 

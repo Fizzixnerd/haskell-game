@@ -33,3 +33,6 @@ cabal.project.local
 ./lib/bullet-hs/install_manifest.txt
 
 *TAGS
+
+test/*.rdc
+test/*.cap

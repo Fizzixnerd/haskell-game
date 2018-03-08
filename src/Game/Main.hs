@@ -168,8 +168,8 @@ setupDynamicBuffers (_, vertexShader, _) = do
     , _dynamicBufferBundlePointLightBundleBuffer = plbdb
     }
 
-gameMain :: ResIO ()
-gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> go
+gameMain :: IO ()
+gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> go
   where
     go :: ResIO ()
     go = do
