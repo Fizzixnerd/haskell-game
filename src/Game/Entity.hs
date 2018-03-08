@@ -19,6 +19,7 @@ import Control.Lens
 import qualified Sound.OpenAL as AL
 import qualified Physics.Bullet as P
 import Foreign.C.Types
+import Foreign.Resource
 
 getWorldMatrix :: MonadIO m => CollisionObject -> m (L.M44 Float)
 getWorldMatrix wt =
@@ -62,24 +63,20 @@ drawGfxWithTransform wrld cam gfx = do
                   , _shaderCameraMVP = camVP L.!*! wrld
                   }
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
+    let (pipeline, vertexShader, _) = _vaoDataShaderPipeline
     bindTextureBundle _vaoDataTextureBundle
-    useProgram _vaoDataProgram
-    currentVertexArrayObject $= Just _vaoDataVao
+    ActivePipeline $= Just pipeline
+    ActiveVertexArrayObject $= Just _vaoDataVao
 
-    smwb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer
-    writableBufferWrite _vaoDataShaderMaterial smwb
-    bindBlock ShaderMaterialBlock smwb
+    smdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderMaterialBuffer
+    smdb ~& FullBufferWrite .$= _vaoDataShaderMaterial
+    bindBlock vertexShader ShaderMaterialBlock
 
-    scwb <- use $ gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer
-    writableBufferWrite shaderCam scwb
-    bindBlock CameraBlock scwb
+    scdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderCameraBuffer
+    scdb ~& FullBufferWrite .$= shaderCam
+    bindBlock vertexShader CameraBlock
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
 
-    -- Done drawing; fence up baby.
---    smpb' <- fenceWritableBuffer smpb
---    scpb' <- fenceWritableBuffer scpb
---    gameStateWritableBufferBundle . writableBufferBundleShaderMaterialBuffer .= smpb'
---    gameStateWritableBufferBundle . writableBufferBundleShaderCameraBuffer .= scpb'
   mapM_ (drawGfxWithTransform wrld cam) $ gfx ^. gfxChildren
 
 drawEntity :: Camera s -> Entity s -> Game s ()
@@ -95,7 +92,7 @@ playEntity e = case e ^. entitySounds of
   Just sfx -> do
     (L.V3 x y z) <- getWorldPosition $ e ^. entityCollisionObject
     forM_ (sfx ^. sfxSources) $ \s -> do
-      AL.sourcePosition s $= AL.Vertex3 (CFloat x) (CFloat y) (CFloat z)
+      AL.sourcePosition s AL.$= AL.Vertex3 (CFloat x) (CFloat y) (CFloat z)
       sState <- liftIO $ AL.sourceState s
       case sState of
         AL.Initial -> AL.play [s]

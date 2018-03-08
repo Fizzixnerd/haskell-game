@@ -69,7 +69,7 @@ marshalAssImpMesh sc ptr = do
 
   let texData = V.zip uvs . fmap ((* sizeOf (0 :: CFloat)) . fromIntegral) $ texOffsets
       flags   = defaultBufferAttribFlags
-      buffInit size_ ptr_ = initBufferObject size_ flags (castPtr ptr_)
+      buffInit size_ ptr_ = initBufferName size_ flags (castPtr ptr_)
       stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
 
   vao <- genName'
@@ -114,7 +114,7 @@ marshalAssImpMesh sc ptr = do
 
   return AssImpMesh
     { _assImpMeshVAO             = vao
-    , _assImpMeshBufferObject    = vbuf
+    , _assImpMeshBufferName      = vbuf
     , _assImpMeshTextureDetails  = uvs
     , _assImpMeshIndexBO         = ibuf
     , _assImpMeshIndexBOType     = UnsignedInt

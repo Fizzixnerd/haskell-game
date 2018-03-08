@@ -45,6 +45,7 @@ import qualified Physics.Bullet               as P
 import qualified Sound.OpenAL                 as AL
 import           Text.Printf
 import           Data.Typeable
+import           Foreign.Resource
 
 type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
@@ -89,15 +90,8 @@ data IOData = IOData
 initIOData :: IOData
 initIOData = IOData (error "No GLFWInputControl") (error "No GLFWInputState") (error "No wire session") (error "No window")
 
-runGame :: GameState s -> Game s a -> IO (a, GameState s)
-runGame gs g = RT.runResourceTChecked . ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
-
-releaseResources :: Game s a -> Game s a
-releaseResources act = do
-  s <- MSS.get
-  (a, s') <- liftIO $ runGame s act
-  MSS.put s'
-  return a
+runGame :: GameState s -> Game s a -> ResIO (a, GameState s)
+runGame gs g = ML.runStderrLoggingT . MSS.runStateT (_unGame g) $ gs
 
 newtype EventRegister s = EventRegister
   { _unEventRegister :: MS.Map EventName (GameWire s () (Event Dynamic))
@@ -119,7 +113,7 @@ data GameState s = GameState
   , _gameStateSoundContext           :: AL.Context
   , _gameStateSoundDevice            :: AL.Device
   , _gameStateWires                  :: Vector (GameWire s () ())
-  , _gameStateWritableBufferBundle :: WritableBufferBundle
+  , _gameStateDynamicBufferBundle :: DynamicBufferBundle
   }
 
 initGameState :: GameState s
@@ -137,7 +131,7 @@ initGameState = GameState
   , _gameStateSoundContext            = error "soundContext not set."
   , _gameStateSoundDevice             = error "soundDevice not set."
   , _gameStateWires                   = empty
-  , _gameStateWritableBufferBundle  = error "bufferBundle not set."
+  , _gameStateDynamicBufferBundle  = error "bufferBundle not set."
   }
 
 data Camera s = Camera
@@ -343,15 +337,15 @@ data TextureBundle s = TextureBundle
 emptyTextureBundle :: TextureBundle s
 emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
-data WritableBufferBundle = WritableBufferBundle
-  { _writableBufferBundleShaderMaterialBuffer :: WritableBuffer ShaderMaterial
-  , _writableBufferBundleShaderCameraBuffer :: WritableBuffer ShaderCamera
-  , _writableBufferBundlePointLightBundleBuffer :: WritableBuffer PointLightBundle
+data DynamicBufferBundle = DynamicBufferBundle
+  { _dynamicBufferBundleShaderMaterialBuffer :: DynamicBuffer ShaderMaterial
+  , _dynamicBufferBundleShaderCameraBuffer :: DynamicBuffer ShaderCamera
+  , _dynamicBufferBundlePointLightBundleBuffer :: DynamicBuffer PointLightBundle
   } deriving (Eq, Ord, Show)
 
 data VaoData = VaoData
   { _vaoDataVao            :: VertexArrayObject
-  , _vaoDataProgram        :: Program
+  , _vaoDataShaderPipeline :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader)
   , _vaoDataPrimitiveMode  :: PrimitiveMode
   , _vaoDataNumElements    :: Word32
   , _vaoDataTextureBundle  :: TextureBundle (TextureObject TextureTarget2D)
@@ -383,9 +377,9 @@ newtype AssImpScene = AssImpScene
 
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
-  , _assImpMeshBufferObject   :: BufferObject
+  , _assImpMeshBufferName   :: BufferName
   , _assImpMeshTextureDetails :: Vector Word32
-  , _assImpMeshIndexBO        :: BufferObject
+  , _assImpMeshIndexBO        :: BufferName
   , _assImpMeshIndexBOType    :: IndexType
   , _assImpMeshIndexNum       :: Word32
   , _assImpMeshTextureBundle  :: TextureBundle FilePath
@@ -436,13 +430,11 @@ instance GLWritable ShaderCamera where
 
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
-instance Uniform CameraBlock where
-  type UniformContents CameraBlock = WritableBuffer ShaderCamera
-  type UniformLocationType CameraBlock = DefaultBlock
-  uniform prg _ _ = uniformBlockBinding prg 0 0
+instance UniformBlock CameraBlock where
+  bindBlock_ prg _ = uniformBlockBinding prg 0 0
 
-instance UniformBlock CameraBlock (WritableBuffer ShaderCamera) where
-  bindBlock_ _ = bindFullWritableBufferToPoint 0
+instance ForeignWrite () CameraBlock (DynamicBuffer ShaderCamera) where
+  writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 0
 
 maxPointLights :: Int
 maxPointLights = 128
@@ -457,13 +449,11 @@ instance GLWritable PointLightBundle where
 
 data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
 
-instance Uniform PointLightBlock where
-  type UniformContents PointLightBlock = WritableBuffer PointLightBundle
-  type UniformLocationType PointLightBlock = DefaultBlock
-  uniform prg _ _ = uniformBlockBinding prg 1 1
+instance UniformBlock PointLightBlock where
+  bindBlock_ prg _ = uniformBlockBinding prg 1 1
 
-instance UniformBlock PointLightBlock (WritableBuffer PointLightBundle) where
-  bindBlock_ _ = bindFullWritableBufferToPoint 1
+instance ForeignWrite () PointLightBlock (DynamicBuffer PointLightBundle) where
+  writeR_ _ _ = bindFullDynamicUniformBuffer PointLightBlock 1
 
 data ShaderMaterial = ShaderMaterial
   { _shaderMaterialDiffuseColor     :: L.V4 Float
@@ -488,13 +478,11 @@ instance GLWritable ShaderMaterial where
 
 data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 
-instance Uniform ShaderMaterialBlock where
-  type UniformContents ShaderMaterialBlock = WritableBuffer ShaderMaterial
-  type UniformLocationType ShaderMaterialBlock = DefaultBlock
-  uniform prg _ _ = uniformBlockBinding prg 2 2
+instance UniformBlock ShaderMaterialBlock where
+  bindBlock_ prg _ = uniformBlockBinding prg 2 2
 
-instance UniformBlock ShaderMaterialBlock (WritableBuffer ShaderMaterial) where
-  bindBlock_ _ = bindFullWritableBufferToPoint 2
+instance ForeignWrite () ShaderMaterialBlock (DynamicBuffer ShaderMaterial) where
+  writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 2
 
 mconcat <$> mapM makeLenses
   [ ''Camera
@@ -524,5 +512,5 @@ mconcat <$> mapM makeLenses
   , ''TextureBundle
   , ''PointLight
   , ''PointLightBundle
-  , ''WritableBufferBundle
+  , ''DynamicBufferBundle
   ]

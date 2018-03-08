@@ -27,7 +27,7 @@ zoomCamera = effectWire $ do
   t <- liftIO $ P.coAllocateWorldTransform =<< cam ^. cameraController . to P.getGhostObject
   (x, y, z) <- liftIO $ P.getOrigin t
   liftIO $ P.del t
-  AL.listenerPosition $= AL.Vertex3 x y z
+  AL.listenerPosition AL.$= AL.Vertex3 x y z
   setCameraRadialSpeed cam rs
   cameraLookAtTarget cam
 

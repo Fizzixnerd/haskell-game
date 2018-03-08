@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -41,7 +42,7 @@ stepTime = do
   gameStateIOData . ioDataSession .= sess'
   return timey
 
-doGame :: GameState (Timed Integer ()) -> IO ()
+doGame :: GameState (Timed Integer ()) -> ResIO ()
 doGame initGS = void $ runGame initGS go
   where
     go = do
@@ -55,7 +56,7 @@ doGame initGS = void $ runGame initGS go
         go
 
 
-setupPhysics :: Program -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
+setupPhysics :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
 setupPhysics prog = do
   (theModelE, theModelRB) <- createTheModel prog
   pw <- newPhysicsWorld
@@ -79,7 +80,7 @@ setupPhysics prog = do
   P.kccSetGravity (cam ^. cameraController) 0 0 0
   return (pw'''', pl, cam, theModelE, theModelRB)
 
-createTheModel :: Program -> IO (Entity s, P.RigidBody)
+createTheModel :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) -> IO (Entity s, P.RigidBody)
 createTheModel prog = do
   model <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
@@ -112,7 +113,7 @@ createTheModel prog = do
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")
-  AL.buffer src $= Just sbuf
+  AL.buffer src AL.$= Just sbuf
 
   let e = Entity
           { _entityChildren = empty
@@ -138,8 +139,8 @@ createTheModel prog = do
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
-setupWritableBuffers :: Program -> IO WritableBufferBundle
-setupWritableBuffers prog = do
+setupDynamicBuffers :: (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) -> IO DynamicBufferBundle
+setupDynamicBuffers (_, vertexShader, _) = do
   -- Do point lights
   let pointLight = PointLight
                    { _pointLightPosition = V4 100 100 0 1
@@ -150,92 +151,90 @@ setupWritableBuffers prog = do
                          , _pointLightBundleNum = 1
                          }
 
-  plbpb <- genName'
-  writableBufferWrite pointLightBundle plbpb
-  uniform prog PointLightBlock plbpb
-  bindBlock PointLightBlock plbpb
+  plbdb <- genName'
+  plbdb ~& FullBufferWrite .$= pointLightBundle
+  PointLightBlock $= plbdb
+  bindBlock vertexShader PointLightBlock
 
-  smpb <- genName'
---  uniform prog ShaderMaterialBlock smpb
+  smdb <- genName'
+--  ShaderMaterialBlock $= smdb
 
-  --persistentBufferWrite 1000 (ShaderMaterial (L.V3 1 1 1) (L.V3 1 1 1) (L.V3 1 1 1) 1 1) smpb
-  --bindBlock ShaderMaterialBlock smpb
+  cdb  <- genName'
+  CameraBlock $= cdb
 
-  cpb  <- genName'
-  uniform prog CameraBlock cpb
-  --persistentBufferWrite 1000 (ShaderCamera L.identity L.identity L.identity) cpb
-  --bindBlock CameraBlock cpb
-
-  return WritableBufferBundle
-    { _writableBufferBundleShaderCameraBuffer = cpb
-    , _writableBufferBundleShaderMaterialBuffer = smpb
-    , _writableBufferBundlePointLightBundleBuffer = plbpb
+  return DynamicBufferBundle
+    { _dynamicBufferBundleShaderCameraBuffer = cdb
+    , _dynamicBufferBundleShaderMaterialBuffer = smdb
+    , _dynamicBufferBundlePointLightBundleBuffer = plbdb
     }
 
-gameMain :: IO ()
-gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args ->
-  withGraphicsContext defaultGraphicsContext . withWindow defaultWindowConfig
-  $ \win -> do
-  contextCurrent $= Just win
+gameMain :: ResIO ()
+gameMain = AL.withProgNameAndArgs AL.runALUT $ \_progName _args -> go
+  where
+    go :: ResIO ()
+    go = do
+      allocLongR defaultGraphicsContext :: ResIO ()
+      win <- allocLongR defaultWindowConfig
+      CurrentContext $= Just win
 
-  --cullFace $= Just Back
-  depthFunc $= Just DepthLess
-  -- FIXME: we will eventually have to free the function pointer
-  -- that mkGLDEBUGPROC gives us!!!
-  debugMessageCallback $= Just simpleDebugFunc
+      --cullFace $= Just Back
+      DepthTest $= Just DepthLess
+      -- FIXME: we will eventually have to free the function pointer
+      -- that mkGLDEBUGPROC gives us!!!
+      DebugMessageCallback $= Just simpleDebugFunc
 
-  clearColor $= color4 0 0 0.4 0
-  -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
-  mdev <- AL.openDevice Nothing
-  let dev = fromMaybe (error "Couldn't open the sound device.") mdev
-  mctxt <- AL.createContext dev []
-  let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
-  AL.currentContext $= Just ctxt
+      ClearColor $= color4 0 0 0.4 0
+      -- GL.viewport $= (GL.Position 0 0, GL.Size 1920 1080)
+      mdev <- AL.openDevice Nothing
+      let dev = fromMaybe (error "Couldn't open the sound device.") mdev
+      mctxt <- AL.createContext dev []
+      let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
+      AL.currentContext AL.$= Just ctxt
 
-  prog <- compileShaders
+      prog <- compilePipeline
 
-  AL.distanceModel $= AL.InverseDistance
-  (physicsWorld, player, cam, _, _) <- setupPhysics prog
+      AL.distanceModel AL.$= AL.InverseDistance
+      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics prog)
 
-  buffBundle <- setupWritableBuffers prog
+      buffBundle <- liftIO (setupDynamicBuffers prog)
 
-  ic <- N.mkInputControl win
-  input <- liftIO $ N.getInput ic
-  let sess = countSession_ 1
-      ioData = initIOData & ioDataGLFWInputControl .~ ic
-                          & ioDataGLFWInputState .~ input
-                          & ioDataSession .~ sess
-                          & ioDataWindow .~ win
+      ic <- liftIO $ N.mkInputControl win
+      input <- liftIO $ N.getInput ic
+      let sess = countSession_ 1
+          ioData = initIOData & ioDataGLFWInputControl .~ ic
+                              & ioDataGLFWInputState .~ input
+                              & ioDataSession .~ sess
+                              & ioDataWindow .~ win
 
-      animationWire :: GameEffectWire s
-      animationWire = effectWire $ do
-        clear $ defaultClearBuffer & clearBufferColor .~ True
-                                   & clearBufferDepth .~ True
-        entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
-        entities' <- mapM animateEntity entities
-        gameStatePhysicsWorld . physicsWorldEntities .= entities'
+          animationWire :: GameEffectWire s
+          animationWire = effectWire $ do
+            clear $ defaultClearBuffer & clearBufferColor .~ True
+                                       & clearBufferDepth .~ True
+            entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
+            entities' <- mapM animateEntity entities
+            gameStatePhysicsWorld . physicsWorldEntities .= entities'
 
-      physicsWire :: GameEffectWire s
-      physicsWire = effectWire $ do
-        pw <- use gameStatePhysicsWorld
-        stepPhysicsWorld pw
+          physicsWire :: GameEffectWire s
+          physicsWire = effectWire $ do
+            pw <- use gameStatePhysicsWorld
+            stepPhysicsWorld pw
 
-      mainWires = fromList [ animationWire
-                           , playerHorizontalMovement >>> movePlayer
-                           , physicsWire
-                           , close
-                           , jump
-                           , camera
-                           , zoomCamera
-                           , turnPlayer
-                           ]
+          mainWires = fromList [ animationWire
+                               , playerHorizontalMovement >>> movePlayer
+                               , physicsWire
+                               , close
+                               , jump
+                               , camera
+                               , zoomCamera
+                               , turnPlayer
+                               ]
 
-      gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
-                                & gameStatePlayer .~ player
-                                & gameStateCamera .~ cam
-                                & gameStateSoundDevice .~ dev
-                                & gameStateSoundContext .~ ctxt
-                                & gameStateWires .~ mainWires
-                                & gameStateIOData .~ ioData
-                                & gameStateWritableBufferBundle .~ buffBundle
-  doGame gameState
+          gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
+                                    & gameStatePlayer .~ player
+                                    & gameStateCamera .~ cam
+                                    & gameStateSoundDevice .~ dev
+                                    & gameStateSoundContext .~ ctxt
+                                    & gameStateWires .~ mainWires
+                                    & gameStateIOData .~ ioData
+                                    & gameStateDynamicBufferBundle .~ buffBundle
+      doGame gameState
