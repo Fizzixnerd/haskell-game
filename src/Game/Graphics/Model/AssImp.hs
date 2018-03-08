@@ -41,7 +41,8 @@ rawInterleave numV chunkLen ptrData = do
 -- Layout:
 -- 0: Vertex
 -- 1: Normal
--- 2+: texture channels
+-- 2: Tangent
+-- 3+: texture channels
 massageAssImpMesh :: MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32)
 massageAssImpMesh ptr = do
   numV    <- (\(CUInt x) -> x) <$> meshNumVertices ptr
