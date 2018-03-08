@@ -439,7 +439,7 @@ instance ForeignWrite () CameraBlock (DynamicBuffer ShaderCamera) where
   writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 0
 
 maxPointLights :: Int
-maxPointLights = 128
+maxPointLights = 4
 
 instance GLSized PointLightBundle where
   gSize_ _ = maxPointLights * gSize (Proxy :: Proxy PointLight) + sizeOf (0 :: Int)
