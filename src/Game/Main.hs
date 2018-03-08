@@ -102,7 +102,7 @@ createTheModel (phong, normalMap) = do
            aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
     norm_ <- sequence $
              loadPNGTexture . (modelRoot </>) <$>
-             aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
+             aim ^. assImpMeshTextureBundle . textureBundleNormalTexture
     let pipeline = if isJust norm_
                    then normalMap
                    else phong
@@ -198,7 +198,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       mctxt <- AL.createContext dev []
       let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
       AL.currentContext AL.$= Just ctxt
-      (pipelinePhong@(pPhong, vPhong, _), pipelineNormalMap@(pNormalMap, vNormalMap, _)) <- compilePipeline
+      ((pPhong, vPhong, _), (pNormalMap, vNormalMap, _)) <- compilePipeline
 
       AL.distanceModel AL.$= AL.InverseDistance
       (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pPhong, pNormalMap))
