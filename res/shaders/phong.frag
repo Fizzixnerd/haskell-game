@@ -32,8 +32,8 @@ in VS_OUT {
   vec3 norm;
   vec3 view;
   vec2 uv;
-  vec3 light;
-  float intensity;
+  vec3[MAX_POINT_LIGHTS] light;
+  float[MAX_POINT_LIGHTS] intensity;
 } fs_in;
 
 layout (binding = 0) uniform sampler2D diffuse_sampler;
@@ -48,14 +48,16 @@ void main() {
   vec3 specular = vec3(0);
   int i;
   for (i = 0; i < min(MAX_POINT_LIGHTS, point_lights.num); i++) {
-    vec3 L = normalize(fs_in.light);
+    vec3 L = normalize(fs_in.light[i]);
     vec3 R = reflect(-L, N);
 
-    diffuse += max(dot(N, L), 0.0) * material.diffuse_color.rgb;
+    diffuse += max(dot(N, L), 0.0) * material.diffuse_color.rgb * fs_in.intensity[i];
     specular += pow(max(dot(R, V), 0.0), material.specular_exponent) *
-      material.specular_strength * material.specular_color.rgb;
+      material.specular_strength * material.specular_color.rgb * pow(fs_in.intensity[i], 2);
   }
   vec3 ambient = material.ambient_color.rgb;
 
-  color = texture(diffuse_sampler, fs_in.uv).rgb  + diffuse + specular + ambient;
+  color = texture(diffuse_sampler, fs_in.uv).rgb
+    + 0.2 * diffuse + pow(0.2, 2) * specular
+    + ambient * 0.05;
 }

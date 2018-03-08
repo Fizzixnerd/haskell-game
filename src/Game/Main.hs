@@ -96,17 +96,17 @@ createTheModel pipeline = do
       modelName = "bayo_default.dae"
       defaultTexture = "res" </> "models" </> "no_texture.png"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
-  vaoData <- forM meshes (\aim -> do
-                             dif <- loadPNGTexture $
-                                    maybe defaultTexture (modelRoot </>) $
-                                    aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
-                             return $ VaoData
-                               (_assImpMeshVAO aim)
-                               pipeline
-                               Triangles
-                               (_assImpMeshIndexNum aim)
-                               (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif)
-                               (_assImpMeshShaderMaterial aim))
+  vaoData <- forM meshes $ \aim -> do
+    dif <- loadPNGTexture $
+           maybe defaultTexture (modelRoot </>) $
+           aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
+    return $ VaoData
+      (_assImpMeshVAO aim)
+      pipeline
+      Triangles
+      (_assImpMeshIndexNum aim)
+      (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif)
+      (_assImpMeshShaderMaterial aim)
 
 
   src :: AL.Source <- ON.genObjectName

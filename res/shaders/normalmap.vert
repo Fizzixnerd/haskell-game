@@ -2,7 +2,7 @@
 
 #define MAX_POINT_LIGHTS 4
 
-layout (location = 0) in vec4 position;
+layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in vec3 tangent;
 layout (location = 3) in vec2 uv;
@@ -30,7 +30,7 @@ layout (std140, binding = 1) uniform PointLights {
 } point_lights;
 
 void main() {
-  vec4 P = position * camera.mv;
+  vec4 P = vec4(position, 1) * camera.mv;
 
   vec3 N = normalize(normal * mat3(camera.mv));
   vec3 T = normalize(tangent * mat3(camera.mv));

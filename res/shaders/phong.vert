@@ -4,9 +4,10 @@
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
-layout (location = 2) in vec2 uv;
+layout (location = 2) in vec3 tangent;
+layout (location = 3) in vec2 uv;
 
-layout(row_major) uniform;
+layout (row_major) uniform;
 
 layout (std140, binding = 0) uniform Camera {
    mat4 mvp;
@@ -37,8 +38,8 @@ out VS_OUT {
   vec3 norm;
   vec3 view;
   vec2 uv;
-  vec3 light;
-  float intensity;
+  vec3[MAX_POINT_LIGHTS] light;
+  float[MAX_POINT_LIGHTS] intensity;
 } vs_out;
 
 void main() {
@@ -51,8 +52,8 @@ void main() {
   int i;
   for (i = 0; i < min(point_lights.num, MAX_POINT_LIGHTS); i++) {
     vec3 light_vector = point_lights.lights[i].position.xyz - pos.xyz;
-    vs_out.light = light_vector;
-    vs_out.intensity = point_lights.lights[i].intensity;
+    vs_out.light[i] = light_vector;
+    vs_out.intensity[i] = point_lights.lights[i].intensity;
   }
 
   vs_out.uv = uv;

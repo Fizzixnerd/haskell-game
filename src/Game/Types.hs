@@ -377,7 +377,7 @@ newtype AssImpScene = AssImpScene
 
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
-  , _assImpMeshBufferName   :: BufferName
+  , _assImpMeshBufferName     :: BufferName
   , _assImpMeshTextureDetails :: Vector Word32
   , _assImpMeshIndexBO        :: BufferName
   , _assImpMeshIndexBOType    :: IndexType
@@ -393,7 +393,7 @@ data PointLight = PointLight
 
 instance Storable PointLight where
   sizeOf _ = (4 + 4) * sizeOf (0 :: Float)
-  alignment _ = 4 * alignment (error "unreachable":: Float)
+  alignment _ = 4 * alignment (error "unreachable" :: Float)
   poke ptr (PointLight loc str) = do
     pokeByteOff ptr 0 loc
     pokeByteOff ptr (4 * sizeOf (0 :: Float)) str
