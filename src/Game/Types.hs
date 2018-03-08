@@ -424,9 +424,11 @@ instance GLSized ShaderCamera where
 
 instance GLWritable ShaderCamera where
   gPoke_ ptr (ShaderCamera mvp vp p) = do
-    pokeElemOff (castPtr ptr) 0 mvp
-    pokeElemOff (castPtr ptr) 1 vp
-    pokeElemOff (castPtr ptr) 2 p
+    pokeByteOff (castPtr ptr) (0*m) mvp
+    pokeByteOff (castPtr ptr) (1*m) vp
+    pokeByteOff (castPtr ptr) (2*m) p
+    where
+      m = 16 * sizeOf (error "unreachable" :: Float)
 
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
