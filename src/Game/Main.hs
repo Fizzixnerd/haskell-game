@@ -55,10 +55,9 @@ doGame initGS = void $ runGame initGS go
       unlessM (use gameStateShouldClose)
         go
 
-
 setupPhysics :: ShaderPipeline -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
-setupPhysics prog = do
-  (theModelE, theModelRB) <- createTheModel prog
+setupPhysics pipeline = do
+  (theModelE, theModelRB) <- createTheModel pipeline
   pw <- newPhysicsWorld
   pl' <- newPlayer
   let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
@@ -67,11 +66,10 @@ setupPhysics prog = do
   cameraLookAtTarget cam
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
-  withCameraTransform cam
-    (\t -> do
-        P.setIdentity t
-        P.setOrigin t 0 0 (-5)
-        setCameraTransform cam t)
+  withCameraTransform cam $ \t -> do
+    P.setIdentity t
+    P.setOrigin t 0 0 (-5)
+    setCameraTransform cam t
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''

@@ -11,7 +11,7 @@ import           Graphics.Binding
 import           Text.Printf
 import           Foreign.Resource
 
-makeShader :: forall t m. (ShaderType t, MonadThrow m, MonadIO m) => FilePath -> m (ShaderStage t)
+makeShader :: (ShaderType t, MonadIO m) => FilePath -> m (ShaderStage t)
 makeShader shaderPath = do
   shaderText <- liftIO $ readFile shaderPath
   shader <- genName shaderText
