@@ -42,7 +42,10 @@ loadPipeline shaderName = liftIO $ do
 
 compilePipeline :: MonadIO m => m ( (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader)
                                   , (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader) )
-compilePipeline = liftIO $ do
+compilePipeline = do
   pipelinePhong <- loadPipeline "phong"
   pipelineNormalMap <- loadPipeline "normalmap"
   return (pipelinePhong, pipelineNormalMap)
+
+compileToonPipeline :: MonadIO m => m (ShaderPipeline, ShaderStage 'VertexShader, ShaderStage 'FragmentShader)
+compileToonPipeline = loadPipeline "toon"

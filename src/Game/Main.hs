@@ -92,16 +92,16 @@ createTheModel (phong, normalMap) = do
   P.del startXform
   P.del rbci
 
-  let modelRoot = "res" </> "models"
+  let modelRoot = "res" </> "models" -- </> "Bayonetta 1"
       modelName = "Lowpoly_tree_sample.dae"
       defaultTexture = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes $ \aim -> do
-    dif <- loadPNGTexture $
+    dif <- loadPngTexture $
            maybe defaultTexture (modelRoot </>) $
            aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
     norm_ <- sequence $
-             loadPNGTexture . (modelRoot </>) <$>
+             loadPngTexture . (modelRoot </>) <$>
              aim ^. assImpMeshTextureBundle . textureBundleNormalTexture
     let pipeline = if isJust norm_
                    then normalMap
@@ -195,10 +195,12 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       AL.currentContext AL.$= Just ctxt
       ((pPhong, _, _), (pNormalMap, _, _)) <- compilePipeline
 
-      AL.distanceModel AL.$= AL.InverseDistance
-      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pPhong, pNormalMap))
+      (pToon, _, _) <- compileToonPipeline
 
+      AL.distanceModel AL.$= AL.InverseDistance
+      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pToon, pToon))
       buffBundle <- liftIO setupDynamicBuffers
+      specularTex <- load1DPngTexture $ "res" </> "textures" </> "specular1d" ClassyP.<.> "png"
 
       ic <- liftIO $ N.mkInputControl win
       input <- liftIO $ N.getInput ic
@@ -240,4 +242,5 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
                                     & gameStateWires .~ mainWires
                                     & gameStateIOData .~ ioData
                                     & gameStateDynamicBufferBundle .~ buffBundle
+                                    & gameStateSpecular1DTexture .~ specularTex
       doGame gameState

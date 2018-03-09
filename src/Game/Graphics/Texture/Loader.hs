@@ -18,8 +18,8 @@ loadPic fp = do
     Left e -> error e
     Right obj -> return obj
 
-loadBMPTexture :: MonadIO m => FilePath -> m (TextureObject TextureTarget2D)
-loadBMPTexture fp = liftIO $ do
+loadBmpTexture :: MonadIO m => FilePath -> m (TextureObject TextureTarget2D)
+loadBmpTexture fp = liftIO $ do
   (P.ImageRGB8 (P.Image w h vimg)) <- loadPic fp
   let attr = Texture2DAttrib SizedRGB8 1 w h
       pixAttr = Pixel2DAttrib PixelRGB GLUnsignedByte w h Nothing Nothing
@@ -30,8 +30,23 @@ loadBMPTexture fp = liftIO $ do
   textureParameteri tobj TextureCompareFunc GL_LEQUAL
   return tobj
 
-loadPNGTexture :: MonadIO m => FilePath -> m (TextureObject TextureTarget2D)
-loadPNGTexture fp = liftIO $ do
+-- | TODO: Currently RGB only.
+load1DPngTexture :: MonadIO m => FilePath -> m (TextureObject TextureTarget1D)
+load1DPngTexture fp = liftIO $ do
+  pic <- loadPic fp
+  case pic of
+    (P.ImageRGB8 (P.Image 1 h vimg)) -> do
+      let attr = Texture1DAttrib SizedRGB8 1 h
+          pixAttr = Pixel1DAttrib PixelRGB GLUnsignedByte h Nothing
+      tobj <- createTexture Texture1D attr
+      VS.unsafeWith vimg (textureSubMap tobj 0 pixAttr . castPtr)
+      textureParameteri tobj TextureMinFilter GL_NEAREST
+      textureParameteri tobj TextureMagFilter GL_NEAREST
+      textureParameteri tobj TextureCompareFunc GL_LEQUAL
+      return tobj
+
+loadPngTexture :: MonadIO m => FilePath -> m (TextureObject TextureTarget2D)
+loadPngTexture fp = liftIO $ do
   pic <- loadPic fp
   case pic of
     (P.ImageRGBA8 (P.Image w h vimg)) -> do
@@ -129,3 +144,10 @@ instance TextureSampler Reflection2DSampler where
   type TextureSamplerTarget Reflection2DSampler = TextureTarget2D
   type TextureSamplerType   Reflection2DSampler = 'SamplerFloat
   texture tex _ = primTextureUnitBind tex 10
+
+data SpecularToon1DSampler = SpecularToon1DSampler deriving (Eq, Ord, Show)
+
+instance TextureSampler SpecularToon1DSampler where
+  type TextureSamplerTarget SpecularToon1DSampler = TextureTarget1D
+  type TextureSamplerType   SpecularToon1DSampler = 'SamplerFloat
+  texture tex _ = primTextureUnitBind tex 11

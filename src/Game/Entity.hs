@@ -62,6 +62,8 @@ drawGfxWithTransform wrld cam gfx = do
                   , _shaderCameraMV = camV L.!*! wrld
                   , _shaderCameraMVP = camVP L.!*! wrld
                   }
+  s1dt <- use gameStateSpecular1DTexture
+  texture s1dt SpecularToon1DSampler;
   forM_ (gfx ^. gfxVaoData) $ \VaoData {..} -> do
     bindTextureBundle _vaoDataTextureBundle
     ActivePipeline $= Just _vaoDataShaderPipeline
