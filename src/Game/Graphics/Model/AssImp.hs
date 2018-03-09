@@ -12,7 +12,7 @@ import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Foreign.Marshal.Utils
 import Foreign.Ptr
-import Game.Types
+import Game.Graphics.Types
 import Graphics.Binding
 import Control.Monad (mfilter)
 import qualified Data.Vector as V

@@ -19,6 +19,7 @@ import           Game.Events
 import           Game.Graphics.Model.AssImp
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
+import           Game.Graphics.Types
 import           Game.Types
 import           Game.Wires
 import           Game.World.Physics
@@ -176,7 +177,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
   where
     go :: ResIO ()
     go = do
-      allocLongR defaultGraphicsContext :: ResIO ()
+      ()  <- allocLongR defaultGraphicsContext
       win <- allocLongR defaultWindowConfig
       CurrentContext $= Just win
       --cullFace $= Just Back

@@ -6,6 +6,7 @@ module Game.Entity.Camera where
 
 import ClassyPrelude
 import Game.Types
+import Game.Graphics.Types
 import Foreign.C.Types
 import qualified Linear as L
 import qualified Physics.Bullet as P

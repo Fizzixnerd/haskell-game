@@ -10,6 +10,7 @@ module Game.Entity where
 
 import ClassyPrelude
 import Game.Types
+import Game.Graphics.Types
 import Game.Entity.Camera
 import Graphics.Binding
 -- import Game.Graphics.Shader.Loader
