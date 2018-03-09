@@ -143,8 +143,8 @@ createTheModel (phong, normalMap) = do
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
 
-setupDynamicBuffers :: (ShaderStage 'VertexShader, ShaderStage 'VertexShader) -> IO DynamicBufferBundle
-setupDynamicBuffers (phong, normalMap) = do
+setupDynamicBuffers :: (ShaderStage 'VertexShader, ShaderStage 'VertexShader, ShaderStage 'FragmentShader, ShaderStage 'FragmentShader) -> IO DynamicBufferBundle
+setupDynamicBuffers (vPhong, vNormalMap, fPhong, fNormalMap) = do
   -- Do point lights
   let pointLight = PointLight
                    { _pointLightPosition = V4 100 100 0 1
@@ -158,18 +158,24 @@ setupDynamicBuffers (phong, normalMap) = do
   plbdb <- genName'
   plbdb ~& FullBufferWrite .$= pointLightBundle
   PointLightBlock $= plbdb
-  bindBlock phong PointLightBlock
-  bindBlock normalMap PointLightBlock
+  bindBlock vPhong PointLightBlock
+  bindBlock vNormalMap PointLightBlock
+  bindBlock fPhong PointLightBlock
+  bindBlock fNormalMap PointLightBlock
 
   smdb <- genName'
   ShaderMaterialBlock $= smdb
-  bindBlock phong ShaderMaterialBlock
-  bindBlock normalMap ShaderMaterialBlock
+  bindBlock vPhong ShaderMaterialBlock
+  bindBlock vNormalMap ShaderMaterialBlock
+  bindBlock fPhong ShaderMaterialBlock
+  bindBlock fNormalMap ShaderMaterialBlock
 
   cdb  <- genName'
   CameraBlock $= cdb
-  bindBlock phong CameraBlock
-  bindBlock normalMap CameraBlock
+  bindBlock vPhong CameraBlock
+  bindBlock vNormalMap CameraBlock
+  bindBlock fPhong CameraBlock
+  bindBlock fNormalMap CameraBlock
 
   return DynamicBufferBundle
     { _dynamicBufferBundleShaderCameraBuffer = cdb
@@ -198,12 +204,12 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       mctxt <- AL.createContext dev []
       let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
       AL.currentContext AL.$= Just ctxt
-      ((pPhong, vPhong, _), (pNormalMap, vNormalMap, _)) <- compilePipeline
+      ((pPhong, vPhong, fPhong), (pNormalMap, vNormalMap, fNormalMap)) <- compilePipeline
 
       AL.distanceModel AL.$= AL.InverseDistance
       (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pPhong, pNormalMap))
 
-      buffBundle <- liftIO $ setupDynamicBuffers (vPhong, vNormalMap)
+      buffBundle <- liftIO $ setupDynamicBuffers (vPhong, vNormalMap, fPhong, fNormalMap)
 
       ic <- liftIO $ N.mkInputControl win
       input <- liftIO $ N.getInput ic
