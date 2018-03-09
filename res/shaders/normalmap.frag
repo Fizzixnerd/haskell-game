@@ -33,7 +33,7 @@ layout (std140, binding = 2) uniform Material {
 } material;
 
 layout (binding = 0) uniform sampler2D tex_color;
-layout (binding = 1) uniform sampler2D tex_normal;
+layout (binding = 5) uniform sampler2D tex_normal;
 
 out vec4 color;
 

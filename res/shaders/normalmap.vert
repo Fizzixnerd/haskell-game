@@ -40,7 +40,7 @@ void main() {
 
   int i;
   for (i = 0; i < min(point_lights.num, MAX_POINT_LIGHTS); i++) {
-    vec3 L = point_lights.lights[i].position.xyz;
+    vec3 L = point_lights.lights[i].position.xyz - P.xyz;
     vs_out.light[i] = normalize(vec3(dot(L, T), dot(L, B), dot(L, N)));
   }
 

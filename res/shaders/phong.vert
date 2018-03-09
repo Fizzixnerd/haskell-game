@@ -21,8 +21,8 @@ struct PointLight {
 };
 
 layout (std140, binding = 1) uniform PointLights {
-  layout (offset = 0) PointLight[MAX_POINT_LIGHTS] lights;
-  layout (offset = 32 * MAX_POINT_LIGHTS) int num;
+  PointLight[MAX_POINT_LIGHTS] lights;
+  int num;
 } point_lights;
 
 layout (std140, binding = 2) uniform Material {
