@@ -165,8 +165,6 @@ setupDynamicBuffers (vPhong, vNormalMap, fPhong, fNormalMap) = do
 
   smdb <- genName'
   ShaderMaterialBlock $= smdb
-  bindBlock vPhong ShaderMaterialBlock
-  bindBlock vNormalMap ShaderMaterialBlock
   bindBlock fPhong ShaderMaterialBlock
   bindBlock fNormalMap ShaderMaterialBlock
 
