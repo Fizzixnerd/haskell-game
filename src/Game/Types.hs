@@ -433,7 +433,7 @@ instance GLWritable ShaderCamera where
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
 instance ForeignWrite () CameraBlock (DynamicBuffer ShaderCamera) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 2
+  writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 0
 
 maxPointLights :: Int
 maxPointLights = 4
@@ -475,7 +475,7 @@ instance GLWritable ShaderMaterial where
 data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 
 instance ForeignWrite () ShaderMaterialBlock (DynamicBuffer ShaderMaterial) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 0
+  writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 2
 
 mconcat <$> mapM makeLenses
   [ ''Camera
