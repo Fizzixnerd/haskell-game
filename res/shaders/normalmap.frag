@@ -51,9 +51,12 @@ void main() {
     vec3 L = normalize(fs_in.light[i].xyz);
     vec3 R = reflect(-L, N);
 
-    diffuse += texture(tex_color, fs_in.uv).rgb +(material.diffuse_color.rgb) * max(dot(N, L), 0.0) * 0.2;
-    specular += material.specular_color.rgb * max(pow(dot(R, V), material.specular_exponent), 0.0) * material.specular_strength * pow(0.2, 2);
+    diffuse += material.diffuse_color.rgb * max(dot(N, L), 0.0) * 0.2;
+    specular += material.specular_color.rgb * max(pow(dot(R, V), material.specular_exponent), 0.0) * material.specular_strength;
   }
   vec3 ambient = material.ambient_color.rgb;
-  color = vec4(diffuse + ambient * 0.1 + specular, 1.0);
+  color = vec4(texture(tex_color, fs_in.uv).rgb +
+               diffuse * 0.2 +
+               ambient * 0.05 +
+               specular * pow(0.2, 2), 1.0);
 }

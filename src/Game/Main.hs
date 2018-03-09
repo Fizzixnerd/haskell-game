@@ -129,10 +129,11 @@ createTheModel (phong, normalMap) = do
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
             { _lfxScripts = fromList
-              [ \model_ -> do
-                  entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
-                    const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
-                  return model_
+              [
+                -- \model_ -> do
+                --   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
+                --     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
+                --   return model_
               ]
             }
           , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
