@@ -10,3 +10,6 @@
 [submodule "lib/foreign-resource-hs"]
 	path = lib/foreign-resource-hs
 	url = https://github.com/InThisStyle10s6p/foreign-resource-hs
+[submodule "lib/haskell-graphics-binding"]
+	path = lib/haskell-graphics-binding
+	url = https://github.com/InThisStyle10s6p/haskell-graphics-binding
