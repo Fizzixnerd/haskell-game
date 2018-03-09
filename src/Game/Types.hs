@@ -432,9 +432,6 @@ instance GLWritable ShaderCamera where
 
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
-instance UniformBlock CameraBlock where
-  bindBlock_ prg _ = uniformBlockBinding prg 0 0
-
 instance ForeignWrite () CameraBlock (DynamicBuffer ShaderCamera) where
   writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 2
 
@@ -450,9 +447,6 @@ instance GLWritable PointLightBundle where
     poke (castPtr (ptr `plusPtr` (maxPointLights * gSize (Proxy :: Proxy PointLight) ))) n
 
 data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
-
-instance UniformBlock PointLightBlock where
-  bindBlock_ prg _ = uniformBlockBinding prg 1 1
 
 instance ForeignWrite () PointLightBlock (DynamicBuffer PointLightBundle) where
   writeR_ _ _ = bindFullDynamicUniformBuffer PointLightBlock 1
@@ -479,9 +473,6 @@ instance GLWritable ShaderMaterial where
       m = sizeOf (error "unreachable" :: Float)
 
 data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
-
-instance UniformBlock ShaderMaterialBlock where
-  bindBlock_ prg _ = uniformBlockBinding prg 2 2
 
 instance ForeignWrite () ShaderMaterialBlock (DynamicBuffer ShaderMaterial) where
   writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 0
