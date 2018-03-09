@@ -67,11 +67,11 @@ drawGfxWithTransform wrld cam gfx = do
     ActivePipeline $= Just _vaoDataShaderPipeline
     ActiveVertexArrayObject $= Just _vaoDataVao
 
-    smdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderMaterialBuffer
-    smdb ~& FullBufferWrite .$= _vaoDataShaderMaterial
-
     scdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderCameraBuffer
     scdb ~& FullBufferWrite .$= shaderCam
+
+    smdb <- use $ gameStateDynamicBufferBundle . dynamicBufferBundleShaderMaterialBuffer
+    smdb ~& FullBufferWrite .$= _vaoDataShaderMaterial
 
     drawElements _vaoDataPrimitiveMode (fromIntegral _vaoDataNumElements) UnsignedInt
 

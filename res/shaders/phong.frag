@@ -2,7 +2,7 @@
 
 #define MAX_POINT_LIGHTS 4
 
-layout (row_major) uniform;
+layout (row_major, std140) uniform;
 
 in VS_OUT {
   vec3 pos;
@@ -13,23 +13,23 @@ in VS_OUT {
   float[MAX_POINT_LIGHTS] intensity;
 } fs_in;
 
-layout (std140, binding = 0) uniform Camera {
-  layout (offset = 0)   mat4 mvp;
-  layout (offset = 64)  mat4 mv;
-  layout (offset = 128) mat4 p;
-} camera;
-
 struct PointLight {
   vec4 position;
   float intensity;
 };
 
-layout (std140, binding = 1) uniform PointLights {
+layout (binding = 0) uniform Camera {
+  mat4 mvp;
+  mat4 mv;
+  mat4 p;
+} camera;
+
+layout (binding = 1) uniform PointLights {
   PointLight[MAX_POINT_LIGHTS] lights;
   int num;
 } point_lights;
 
-layout (std140, binding = 2) uniform Material {
+layout (binding = 2) uniform Material {
   vec4 diffuse_color;
   vec4 ambient_color;
   vec4 specular_color;
@@ -39,7 +39,7 @@ layout (std140, binding = 2) uniform Material {
 
 layout (binding = 0) uniform sampler2D diffuse_sampler;
 
-out vec3 color;
+out vec4 color;
 
 void main() {
   vec3 N = normalize(fs_in.norm);
@@ -58,7 +58,7 @@ void main() {
   }
   vec3 ambient = material.ambient_color.rgb;
 
-  color = texture(diffuse_sampler, fs_in.uv).rgb
+  color = vec4(texture(diffuse_sampler, fs_in.uv).rgb
     + 0.2 * diffuse + pow(0.2, 2) * specular
-    + ambient * 0.05;
+               + ambient * 0.05, 1.0);
 }

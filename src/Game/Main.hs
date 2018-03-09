@@ -155,27 +155,27 @@ setupDynamicBuffers (vPhong, vNormalMap, fPhong, fNormalMap) = do
                          , _pointLightBundleNum = 1
                          }
 
+  cdb  <- genName'
+  CameraBlock $= cdb
+--  bindBlock vPhong CameraBlock
+--  bindBlock vNormalMap CameraBlock
+--  bindBlock fPhong CameraBlock
+--  bindBlock fNormalMap CameraBlock
+
   plbdb <- genName'
   plbdb ~& FullBufferWrite .$= pointLightBundle
   PointLightBlock $= plbdb
-  bindBlock vPhong PointLightBlock
-  bindBlock vNormalMap PointLightBlock
-  bindBlock fPhong PointLightBlock
-  bindBlock fNormalMap PointLightBlock
+--  bindBlock vPhong PointLightBlock
+--  bindBlock vNormalMap PointLightBlock
+--  bindBlock fPhong PointLightBlock
+--  bindBlock fNormalMap PointLightBlock
 
   smdb <- genName'
   ShaderMaterialBlock $= smdb
-  bindBlock vPhong ShaderMaterialBlock
-  bindBlock vNormalMap ShaderMaterialBlock
-  bindBlock fPhong ShaderMaterialBlock
-  bindBlock fNormalMap ShaderMaterialBlock
-
-  cdb  <- genName'
-  CameraBlock $= cdb
-  bindBlock vPhong CameraBlock
-  bindBlock vNormalMap CameraBlock
-  bindBlock fPhong CameraBlock
-  bindBlock fNormalMap CameraBlock
+--  bindBlock vPhong ShaderMaterialBlock
+--  bindBlock vNormalMap ShaderMaterialBlock
+--  bindBlock fPhong ShaderMaterialBlock
+--  bindBlock fNormalMap ShaderMaterialBlock
 
   return DynamicBufferBundle
     { _dynamicBufferBundleShaderCameraBuffer = cdb
@@ -223,6 +223,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
           animationWire = effectWire $ do
             clear $ defaultClearBuffer & clearBufferColor .~ True
                                        & clearBufferDepth .~ True
+                                       & clearBufferStencil .~ True
             entities <- use $ gameStatePhysicsWorld . physicsWorldEntities
             entities' <- mapM animateEntity entities
             gameStatePhysicsWorld . physicsWorldEntities .= entities'

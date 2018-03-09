@@ -7,9 +7,9 @@ layout (location = 1) in vec3 normal;
 layout (location = 2) in vec3 tangent;
 layout (location = 3) in vec2 uv;
 
-layout (row_major) uniform;
+layout (row_major, std140) uniform;
 
-layout (std140, binding = 0) uniform Camera {
+layout (binding = 0) uniform Camera {
   mat4 mvp;
   mat4 mv;
   mat4 p;
@@ -20,15 +20,24 @@ struct PointLight {
   float intensity;
 };
 
-layout (std140, binding = 1) uniform PointLights {
+layout (binding = 1) uniform PointLights {
   PointLight[MAX_POINT_LIGHTS] lights;
   int num;
 } point_lights;
+
+layout (binding = 2) uniform Material {
+  vec4 diffuse_color;
+  vec4 ambient_color;
+  vec4 specular_color;
+  float specular_strength;
+  float specular_exponent;
+} material;
 
 out gl_PerVertex {
   vec4 gl_Position;
   float gl_PointSize;
   float gl_ClipDistance[];
+  float gl_CullDistance[];
 };
 
 out VS_OUT {

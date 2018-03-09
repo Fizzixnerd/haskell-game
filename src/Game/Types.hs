@@ -436,7 +436,7 @@ instance UniformBlock CameraBlock where
   bindBlock_ prg _ = uniformBlockBinding prg 0 0
 
 instance ForeignWrite () CameraBlock (DynamicBuffer ShaderCamera) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 0
+  writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 2
 
 maxPointLights :: Int
 maxPointLights = 4
@@ -484,7 +484,7 @@ instance UniformBlock ShaderMaterialBlock where
   bindBlock_ prg _ = uniformBlockBinding prg 2 2
 
 instance ForeignWrite () ShaderMaterialBlock (DynamicBuffer ShaderMaterial) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 2
+  writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 0
 
 mconcat <$> mapM makeLenses
   [ ''Camera
