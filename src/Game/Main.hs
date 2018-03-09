@@ -164,7 +164,7 @@ setupDynamicBuffers (phong, normalMap) = do
   smdb <- genName'
   ShaderMaterialBlock $= smdb
   bindBlock phong ShaderMaterialBlock
-  bindBlock normalMap PointLightBlock
+  bindBlock normalMap ShaderMaterialBlock
 
   cdb  <- genName'
   CameraBlock $= cdb

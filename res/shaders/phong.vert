@@ -10,9 +10,9 @@ layout (location = 3) in vec2 uv;
 layout (row_major) uniform;
 
 layout (std140, binding = 0) uniform Camera {
-  layout (offset = 0)   mat4 mvp;
-  layout (offset = 64)  mat4 mv;
-  layout (offset = 128) mat4 p;
+  mat4 mvp;
+  mat4 mv;
+  mat4 p;
 } camera;
 
 struct PointLight {
@@ -21,17 +21,9 @@ struct PointLight {
 };
 
 layout (std140, binding = 1) uniform PointLights {
-  layout (offset = 0) PointLight[MAX_POINT_LIGHTS] lights;
-  layout (offset = 32 * MAX_POINT_LIGHTS) int num;
+  PointLight[MAX_POINT_LIGHTS] lights;
+  int num;
 } point_lights;
-
-layout (std140, binding = 2) uniform Material {
-  layout (offset = 0) vec4 diffuse_color;
-  layout (offset = 16) vec4 ambient_color;
-  layout (offset = 32) vec4 specular_color;
-  layout (offset = 48) float specular_strength;
-  layout (offset = 52) float specular_exponent;
-} material;
 
 out gl_PerVertex {
   vec4 gl_Position;

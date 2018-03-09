@@ -2,18 +2,12 @@
 
 #define MAX_POINT_LIGHTS 4
 
-layout (row_major) uniform;
-
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in vec3 tangent;
 layout (location = 3) in vec2 uv;
 
-out VS_OUT {
-  vec2 uv;
-  vec3 view;
-  vec3[MAX_POINT_LIGHTS] light;
-} vs_out;
+layout (row_major) uniform;
 
 layout (std140, binding = 0) uniform Camera {
   mat4 mvp;
@@ -30,6 +24,18 @@ layout (std140, binding = 1) uniform PointLights {
   PointLight[MAX_POINT_LIGHTS] lights;
   int num;
 } point_lights;
+
+out gl_PerVertex {
+  vec4 gl_Position;
+  float gl_PointSize;
+  float gl_ClipDistance[];
+};
+
+out VS_OUT {
+  vec2 uv;
+  vec3 view;
+  vec3[MAX_POINT_LIGHTS] light;
+} vs_out;
 
 void main() {
   vec4 P = camera.mv * vec4(position, 1);
