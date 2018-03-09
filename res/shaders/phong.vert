@@ -7,36 +7,37 @@ layout (location = 1) in vec3 normal;
 layout (location = 2) in vec3 tangent;
 layout (location = 3) in vec2 uv;
 
-layout (row_major) uniform;
-
-layout (std140, binding = 0) uniform Camera {
-  layout (offset = 0)   mat4 mvp;
-  layout (offset = 64)  mat4 mv;
-  layout (offset = 128) mat4 p;
-} camera;
+layout (row_major, std140) uniform;
 
 struct PointLight {
   vec4 position;
   float intensity;
 };
 
-layout (std140, binding = 1) uniform PointLights {
+layout (binding = 0) uniform Camera {
+  mat4 mvp;
+  mat4 mv;
+  mat4 p;
+} camera;
+
+layout (binding = 1) uniform PointLights {
   PointLight[MAX_POINT_LIGHTS] lights;
   int num;
 } point_lights;
 
-layout (std140, binding = 2) uniform Material {
-  layout (offset = 0) vec4 diffuse_color;
-  layout (offset = 16) vec4 ambient_color;
-  layout (offset = 32) vec4 specular_color;
-  layout (offset = 48) float specular_strength;
-  layout (offset = 52) float specular_exponent;
+layout (binding = 2) uniform Material {
+  vec4 diffuse_color;
+  vec4 ambient_color;
+  vec4 specular_color;
+  float specular_strength;
+  float specular_exponent;
 } material;
 
 out gl_PerVertex {
   vec4 gl_Position;
   float gl_PointSize;
   float gl_ClipDistance[];
+  float gl_CullDistance[];
 };
 
 out VS_OUT {

@@ -55,8 +55,8 @@ massageAssImpMesh ptr = do
   uvs_   <- V.fromList <$> peekArray 8 numUVs
   tptrs_ <- fmap castPtr . V.fromList <$> peekArray 8 tptrptr
 
-  let ptrs_       = V.cons vptr . V.cons nptr . V.cons tptr $ tptrs_
-      components_ = V.cons 3 . V.cons 3 . V.cons 3 $ uvs_
+  let ptrs_       = V.fromList [vptr, nptr, tptr] <> tptrs_
+      components_ = V.fromList [3, 3, 3] <> uvs_
       combined_   = V.filter ((/=0) . fst) $ V.zip components_ ptrs_
       (components, ptrs) = (fmap fst combined_, fmap snd combined_)
       offsets = V.prescanl' (+) 0 components
