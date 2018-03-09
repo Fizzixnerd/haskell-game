@@ -60,7 +60,7 @@ setupPhysics ps = do
   (theModelE, theModelRB) <- createTheModel ps
   pw <- newPhysicsWorld
   pl' <- newPlayer
-  let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
+  let pl = pl' -- & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
   go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 2
   cameraLookAtTarget cam
@@ -92,9 +92,9 @@ createTheModel (phong, normalMap) = do
   P.del startXform
   P.del rbci
 
-  let modelRoot = "res" </> "models" </> "Bayonetta 1"
-      modelName = "bayo_default.dae"
-      defaultTexture = "res" </> "models" </> "no_texture.png"
+  let modelRoot = "res" </> "models"
+      modelName = "Lowpoly_tree_sample.dae"
+      defaultTexture = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes $ \aim -> do
     dif <- loadPNGTexture $

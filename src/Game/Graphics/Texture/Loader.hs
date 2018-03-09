@@ -53,7 +53,6 @@ loadPNGTexture fp = liftIO $ do
       textureParameteri tobj TextureCompareFunc GL_LEQUAL
       return tobj
 
-
 data Diffuse2DSampler = Diffuse2DSampler deriving (Eq, Ord, Show)
 
 instance TextureSampler Diffuse2DSampler where

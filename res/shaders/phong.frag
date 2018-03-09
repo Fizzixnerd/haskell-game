@@ -58,7 +58,8 @@ void main() {
   }
   vec3 ambient = material.ambient_color.rgb;
 
-  color = vec4(texture(diffuse_sampler, fs_in.uv).rgb
-    + 0.2 * diffuse + pow(0.2, 2) * specular
-               + ambient * 0.05, 1.0);
+  color = vec4(texture(diffuse_sampler, fs_in.uv).rgb +
+               diffuse +
+               specular +
+               ambient, 1.0);
 }
