@@ -144,7 +144,8 @@ data Camera s = Camera
 
 data GiantFeaturelessPlane s = GiantFeaturelessPlane
   { _giantFeaturelessPlaneRigidBody :: P.RigidBody
-  , _giantFeaturelessPlaneEntity :: Entity s }
+  , _giantFeaturelessPlaneEntity :: Entity s
+  }
 
 data ExpandObjVTN = ExpandObjVTN
   { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
