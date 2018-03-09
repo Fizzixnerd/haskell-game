@@ -61,7 +61,7 @@ setupPhysics ps = do
   (theModelE, theModelRB) <- createTheModel ps
   pw <- newPhysicsWorld
   pl' <- newPlayer
-  let pl = pl' & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
+  let pl = pl' -- & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
   go <- P.getGhostObject $ pl ^. playerController
   cam <- newCamera go 2
   cameraLookAtTarget cam
@@ -93,16 +93,16 @@ createTheModel (phong, normalMap) = do
   P.del startXform
   P.del rbci
 
-  let modelRoot = "res" </> "models" </> "Bayonetta 1"
-      modelName = "bayo_default.dae"
-      defaultTexture = "res" </> "models" </> "no_texture.png"
+  let modelRoot = "res" </> "models" -- </> "Bayonetta 1"
+      modelName = "Lowpoly_tree_sample.dae"
+      defaultTexture = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes $ \aim -> do
-    dif <- loadPNGTexture $
+    dif <- loadPngTexture $
            maybe defaultTexture (modelRoot </>) $
            aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
     norm_ <- sequence $
-             loadPNGTexture . (modelRoot </>) <$>
+             loadPngTexture . (modelRoot </>) <$>
              aim ^. assImpMeshTextureBundle . textureBundleNormalTexture
     let pipeline = if isJust norm_
                    then normalMap
@@ -130,10 +130,11 @@ createTheModel (phong, normalMap) = do
             { _sfxSources = singleton src }
           , _entityLogic = Just Lfx
             { _lfxScripts = fromList
-              [ \model_ -> do
-                  entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
-                    const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
-                  return model_
+              [
+                -- \model_ -> do
+                --   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
+                --     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
+                --   return model_
               ]
             }
           , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
@@ -195,10 +196,12 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       AL.currentContext AL.$= Just ctxt
       ((pPhong, _, _), (pNormalMap, _, _)) <- compilePipeline
 
-      AL.distanceModel AL.$= AL.InverseDistance
-      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pPhong, pNormalMap))
+      (pToon, _, _) <- compileToonPipeline
 
+      AL.distanceModel AL.$= AL.InverseDistance
+      (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pToon, pToon))
       buffBundle <- liftIO setupDynamicBuffers
+      specularTex <- load1DPngTexture $ "res" </> "textures" </> "specular1d" ClassyP.<.> "png"
 
       ic <- liftIO $ N.mkInputControl win
       input <- liftIO $ N.getInput ic
@@ -240,4 +243,5 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
                                     & gameStateWires .~ mainWires
                                     & gameStateIOData .~ ioData
                                     & gameStateDynamicBufferBundle .~ buffBundle
+                                    & gameStateSpecular1DTexture .~ specularTex
       doGame gameState

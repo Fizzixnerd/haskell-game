@@ -108,6 +108,7 @@ data GameState s = GameState
   , _gameStateSoundDevice            :: AL.Device
   , _gameStateWires                  :: Vector (GameWire s () ())
   , _gameStateDynamicBufferBundle :: DynamicBufferBundle
+  , _gameStateSpecular1DTexture   :: TextureObject TextureTarget1D
   }
 
 initGameState :: GameState s
@@ -126,6 +127,7 @@ initGameState = GameState
   , _gameStateSoundDevice             = error "soundDevice not set."
   , _gameStateWires                   = empty
   , _gameStateDynamicBufferBundle  = error "bufferBundle not set."
+  , _gameStateSpecular1DTexture    = error "specular1DTexture not set."
   }
 
 data Camera s = Camera

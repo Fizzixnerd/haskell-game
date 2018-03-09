@@ -37,7 +37,9 @@ layout (binding = 2) uniform Material {
   float specular_exponent;
 } material;
 
-layout (binding = 0) uniform sampler2D diffuse_sampler;
+layout (binding = 0) uniform sampler2D tex_color;
+layout (binding = 5) uniform sampler2D tex_normal;
+layout (binding = 11) uniform sampler1D tex_specular;
 
 out vec4 color;
 
@@ -47,19 +49,25 @@ void main() {
 
   vec3 diffuse = vec3(0);
   vec3 specular = vec3(0);
+  float specular_index;
   int i;
   for (i = 0; i < min(MAX_POINT_LIGHTS, point_lights.num); i++) {
     vec3 L = normalize(fs_in.light[i]);
     vec3 R = reflect(-L, N);
 
     diffuse += max(dot(N, L), 0.0) * material.diffuse_color.rgb * fs_in.intensity[i];
-    specular += pow(max(dot(R, V), 0.0), material.specular_exponent) *
-      material.specular_strength * material.specular_color.rgb * pow(fs_in.intensity[i], 1);
+    specular_index = pow(max(dot(R, V), 0.0), material.specular_exponent) *
+      material.specular_strength *
+      fs_in.intensity[i];
+    specular += -texture(tex_specular, specular_index).rgb + 1;
   }
-  vec3 ambient = material.ambient_color.rgb;
+  vec3 outline = vec3(0);
+  // high poly smoother
+  float outliner = abs(dot(V, N));
+  if (outliner < 0.1) {
+    outline = mix(vec3(0), vec3(-1), outliner / 0.1);
+  }
 
-  color = vec4(texture(diffuse_sampler, fs_in.uv).rgb +
-               diffuse +
-               specular +
-               ambient, 1.0);
+  vec3 tex = texture(tex_color, floor(5 * fs_in.uv) / 5).rgb;
+  color = vec4(diffuse * 0.1 + specular * 0.1 + tex + outline + material.ambient_color.rgb * 0.1, 1.0);
 }
