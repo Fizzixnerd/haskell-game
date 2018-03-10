@@ -132,7 +132,7 @@ createTheModel (phong, normalMap) = do
   vaoData <- forM meshes $ loadMeshes modelRoot defaultTexture
 
   let modelRoot' = "res" </> "models"
-      modelName' = "Lowpoly_tree_sample.dae"
+      modelName' = "golden_icosphere-2.dae"
       defaultTexture' = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes') <- loadAssImpScene $ modelRoot' </> modelName'
   vaoData' <- forM meshes' $ loadMeshes modelRoot' defaultTexture'
