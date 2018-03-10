@@ -1,3 +1,4 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -130,7 +131,7 @@ emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothi
 data DynamicBufferBundle = DynamicBufferBundle
   { _dynamicBufferBundleShaderMaterialBuffer :: DynamicBuffer ShaderMaterial
   , _dynamicBufferBundleShaderCameraBuffer :: DynamicBuffer ShaderCamera
-  , _dynamicBufferBundlePointLightBundleBuffer :: DynamicBuffer PointLightBundle
+  , _dynamicBufferBundleLightBundleBuffer :: DynamicBuffer LightBundle
   } deriving (Eq, Ord, Show)
 
 -- * Camera and view
@@ -139,48 +140,48 @@ type VMatrix  = L.M44 Float
 type PMatrix  = L.M44 Float
 
 -- * Uniform blocks, GLSized and GLStorable instances.
-data PointLight = PointLight
-  { _pointLightPosition :: L.V4 Float
-  , _pointLightIntensity :: Float
+data Light = Light
+  { _lightPosition :: L.V4 Float
+  , _lightIntensity :: Float
   } deriving (Eq, Ord, Show)
 
-instance Storable PointLight where
+instance Storable Light where
   sizeOf _ = (4 + 4) * sizeOf (0 :: Float)
   alignment _ = 4 * alignment (error "unreachable" :: Float)
-  poke ptr (PointLight loc str) = do
+  poke ptr (Light loc str) = do
     pokeByteOff ptr 0 loc
     pokeByteOff ptr (4 * sizeOf (0 :: Float)) str
   peek ptr = do
     loc <- peekByteOff ptr 0
     str <- peekByteOff ptr (4 * sizeOf (0 :: Float))
-    return $ PointLight loc str
+    return $ Light loc str
 
-instance GLSized PointLight where
-  gSize_ _ = sizeOf (error "unreachable" :: PointLight)
+instance GLSized Light where
+  gSize_ _ = sizeOf (error "unreachable" :: Light)
 
-instance GLWritable PointLight where
+instance GLWritable Light where
   gPoke_ = poke
 
-data PointLightBundle = PointLightBundle
-  { _pointLightBundleLights :: VS.Vector PointLight
-  , _pointLightBundleNum :: Int
+data LightBundle = LightBundle
+  { _lightBundleLights :: VS.Vector Light
+  , _lightBundleNum :: Int
   }
 
-instance GLSized PointLightBundle where
-  gSize_ _ = maxPointLights * gSize (Proxy :: Proxy PointLight) + sizeOf (0 :: Int)
+maxLights :: Int
+maxLights = 4
 
-instance GLWritable PointLightBundle where
-  gPoke_ ptr (PointLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
-    copyBytes ptr (castPtr lsPtr) $ gSize (Proxy :: Proxy PointLight) * min maxPointLights (length ls)
-    poke (castPtr (ptr `plusPtr` (maxPointLights * gSize (Proxy :: Proxy PointLight) ))) n
+instance GLSized LightBundle where
+  gSize_ _ = maxLights * gSize (Proxy :: Proxy Light) + sizeOf (0 :: Int)
 
-maxPointLights :: Int
-maxPointLights = 4
+instance GLWritable LightBundle where
+  gPoke_ ptr (LightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
+    copyBytes ptr (castPtr lsPtr) $ gSize (Proxy :: Proxy Light) * min maxLights (length ls)
+    poke (castPtr (ptr `plusPtr` (maxLights * gSize (Proxy :: Proxy Light) ))) n
 
-data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
+data LightBlock = LightBlock deriving (Eq, Ord, Show)
 
-instance ForeignWrite () PointLightBlock (DynamicBuffer PointLightBundle) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer PointLightBlock 1
+instance ForeignWrite () LightBlock (DynamicBuffer LightBundle) where
+  writeR_ _ _ = bindFullDynamicUniformBuffer LightBlock 1
 
 data ShaderCamera = ShaderCamera
   { _shaderCameraMVP :: L.M44 Float
@@ -230,6 +231,108 @@ data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 instance ForeignWrite () ShaderMaterialBlock (DynamicBuffer ShaderMaterial) where
   writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 2
 
+-- * Compressed point light.
+
+data LightCompressed = LightCompressed
+  { _lightCompressedLightPosition  :: L.V3 Float
+  , _lightCompressedLightIntensity :: Float
+  } deriving (Eq, Ord, Show)
+
+instance Storable LightCompressed where
+  sizeOf _   = 4 * sizeOf (error "mu" :: Float)
+  alignment _ = alignment (error "mu" :: Float)
+  poke ptr (LightCompressed (L.V3 x y z) i) = do
+    pokeByteOff ptr (0*m) x
+    pokeByteOff ptr (1*m) y
+    pokeByteOff ptr (2*m) z
+    pokeByteOff ptr (3*m) i
+    where
+      m = sizeOf (error "mu" :: Float)
+  peek ptr  = do
+    x <- peekByteOff ptr $ 0 * m
+    y <- peekByteOff ptr $ 1 * m
+    z <- peekByteOff ptr $ 2 * m
+    i <- peekByteOff ptr $ 3 * m
+    return $ LightCompressed (L.V3 x y z) i
+    where
+      m = sizeOf (error "mu" :: Float)
+
+instance GLSized LightCompressed where
+  gSize_ _ = sizeOf (error "mu" :: LightCompressed)
+
+instance GLWritable LightCompressed where
+  gPoke_ = poke
+
+-- * Point light
+
+newtype PointLight = PointLight
+  { _pointLightLightCompressed :: LightCompressed
+  } deriving (Eq, Ord, Show, Storable, GLSized, GLWritable)
+
+-- * Directional light
+
+data DirectionalLight = DirectionalLight
+  { _directionalLightLightPosition  :: L.V3 Float
+  , _directionalLightLightIntensity :: Float
+  } deriving (Eq, Ord, Show)
+
+instance Storable DirectionalLight where
+  sizeOf _   = 4 * sizeOf (error "mu" :: Float)
+  alignment _ = alignment (error "mu" :: Float)
+  poke ptr (DirectionalLight (L.V3 x y z) i) = do
+    pokeByteOff ptr (0*m) x
+    pokeByteOff ptr (1*m) y
+    pokeByteOff ptr (2*m) z
+    pokeByteOff ptr (3*m) i
+    where
+      m = sizeOf (error "mu" :: Float)
+  peek ptr  = do
+    x <- peekByteOff ptr $ 0 * m
+    y <- peekByteOff ptr $ 1 * m
+    z <- peekByteOff ptr $ 2 * m
+    i <- peekByteOff ptr $ 3 * m
+    return $ DirectionalLight (L.V3 x y z) i
+    where
+      m = sizeOf (error "mu" :: Float)
+
+instance GLSized DirectionalLight where
+  gSize_ _ = sizeOf (error "mu" :: DirectionalLight)
+
+instance GLWritable DirectionalLight where
+  gPoke_ = poke
+
+data DirectionalLightBundle = DirectionalLightBundle
+  { _directionalBundleLights :: VS.Vector DirectionalLight
+  , _directionalBundleNum :: Int
+  } deriving (Eq, Ord, Show)
+
+maxDirectionalLights :: Int
+maxDirectionalLights = 4
+
+instance GLSized DirectionalLightBundle where
+  gSize_ _ = maxDirectionalLights * gSize (Proxy :: Proxy DirectionalLight) + sizeOf (0 :: Int)
+
+instance GLWritable DirectionalLightBundle where
+  gPoke_ ptr (DirectionalLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
+    copyBytes ptr (castPtr lsPtr) $ gSize (Proxy :: Proxy Light) * min maxLights (length ls)
+    poke (castPtr (ptr `plusPtr` (maxLights * gSize (Proxy :: Proxy Light) ))) n
+
+data DirectionalLightBlock = DirectionalLightBlock deriving (Eq, Ord, Show)
+
+instance ForeignWrite () DirectionalLightBlock (DynamicBuffer DirectionalLightBundle) where
+  writeR_ _ _ = bindFullDynamicUniformBuffer DirectionalLightBlock (error "Set me to a particular binding point!")
+
+makeFields ''LightCompressed
+makeFields ''Light
+makeFields ''PointLight
+makeFields ''DirectionalLight
+
+instance HasLightPosition PointLight (L.V3 Float) where
+  lightPosition = lightCompressed . lightPosition
+
+instance HasLightIntensity PointLight Float where
+  lightIntensity = lightCompressed . lightIntensity
+
 mconcat <$> mapM makeLenses
   [ ''ExpandObjVTN
   , ''VTNIndex
@@ -238,7 +341,6 @@ mconcat <$> mapM makeLenses
   , ''AssImpScene
   , ''AssImpMesh
   , ''TextureBundle
-  , ''PointLight
-  , ''PointLightBundle
+  , ''LightBundle
   , ''DynamicBufferBundle
   ]
