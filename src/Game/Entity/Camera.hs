@@ -12,8 +12,7 @@ import qualified Physics.Bullet as P
 import Control.Lens
 
 -- | The CollisionObject passed to this function is not freed upon
--- destruciton of the Camera.
-
+-- destruction of the Camera.
 newCamera :: (MonadIO m, P.IsCollisionObject co) => co -> CFloat -> m (Camera s)
 newCamera target _cameraPreferredDistance = liftIO $ do
   let _cameraTarget = P.toCollisionObject target
@@ -52,7 +51,6 @@ bulletV4ToL (x,y,z,w) = L.V4 x y z w
 
 bulletQuatToL :: (a,a,a,a) -> L.Quaternion a
 bulletQuatToL (i,j,k,r) = L.Quaternion r (L.V3 i j k)
-
 
 getCameraLinearVelocity :: MonadIO m => Camera s -> m (L.V3 CFloat)
 getCameraLinearVelocity Camera {..} = liftIO $ bulletV3ToL <$> P.kccGetLinearVelocity _cameraController

@@ -8,12 +8,17 @@ import ClassyPrelude
 import Game.Types
 import qualified Linear as L
 import Foreign.C.Types
--- import Game.Entity.Player
 import qualified Physics.Bullet as P
 import Control.Lens hiding (snoc)
+-- import qualified Data.Vector as V
+-- import Game.Entity.Player
 
 stepPhysicsWorld :: MonadIO m => PhysicsWorld s -> m Int
 stepPhysicsWorld w = liftIO $ do
+  -- pos <- getPlayerPosition $ (w ^. physicsWorldPlayers) V.! 0
+  -- orient <- getPlayerOrientation $ (w ^. physicsWorldPlayers) V.! 0
+  -- print pos
+  -- print orient
   P.stepSimulation (w ^. physicsWorldDynamicsWorld) (1/60) 1 (1/60)
 
 newPhysicsWorld :: MonadIO m => m (PhysicsWorld s)
@@ -26,7 +31,7 @@ newPhysicsWorld = liftIO $ do
   _physicsWorldCollisionDispatcher :: P.CollisionDispatcher <- P.new $
     _physicsWorldCollisionConfiguration
   _physicsWorldConstraintSolver :: P.ConstraintSolver <- P.new ()
-  _physicsWorldDynamicsWorld :: P.DynamicsWorld <- P.new $
+  _physicsWorldDynamicsWorld :: P.DynamicsWorld <- P.new
     ( _physicsWorldCollisionDispatcher
     , _physicsWorldBroadphaseInterface
     , _physicsWorldConstraintSolver
@@ -37,7 +42,7 @@ newPhysicsWorld = liftIO $ do
       _physicsWorldRigidBodies = empty
       _physicsWorldCollisionObjects = empty
       _physicsWorldEntities = empty
-  return $ PhysicsWorld {..}
+  return PhysicsWorld {..}
 
 destroyPhysicsWorld :: MonadIO m => PhysicsWorld s -> m ()
 destroyPhysicsWorld PhysicsWorld {..} = liftIO $ do
@@ -51,8 +56,8 @@ destroyPhysicsWorld PhysicsWorld {..} = liftIO $ do
 
 updateIndex :: MonadIO m => Entity s -> PhysicsWorld s -> m (PhysicsWorld s)
 updateIndex e pw = do
-  let pw' = pw & physicsWorldEntities %~ (flip snoc e)
-      n   = (length $ pw' ^. physicsWorldEntities) - 1
+  let pw' = pw & physicsWorldEntities %~ (`snoc` e)
+      n   = length (pw' ^. physicsWorldEntities) - 1
   liftIO $ P.setUserIndex (e ^. entityCollisionObject . unCollisionObject) n
   return pw'
 
@@ -61,12 +66,9 @@ addPlayerToPhysicsWorld :: MonadIO m
                         -> PhysicsWorld s
                         -> m (PhysicsWorld s)
 addPlayerToPhysicsWorld p w = liftIO $ do
-  go <- P.getGhostObject $ p ^. playerController
-  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) go
-  P.addAction (w ^. physicsWorldDynamicsWorld) (p ^. playerController)
-  let w' = w & physicsWorldPlayers %~ (flip snoc p)
-  w'' <- updateIndex (p ^. playerEntity) w'
-  return w''
+  w' <- addEntityToPhysicsWorld  (p ^. playerEntity) w
+  let w'' = w' & physicsWorldPlayers %~ (`snoc` p)
+  updateIndex (p ^. playerEntity) w''
 
 addGiantFeaturelessPlaneToPhysicsWorld :: MonadIO m
                                        => GiantFeaturelessPlane s
@@ -75,7 +77,7 @@ addGiantFeaturelessPlaneToPhysicsWorld :: MonadIO m
 addGiantFeaturelessPlaneToPhysicsWorld g@(GiantFeaturelessPlane gfp _) w = liftIO $ do
   P.addRigidBody (w ^. physicsWorldDynamicsWorld) gfp
   w' <- updateIndex (g ^. giantFeaturelessPlaneEntity) w
-  return $ w' & physicsWorldGiantFeaturelessPlanes %~ (flip snoc g)
+  return $ w' & physicsWorldGiantFeaturelessPlanes %~ (`snoc` g)
 
 addCameraToPhysicsWorld :: MonadIO m => Camera s -> PhysicsWorld s -> m (PhysicsWorld s)
 addCameraToPhysicsWorld cam w = liftIO $ do
@@ -83,7 +85,7 @@ addCameraToPhysicsWorld cam w = liftIO $ do
   P.addCollisionObject (w ^. physicsWorldDynamicsWorld) go
   P.addAction (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
   w' <- updateIndex (cam ^. cameraEntity) w
-  return $ w' & physicsWorldCameras %~ (flip snoc cam)
+  return $ w' & physicsWorldCameras %~ (`snoc` cam)
 
 setGravityPhysicsWorld :: MonadIO m => L.V3 CFloat -> PhysicsWorld s -> m ()
 setGravityPhysicsWorld (L.V3 x y z) p = liftIO $ P.dwSetGravity (p ^. physicsWorldDynamicsWorld) x y z
@@ -115,4 +117,4 @@ addEntityToPhysicsWorld e pw = do
              addRigidBodyToPhysicsWorld (rb ^. unRigidBody) pw
   let pw'' = pw' & physicsWorldEntities %~ (flip snoc e)
   return pw''
-    
+

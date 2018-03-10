@@ -231,7 +231,7 @@ registerEventByName en e (EventRegister er) = MS.insert en e er
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
 data Player s = Player
-  { _playerController :: P.KinematicCharacterController
+  { _playerController :: P.RigidBody
   , _playerEntity     :: Entity s
   }
 

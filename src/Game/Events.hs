@@ -31,9 +31,12 @@ zoomCamera = effectWire $ do
   setCameraRadialSpeed cam rs
   cameraLookAtTarget cam
 
-turnPlayer :: GameEffectWire s
-turnPlayer = effectWire $ join $
-  setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
+-- turnPlayer :: GameEffectWire s
+-- turnPlayer = effectWire $ do
+--   p <- use gameStatePlayer
+--   c <- use gameStateCamera
+--   o <- getCameraOrientation c
+--   setPlayerOrientation p o
 
 rotateCamera :: MonadIO m => (Float, Float) -> Camera s -> m ()
 rotateCamera (dhor, dver) cam = do
@@ -57,7 +60,7 @@ camera = N.cursorMode N.CursorMode'Reset --> camWire
 movePlayer :: GameWire s (L.V3 CFloat) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
   p <- use gameStatePlayer
-  setPlayerLinearVelocity p dir
+  playerApplyForce p dir
 
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
@@ -72,12 +75,12 @@ close = cls <<< keyEsc
   where
     cls = effectWire $ gameStateShouldClose .= True
 
-jump :: GameEffectWire s
-jump = jmp <<< keySpace
-  where
-    jmp = effectWire $ do
-      p <- use $ gameStatePlayer . playerController
-      liftIO $ P.jump p
+-- jump :: GameEffectWire s
+-- jump = jmp <<< keySpace
+--   where
+--     jmp = effectWire $ do
+--       p <- use $ gameStatePlayer . playerController
+--       liftIO $ P.jump p
 
 basicEventStream :: (Fractional a, HasTime t s) => GameWire s a (Event a)
 basicEventStream = periodic 4 . timeF
