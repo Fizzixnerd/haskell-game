@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -109,6 +110,8 @@ data GameState s = GameState
   , _gameStateWires                  :: Vector (GameWire s () ())
   , _gameStateDynamicBufferBundle :: DynamicBufferBundle
   , _gameStateSpecular1DTexture   :: TextureObject TextureTarget1D
+  , _gameStateKeyboardInputScheme :: InputScheme
+  , _gameStateDevConsole          :: Maybe DevConsole
   }
 
 initGameState :: GameState s
@@ -128,6 +131,8 @@ initGameState = GameState
   , _gameStateWires                   = empty
   , _gameStateDynamicBufferBundle  = error "bufferBundle not set."
   , _gameStateSpecular1DTexture    = error "specular1DTexture not set."
+  , _gameStateKeyboardInputScheme  = InputPlaying
+  , _gameStateDevConsole           = Nothing
   }
 
 data Camera s = Camera
@@ -267,6 +272,36 @@ newtype Sfx s = Sfx
 newtype Lfx s = Lfx
   { _lfxScripts :: Vector (Entity s -> Game s (Entity s))
   }
+
+-- * Text buffering
+
+newtype TextBuffer = TextBuffer
+  { _textBufferText :: Text
+  } deriving (Eq, Ord, Show)
+
+initTextBuffer :: TextBuffer
+initTextBuffer = TextBuffer ""
+
+data TextBufferUpdate
+  = TextBufferAdd Char
+  | TextBufferBackSpace
+
+newtype DevConsole = DevConsole
+  { _devConsoleBuffer :: TextBuffer
+  } deriving (Eq, Ord, Show)
+
+initDevConsole :: DevConsole
+initDevConsole = DevConsole initTextBuffer
+
+data InputScheme
+  = InputPlaying
+  | InputDevConsole
+  deriving (Eq, Ord, Show, Enum, Bounded)
+
+succOverflow :: (Eq a, Bounded a, Enum a) => a -> a
+succOverflow x
+  | x == maxBound = minBound
+  | otherwise     = succ x
 
 mconcat <$> mapM makeLenses
   [ ''Camera

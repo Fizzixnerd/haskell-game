@@ -1,19 +1,27 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Game.Wires where
 
-import ClassyPrelude
-import Control.Wire
+import           ClassyPrelude
+import           Control.Wire
+import qualified FRP.Netwire.Input as N
+import           Game.Types
+import           Graphics.Binding
+import           Data.Either (isLeft)
+
+-- * Wire utilities
 
 -- | Is the identity if only one wire is producing. If both are, it
 -- merges the results with merge. This steps both wires.
 solderWire :: (Monoid e, Monad m) => (b -> b -> b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 solderWire merge' w1 w2 = WGen $ \s eea -> do
-  (eeb1, _) <- stepWire w1 s eea
-  (eeb2, _) <- stepWire w2 s eea
+  (eeb1, w1') <- stepWire w1 s eea
+  (eeb2, w2') <- stepWire w2 s eea
   let res = merger eeb1 eeb2
-  res `seq` return (res, solderWire merge' w1 w2)
+  res `seq` return (res, solderWire merge' w1' w2')
   where
     merger = \case
       Left err -> left (mappend err)
@@ -24,10 +32,10 @@ solderWire merge' w1 w2 = WGen $ \s eea -> do
 -- both wires.
 solderWireM :: (Monoid e, Monad m) => (b -> b -> m b) -> Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 solderWireM merge' w1 w2 = WGen $ \s eea -> do
-  (eeb1, _) <- stepWire w1 s eea
-  (eeb2, _) <- stepWire w2 s eea
+  (eeb1, w1') <- stepWire w1 s eea
+  (eeb2, w2') <- stepWire w2 s eea
   res <- merger eeb1 eeb2
-  res `seq` return (res, solderWireM merge' w1 w2)
+  res `seq` return (res, solderWireM merge' w1' w2')
   where
     merger = \case
       Left err -> pure . left (mappend err)
@@ -46,13 +54,22 @@ mkConstM act = mkGen_ $ const $ Right <$> act
 passWire :: Monad m => Wire s e m a b -> Wire s e m a a
 passWire wire = (wire &&& id) >>> arr snd
 
--- Example usage for caching:
--- make a thingUpdateWire that when pulsed will return thing.
--- then feed that into steppingWire
--- Also, to future Matt: past Christian sends his regards.
+-- A stepper wire that hopefully works.
+-- this may be silly
 
-steppingWire :: Wire s e m a a
-steppingWire = mkPureN $ \a -> (Right a, mkConst (Right a))
+eitherWire :: Monad m => b -> Wire s e m a b -> Wire s e m a b
+eitherWire def wire = WGen $ \s -> either (const $ return $ lstrict (Right def, eitherWire def wire))
+                                          (\v -> do
+                                              (eeb, wire') <- stepWire wire s (Right v)
+                                              return $ lstrict (either (const (Right def)) Right eeb, wire')
+                                          )
+
+stepperWire :: Monad m => Wire s e m a a
+stepperWire = WPure $ \_ -> \case
+  l@(Left _) -> (l, stepperWire)
+  (Right a)  -> (Right a, stepperWire' a)
+    where
+      stepperWire' x = eitherWire x $ mkPureN (Right &&& stepperWire')
 
 -- If both are producing or both are inhibited, then it inhibits.
 -- Otherwise it acts like the producing one.
@@ -60,93 +77,181 @@ steppingWire = mkPureN $ \a -> (Right a, mkConst (Right a))
 
 xorWire :: (Monoid e, Monad m) => Wire s e m a b -> Wire s e m a b -> Wire s e m a b
 xorWire w1 w2 = WGen $ \s eea -> do
-  (eeb1, _) <- stepWire w1 s eea
-  (eeb2, _) <- stepWire w2 s eea
-  return (inverter eeb1 eeb2, xorWire w1 w2)
+  (eeb1, w1') <- stepWire w1 s eea
+  (eeb2, w2') <- stepWire w2 s eea
+  return $ lstrict (inverter eeb1 eeb2, xorWire w1' w2')
   where
     inverter = \case
       Left err -> left (mappend err)
       Right x  -> const (Right x) ||| const (Left mempty)
 
-stateIOWire :: MonadIO m => IO b -> Wire s e m a b
-stateIOWire act = mkConstM (liftIO act) >>> steppingWire
-{-
-data CameraState = CameraState
-  { _cameraStateLinearVelocity :: L.V3 CFloat
-  , _cameraStatePosition       :: L.V3 CFloat
-  , _cameraStateTargetPosition :: L.V3 CFloat
-  , _cameraStateOrientation    :: L.Quaternion CFloat
-  } deriving (Eq, Ord, Show)
+stateSwitchingWire :: (Monoid s, Monad m) => m a -> (a -> Wire s e m c d) -> Wire s e m c d
+stateSwitchingWire act f = WGen $ \s eec -> do
+  a <- act
+  (eed, _) <- stepWire (f a) s eec
+  return $ lstrict (eed, stateSwitchingWire act f)
 
--- | Caches camera state when stepped.
+-- * Input state wires
 
-cameraStateWire :: MonadIO m => Camera s -> Wire s e m a CameraState
-cameraStateWire cam = stateIOWire $ do
-  vel <- getCameraLinearVelocity cam
-  withCameraTransform cam $ \ct -> withTargetTransform cam $ \tt -> do
-    camPos  <- bulletV3ToL <$> P.getOrigin ct
-    targPos <- bulletV3ToL <$> P.getOrigin tt
-    orient  <- bulletQuatToL <$> P.getRotation ct
-    return $ CameraState vel camPos targPos orient
+-- ** Various alphanumeric keys
+keyApostrophe :: GameWire s a a
+keyApostrophe = N.keyPressed Key'Apostrophe
 
-cameraDisplacementFromTarget :: Wire s e m CameraState (L.V3 CFloat)
-cameraDisplacementFromTarget = mkPure_ $ \CameraState {..} -> Right $ _cameraStatePosition - _cameraStateTargetPosition
+keyComma :: GameWire s a a
+keyComma = N.keyPressed Key'Comma
 
-cameraForward :: Monad m => Wire s e m CameraState (L.V3 CFloat)
-cameraForward = negate . set L._y 0 <$> cameraDisplacementFromTarget
+keyMinus :: GameWire s a a
+keyMinus = N.keyPressed Key'Minus
 
-cameraLeft :: Monad m => Wire s e m CameraState (L.V3 CFloat)
-cameraLeft = over L._xz L.perp <$> cameraForward
+keyPeriod :: GameWire s a a
+keyPeriod = N.keyPressed Key'Period
 
-cameraRHat :: Monad m => Wire s e m CameraState (L.V3 CFloat)
-cameraRHat = L.normalize <$> cameraDisplacementFromTarget
+keySlash :: GameWire s a a
+keySlash = N.keyPressed Key'Slash
 
-cameraRadialSpeed :: Monad m => Wire s e m CameraState CFloat
-cameraRadialSpeed = proc x -> do
-  rh <- cameraForward -< x
-  returnA -< L.dot rh (_cameraStateLinearVelocity x)
+keyRightBracket :: GameWire s a a
+keyRightBracket = N.keyPressed Key'RightBracket
 
-cameraThetaHat :: Monad m => Wire s e m CameraState (L.V3 CFloat)
-cameraThetaHat = proc cs -> do
-  v@(L.V3 x y z) <- cameraDisplacementFromTarget -< cs
-  let r        = L.norm v
-      littleR  = L.norm $ L.V2 x z
-      cosTheta = y / r
-      sinTheta = littleR / r
-      cosPhi   = x / littleR
-      sinPhi   = z / littleR
-  returnA -< L.V3 (cosTheta * cosPhi) (-sinTheta) (cosTheta * sinPhi)
+keyLeftBracket :: GameWire s a a
+keyLeftBracket = N.keyPressed Key'LeftBracket
 
--- Inward!
-cameraInclinationCos :: Monad m => Wire s e m CameraState CFloat
-cameraInclinationCos = cameraDisplacementFromTarget >>> arr ((view L._y &&& arr L.norm) >>> (\(y,r) -> negate y / r))
+key0 :: GameWire s a a
+key0 = N.keyPressed Key'0
 
-cameraPolarSpeed :: Monad m => Wire s e m CameraState CFloat
-cameraPolarSpeed = uncurry L.dot <$> (arr _cameraStateLinearVelocity &&& cameraThetaHat)
+key1 :: GameWire s a a
+key1 = N.keyPressed Key'1
 
-cameraPhiHat :: Monad m => Wire s e m CameraState (L.V3 CFloat)
-cameraPhiHat = cameraDisplacementFromTarget <&> \(L.V3 x _ y) ->
-  let littleR = L.norm (L.V2 x y)
-  in  L.V3 (- y / littleR) 0 (x / littleR)
+key2 :: GameWire s a a
+key2 = N.keyPressed Key'2
 
-cameraAzimuthalSpeed :: Monad m => Wire s e m CameraState CFloat
-cameraAzimuthalSpeed = uncurry L.dot <$> (arr _cameraStateLinearVelocity &&& cameraPhiHat)
+key3 :: GameWire s a a
+key3 = N.keyPressed Key'3
 
-cameraV' :: Monad m => Wire s e m CameraState VMatrix
-cameraV' = arr $ \CameraState {..} ->
-  let pos = _cameraStatePosition
-      tar = _cameraStateTargetPosition
-      vup = L.V3 0 1 0
-  in fmap (\(CFloat x) -> x) <$> L.lookAt pos tar vup
+key4 :: GameWire s a a
+key4 = N.keyPressed Key'4
 
-cameraVP' :: Monad m => Wire s e m CameraState VPMatrix
-cameraVP' = proc cam -> do
-  pos <- arr _cameraStatePosition       -< cam
-  tar <- arr _cameraStateTargetPosition -< cam
-  let camView = L.lookAt pos tar vup
-      vup = L.V3 0 1 0
-      cfov = 60 -- fix -_-
-      camPerspective = L.perspective cfov (16/9) 0.1 100
-    in
-    returnA -< camPerspective L.!*! fmap (fmap (\(CFloat x) -> x)) camView
--}
+key5 :: GameWire s a a
+key5 = N.keyPressed Key'5
+
+key6 :: GameWire s a a
+key6 = N.keyPressed Key'6
+
+key7 :: GameWire s a a
+key7 = N.keyPressed Key'7
+
+key8 :: GameWire s a a
+key8 = N.keyPressed Key'8
+
+key9 :: GameWire s a a
+key9 = N.keyPressed Key'9
+
+keySemicolon :: GameWire s a a
+keySemicolon = N.keyPressed Key'Semicolon
+
+keyEqual :: GameWire s a a
+keyEqual = N.keyPressed Key'Equal
+
+keyA :: GameWire s a a
+keyA = N.keyPressed Key'A
+
+keyB :: GameWire s a a
+keyB = N.keyPressed Key'B
+
+keyC :: GameWire s a a
+keyC = N.keyPressed Key'C
+
+keyD :: GameWire s a a
+keyD = N.keyPressed Key'D
+
+keyE :: GameWire s a a
+keyE = N.keyPressed Key'E
+
+keyF :: GameWire s a a
+keyF = N.keyPressed Key'F
+
+keyG :: GameWire s a a
+keyG = N.keyPressed Key'G
+
+keyH :: GameWire s a a
+keyH = N.keyPressed Key'H
+
+keyI :: GameWire s a a
+keyI = N.keyPressed Key'I
+
+keyJ :: GameWire s a a
+keyJ = N.keyPressed Key'J
+
+keyK :: GameWire s a a
+keyK = N.keyPressed Key'K
+
+keyL :: GameWire s a a
+keyL = N.keyPressed Key'L
+
+keyM :: GameWire s a a
+keyM = N.keyPressed Key'M
+
+keyN :: GameWire s a a
+keyN = N.keyPressed Key'N
+
+keyO :: GameWire s a a
+keyO = N.keyPressed Key'O
+
+keyP :: GameWire s a a
+keyP = N.keyPressed Key'P
+
+keyQ :: GameWire s a a
+keyQ = N.keyPressed Key'Q
+
+keyR :: GameWire s a a
+keyR = N.keyPressed Key'R
+
+keyS :: GameWire s a a
+keyS = N.keyPressed Key'S
+
+keyT :: GameWire s a a
+keyT = N.keyPressed Key'T
+
+keyU :: GameWire s a a
+keyU = N.keyPressed Key'U
+
+keyV :: GameWire s a a
+keyV = N.keyPressed Key'V
+
+keyW :: GameWire s a a
+keyW = N.keyPressed Key'W
+
+keyX :: GameWire s a a
+keyX = N.keyPressed Key'X
+
+keyY :: GameWire s a a
+keyY = N.keyPressed Key'Y
+
+keyZ :: GameWire s a a
+keyZ = N.keyPressed Key'Z
+
+keyBackslash :: GameWire s a a
+keyBackslash = N.keyPressed Key'Backslash
+
+keyGrave :: GameWire s a a
+keyGrave = N.keyPressed Key'GraveAccent
+
+-- ** White space keys
+keySpace :: GameWire s a a
+keySpace = N.keyPressed Key'Space
+
+keyTab :: GameWire s a a
+keyTab = N.keyPressed Key'Tab
+
+keyEnter :: GameWire s a a
+keyEnter = N.keyPressed Key'Enter
+
+-- ** Other keys
+keyEsc :: GameWire s a a
+keyEsc = N.keyPressed Key'Escape
+
+-- ** Mouse buttons
+mouseL :: GameWire s a a
+mouseL = N.mousePressed MouseButton'1
+
+mouseR :: GameWire s a a
+mouseR = N.mousePressed MouseButton'2

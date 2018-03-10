@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -190,21 +191,21 @@ concatA = foldr (<+>) id
 setupDynamicBuffers :: IO DynamicBufferBundle
 setupDynamicBuffers  = do
   -- Do point lights
-  let pointLight = PointLight
-                   { _pointLightPosition = V4 100 100 0 1
-                   , _pointLightIntensity = 1
+  let pointLight = Light
+                   { _lightPosition = V4 100 100 0 1
+                   , _lightIntensity = 1
                    }
-      pointLightBundle = PointLightBundle
-                         { _pointLightBundleLights = singleton pointLight
-                         , _pointLightBundleNum = 1
+      lightBundle = LightBundle
+                         { _lightBundleLights = singleton pointLight
+                         , _lightBundleNum = 1
                          }
 
   cdb  <- genName'
   CameraBlock $= cdb
 
   plbdb <- genName'
-  plbdb ~& FullBufferWrite .$= pointLightBundle
-  PointLightBlock $= plbdb
+  plbdb ~& FullBufferWrite .$= lightBundle
+  LightBlock $= plbdb
 
   smdb <- genName'
   ShaderMaterialBlock $= smdb
@@ -212,7 +213,7 @@ setupDynamicBuffers  = do
   return DynamicBufferBundle
     { _dynamicBufferBundleShaderCameraBuffer = cdb
     , _dynamicBufferBundleShaderMaterialBuffer = smdb
-    , _dynamicBufferBundlePointLightBundleBuffer = plbdb
+    , _dynamicBufferBundleLightBundleBuffer = plbdb
     }
 
 gameMain :: IO ()
@@ -267,11 +268,23 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
             pw <- use gameStatePhysicsWorld
             stepPhysicsWorld pw
 
+          playSchemeWire :: GameEffectWire s
+          playSchemeWire = concatA $ fromList
+                           [ passWire $ playerHorizontalMovement >>> movePlayer
+                           , close
+                           , devConsoleToggleWire
+                           -- , jump
+                           ]
+
+          schemeSelector :: InputScheme -> GameWire s a a
+          schemeSelector = \case
+            InputPlaying    -> playSchemeWire
+            InputDevConsole -> devConsoleWire
+
+
           mainWires = fromList [ animationWire
-                               , playerHorizontalMovement >>> movePlayer
+                               , stateSwitchingWire (use gameStateKeyboardInputScheme) schemeSelector
                                , physicsWire
-                               , close
-                               -- , jump
                                , camera
                                , zoomCamera
 --                               , turnPlayer

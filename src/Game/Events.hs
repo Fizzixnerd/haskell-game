@@ -17,6 +17,7 @@ import           Graphics.Binding
 import qualified Linear as L
 import qualified Sound.OpenAL as AL
 import           Game.Wires
+import qualified Data.Text as T
 
 zoomCamera :: GameEffectWire s
 zoomCamera = effectWire $ do
@@ -84,29 +85,74 @@ close = cls <<< keyEsc
 basicEventStream :: (Fractional a, HasTime t s) => GameWire s a (Event a)
 basicEventStream = periodic 4 . timeF
 
-mouseL :: GameWire s a a
-mouseL = N.mousePressed MouseButton'1
+-- * Typing
 
-mouseR :: GameWire s a a
-mouseR = N.mousePressed MouseButton'2
+keydebGrave :: GameWire s a a
+keydebGrave = N.keyDebounced Key'GraveAccent
 
-keyW :: GameWire s a a
-keyW = N.keyPressed Key'W
+keyEitherShift :: GameWire s a a
+keyEitherShift = N.keyPressed Key'LeftShift <|> N.keyPressed Key'RightShift
 
-keyA :: GameWire s a a
-keyA = N.keyPressed Key'A
+allTextWire :: GameWire s a Text
+allTextWire = mconcat . fmap (fmap T.singleton . makeKeyWire) $
+  [ (keyApostrophe, '\'', '\"')
+  , (keyComma, ',', '<')
+  , (keyMinus, '-', '_')
+  , (keyPeriod, '.', '>')
+  , (keySlash, '/', '?')
+  , (keyRightBracket, ']', '}')
+  , (keyLeftBracket, '[', '{')
+  , (key0, '0', ')')
+  , (key1, '1', '!')
+  , (key2, '2', '@')
+  , (key3, '3', '#')
+  , (key4, '4', '$')
+  , (key5, '5', '%')
+  , (key6, '6', '^')
+  , (key7, '7', '&')
+  , (key8, '8', '*')
+  , (key9, '9', '(')
+  , (keySemicolon, ';', ':')
+  , (keyEqual, '=', '+')
+  , (keyA, 'a', 'A')
+  , (keyB, 'b', 'B')
+  , (keyC, 'c', 'C')
+  , (keyD, 'd', 'D')
+  , (keyE, 'e', 'E')
+  , (keyF, 'f', 'F')
+  , (keyG, 'g', 'G')
+  , (keyH, 'h', 'H')
+  , (keyI, 'i', 'I')
+  , (keyJ, 'j', 'J')
+  , (keyK, 'k', 'K')
+  , (keyL, 'l', 'L')
+  , (keyM, 'm', 'M')
+  , (keyN, 'n', 'N')
+  , (keyO, 'o', 'O')
+  , (keyP, 'p', 'P')
+  , (keyQ, 'q', 'Q')
+  , (keyR, 'r', 'R')
+  , (keyS, 's', 'S')
+  , (keyT, 't', 'T')
+  , (keyU, 'u', 'U')
+  , (keyV, 'v', 'V')
+  , (keyW, 'w', 'W')
+  , (keyX, 'x', 'X')
+  , (keyY, 'y', 'Y')
+  , (keyZ, 'z', 'Z')
+  , (keyBackslash, '\\', '|')
+  ]
+  where
+    makeKeyWire (wire, noShiftKey, shiftKey) = wire >>> ((keyEitherShift >>> pure shiftKey) <|> pure noShiftKey)
 
-keyS :: GameWire s a a
-keyS = N.keyPressed Key'S
+devConsoleToggleWire :: GameEffectWire s
+devConsoleToggleWire = keydebGrave >>> toggle_
+  where
+    toggle_ = effectWire $ do
+      gis <- use gameStateKeyboardInputScheme
+      case gis of
+        InputPlaying    -> gameStateDevConsole .= Just initDevConsole >> gameStateKeyboardInputScheme .= InputDevConsole
+        InputDevConsole -> gameStateDevConsole .= Nothing >> gameStateKeyboardInputScheme .= InputPlaying
 
-keyD :: GameWire s a a
-keyD = N.keyPressed Key'D
-
-keyP :: GameWire s a a
-keyP = N.keyPressed Key'P
-
-keyEsc :: GameWire s a a
-keyEsc = N.keyPressed Key'Escape
-
-keySpace :: GameWire s a a
-keySpace = N.keyPressed Key'Space
+devConsoleWire :: GameEffectWire s
+devConsoleWire = devConsoleToggleWire
