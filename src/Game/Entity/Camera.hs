@@ -17,32 +17,30 @@ import Control.Lens
 newCamera :: (MonadIO m, P.IsCollisionObject co) => co -> CFloat -> m (Camera s)
 newCamera target _cameraPreferredDistance = liftIO $ do
   let _cameraTarget = P.toCollisionObject target
-  pcgo :: P.PairCachingGhostObject <- P.new ()
+  -- pcgo :: P.PairCachingGhostObject <- P.new ()
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform
   P.setOrigin startXform 0 0 0
-  P.coSetWorldTransform pcgo startXform
+  cameraMotionState <- P.new startXform
+  cameraShape <- P.newSphereShape 0.5
+  rbci <- P.newRigidBodyConstructionInfo 1 cameraMotionState cameraShape 0 0 0
+  _cameraController <- P.newRigidBody rbci
   P.del startXform
+  P.del rbci
 
-  cameraShape :: P.SphereShape <- P.new 1
-  let stepHeight = 0
-  _cameraController <- P.newKinematicCharacterController pcgo cameraShape stepHeight
-  P.setCollisionShape pcgo cameraShape
-  P.setUp _cameraController 0 1 0
-  go <- P.getGhostObject _cameraController
   let _cameraFOV = pi/3
       _cameraEntity = Entity
                       { _entityChildren = empty
                       , _entityGraphics = Nothing
                       , _entitySounds   = Nothing
                       , _entityLogic    = Nothing
-                      , _entityRigidBody = Nothing
-                      , _entityCollisionObject = CollisionObject (P.toCollisionObject go)
+                      , _entityRigidBody = Just $ RigidBody _cameraController
+                      , _entityCollisionObject = CollisionObject (P.toCollisionObject _cameraController)
                       }
   return Camera {..}
 
 destroyCamera :: MonadIO m => Camera s -> m ()
-destroyCamera Camera {..} = liftIO $ P.del _cameraController
+destroyCamera Camera {..} = liftIO $ P.freeRigidBody _cameraController
 
 bulletV3ToL :: (a,a,a) -> L.V3 a
 bulletV3ToL (x,y,z) = L.V3 x y z
@@ -54,16 +52,22 @@ bulletQuatToL :: (a,a,a,a) -> L.Quaternion a
 bulletQuatToL (i,j,k,r) = L.Quaternion r (L.V3 i j k)
 
 getCameraLinearVelocity :: MonadIO m => Camera s -> m (L.V3 CFloat)
-getCameraLinearVelocity Camera {..} = liftIO $ bulletV3ToL <$> P.kccGetLinearVelocity _cameraController
+getCameraLinearVelocity Camera {..} = liftIO $ bulletV3ToL <$> P.rbGetLinearVelocity _cameraController
+
+getCameraLinearForce :: MonadIO m => Camera s -> m (L.V3 CFloat)
+getCameraLinearForce Camera {..} = liftIO $ bulletV3ToL <$> P.getTotalForce _cameraController
+
+setCameraLinearForce :: MonadIO m => Camera s -> L.V3 CFloat -> m ()
+setCameraLinearForce cam f = liftIO $ do
+  P.clearForces $ cam ^. cameraController
+  cameraApplyForce cam f
 
 setCameraLinearVelocity :: MonadIO m => L.V3 CFloat -> Camera s -> m ()
 setCameraLinearVelocity (L.V3 x y z) Camera {..} =
-  liftIO $ P.kccSetLinearVelocity _cameraController x y z
+  liftIO $ P.rbSetLinearVelocity _cameraController x y z
 
 allocateCameraTransform :: MonadIO m => Camera s -> m P.Transform
-allocateCameraTransform c = liftIO $
-                            P.getGhostObject (c ^. cameraController) >>=
-                            P.coAllocateWorldTransform
+allocateCameraTransform c = liftIO $ P.coAllocateWorldTransform (c ^. cameraController)
 
 allocateTargetTransform :: MonadIO m => Camera s -> m P.Transform
 allocateTargetTransform c = liftIO $ P.coAllocateWorldTransform (c ^. cameraTarget)
@@ -120,23 +124,28 @@ getCameraRHat = fmap L.normalize <$> getCameraDisplacementFromTarget
 -- {\hat {\boldsymbol {\theta }}} = \cos \theta \cos \varphi \,{\hat {\mathbf {x} }}+\cos \theta \sin \varphi \,{\hat {\mathbf {y} }}-\sin \theta \,{\hat {\mathbf {z} }}
 -- {\hat {\boldsymbol {\varphi }}} = -\sin \varphi \,{\hat {\mathbf {x} }}+\cos \varphi \,{\hat {\mathbf {y} }}\end{aligned}}}
 
+getCameraRadialForce :: MonadIO m => Camera s -> m CFloat
+getCameraRadialForce cam = do
+  rhat <- getCameraRHat cam
+  f <- getCameraLinearForce cam
+  return $ L.dot rhat f
+
 getCameraRadialSpeed :: MonadIO m => Camera s -> m CFloat
 getCameraRadialSpeed cam = do
   rhat <- getCameraRHat cam
   v <- getCameraLinearVelocity cam
   return $ L.dot rhat v
 
-setCameraRadialSpeed :: MonadIO m => Camera s -> CFloat -> m ()
-setCameraRadialSpeed cam rv = do
-  rvOld <- getCameraRadialSpeed cam
+setCameraRadialForce :: MonadIO m => Camera s -> CFloat -> m ()
+setCameraRadialForce cam rf = do
+  rfOld <- getCameraRadialForce cam
   rhat <- getCameraRHat cam
-  v <- getCameraLinearVelocity cam
-  setCameraLinearVelocity (v + ((rv - rvOld) L.*^ rhat)) cam
+  f <- getCameraLinearForce cam
+  setCameraLinearForce cam (f + ((rf - rfOld) L.*^ rhat))
 
 setCameraTransform :: MonadIO m => Camera s -> P.Transform -> m ()
 setCameraTransform c t = liftIO $ do
-  go <- P.getGhostObject (c ^. cameraController)
-  P.coSetWorldTransform go t
+  P.coSetWorldTransform (c ^. cameraController) t
 
 -- | Polar unit vector points DOWN.
 
@@ -170,18 +179,24 @@ getCameraInclinationCos cam = do
   let r = L.norm v
   return $ negate y / r
 
+getCameraPolarForce :: MonadIO m => Camera s -> m CFloat
+getCameraPolarForce cam = do
+  f <- getCameraLinearForce cam
+  thetahat <- getCameraThetaHat cam
+  return $ L.dot thetahat f
+
 getCameraPolarSpeed :: MonadIO m => Camera s -> m CFloat
 getCameraPolarSpeed cam = do
   v <- getCameraLinearVelocity cam
   thetahat <- getCameraThetaHat cam
   return $ L.dot thetahat v
 
-setCameraPolarSpeed :: MonadIO m => Camera s -> CFloat -> m ()
-setCameraPolarSpeed cam pv = do
-  pvOld <- getCameraPolarSpeed cam
+setCameraPolarForce :: MonadIO m => Camera s -> CFloat -> m ()
+setCameraPolarForce cam pf = do
+  pfOld <- getCameraPolarForce cam
   thetahat <- getCameraThetaHat cam
-  v <- getCameraLinearVelocity cam
-  setCameraLinearVelocity (v + ((pv - pvOld) L.*^ thetahat)) cam
+  f <- getCameraLinearForce cam
+  cameraApplyForce cam (f + ((pf - pfOld) L.*^ thetahat))
 
 getCameraPhiHat :: MonadIO m => Camera s -> m (L.V3 CFloat)
 getCameraPhiHat cam = do
@@ -190,38 +205,47 @@ getCameraPhiHat cam = do
       phihat = L.V3 (- y / littleR) 0 (x / littleR)
   return phihat
 
+getCameraAzimuthalForce :: MonadIO m => Camera s -> m CFloat
+getCameraAzimuthalForce cam = do
+  f <- getCameraLinearForce cam
+  phihat <- getCameraPhiHat cam
+  return $ L.dot phihat f
+
 getCameraAzimuthalSpeed :: MonadIO m => Camera s -> m CFloat
 getCameraAzimuthalSpeed cam = do
   v <- getCameraLinearVelocity cam
   phihat <- getCameraPhiHat cam
   return $ L.dot phihat v
 
-setCameraAzimuthalSpeed :: MonadIO m => Camera s -> CFloat -> m ()
-setCameraAzimuthalSpeed cam av = do
-  avOld <- getCameraAzimuthalSpeed cam
+setCameraAzimuthalForce :: MonadIO m => Camera s -> CFloat -> m ()
+setCameraAzimuthalForce cam af = do
+  afOld <- getCameraAzimuthalForce cam
   phihat <- getCameraPhiHat cam
-  v <- getCameraLinearVelocity cam
-  setCameraLinearVelocity (v + ((av - avOld) L.*^ phihat)) cam
+  f <- getCameraLinearForce cam
+  cameraApplyForce cam (f + ((af - afOld) L.*^ phihat))
 
--- | Useful after switching targets.  Also every tick.
-cameraLookAtTarget :: MonadIO m => Camera s -> m ()
-cameraLookAtTarget cam = do
-  rhat <- getCameraRHat cam
-  let L.V3 x y z = negate rhat
-  withCameraTransform cam
-    (\t -> do
-        P.setRotation t x y z 0
-        go <- P.getGhostObject (cam ^. cameraController)
-        P.coSetWorldTransform go t)
+cameraApplyAzimuthalForce :: MonadIO m => Camera s -> CFloat -> m ()
+cameraApplyAzimuthalForce cam af = do
+  phiHat <- getCameraPhiHat cam
+  cameraApplyForce cam (af L.*^ phiHat)
 
 cameraAttach :: (MonadIO m, P.IsCollisionObject co) => Camera s -> co -> m (Camera s)
 cameraAttach cam co = return $ cam & cameraTarget .~ P.toCollisionObject co
 
--- getCameraOpenGLMatrix :: MonadIO m => Camera -> m (L.M44 CFloat)
--- getCameraOpenGLMatrix cam = liftIO $ bracket
---                             (P.coAllocateWorldTransform $ cam ^. cameraController)
---                             P.del
---                             P.getOpenGLMatrix
+cameraApplyForce :: MonadIO m => Camera s -> L.V3 CFloat -> m ()
+cameraApplyForce cam v = liftIO $ P.applyForce (cam ^. cameraController)
+                         (v ^. L._x)
+                         (v ^. L._y)
+                         (v ^. L._z)
+                         0
+                         0
+                         0
+
+cameraApplyTorque :: MonadIO m => Camera s -> L.V3 CFloat -> m ()
+cameraApplyTorque cam omega = liftIO $ P.applyTorque (cam ^. cameraController)
+                              (omega ^. L._x)
+                              (omega ^. L._y)
+                              (omega ^. L._z)
 
 cameraVP :: MonadIO m => Camera s -> m VPMatrix
 cameraVP cam = do
