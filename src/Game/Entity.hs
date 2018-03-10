@@ -133,3 +133,10 @@ entityLocalClosestRayCast e v cb = do
     n <- liftIO $ P.getUserIndex co
     es <- use $ gameStatePhysicsWorld . physicsWorldEntities
     cb $ es `unsafeIndex` n
+
+entityApplyForce :: Entity s -> L.V3 Float -> Game s ()
+entityApplyForce e (L.V3 x y z) = liftIO $
+  case e ^. entityRigidBody of
+    Just (RigidBody rb) -> P.applyForce rb (CFloat x) (CFloat y) (CFloat z) 0 0 0
+    Nothing -> return ()
+
