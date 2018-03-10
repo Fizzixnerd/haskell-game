@@ -29,7 +29,6 @@ zoomCamera = effectWire $ do
   liftIO $ P.del t
   AL.listenerPosition AL.$= AL.Vertex3 x y z
   setCameraRadialSpeed cam rs
-  cameraLookAtTarget cam
 
 -- turnPlayer :: GameEffectWire s
 -- turnPlayer = effectWire $ do
@@ -50,11 +49,11 @@ rotateCamera (dhor, dver) cam = do
       | otherwise      = CFloat dver
 
 camera :: GameEffectWire s
-camera = N.cursorMode N.CursorMode'Reset --> camWire
+camera = camWire
   where
     rotCam = mkGen_ $ \(x, y) -> Right <$> do
       cam <- use gameStateCamera
-      rotateCamera (-x * 10, -y * 10)  cam
+      rotateCamera (-x * 10, -y * 10) cam
     camWire = passWire $ rotCam <<< N.mouseMickies
 
 movePlayer :: GameWire s (L.V3 CFloat) ()

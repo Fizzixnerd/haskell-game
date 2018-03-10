@@ -67,7 +67,7 @@ setupPhysics ps = do
   pw'' <- addCameraToPhysicsWorld cam pw'
   withCameraTransform cam $ \t -> do
     P.setIdentity t
-    P.setOrigin t 0 0 5
+    P.setOrigin t 0 1 100
     setCameraTransform cam t
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
@@ -151,10 +151,10 @@ createTheModel (phong, normalMap) = do
            , _entityLogic = Just Lfx
              { _lfxScripts = fromList
                [
-                 -- \model_ -> do
-                 --   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
-                 --     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
-                 --   return model_
+                 \model_ -> do
+                   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
+                     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
+                   return model_
                ]
              }
            , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
