@@ -224,7 +224,7 @@ data Entity s = Entity
   }
 
 data Player s = Player
-  { _playerController :: P.KinematicCharacterController
+  { _playerController :: P.RigidBody
   , _playerEntity     :: Entity s
   }
 

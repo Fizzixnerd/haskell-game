@@ -29,11 +29,13 @@ zoomCamera = effectWire $ do
   liftIO $ P.del t
   AL.listenerPosition AL.$= AL.Vertex3 x y z
   setCameraRadialSpeed cam rs
-  cameraLookAtTarget cam
 
-turnPlayer :: GameEffectWire s
-turnPlayer = effectWire $ join $
-  setPlayerOrientation <$> use gameStatePlayer <*> (use gameStateCamera >>= getCameraOrientation)
+-- turnPlayer :: GameEffectWire s
+-- turnPlayer = effectWire $ do
+--   p <- use gameStatePlayer
+--   c <- use gameStateCamera
+--   o <- getCameraOrientation c
+--   setPlayerOrientation p o
 
 rotateCamera :: MonadIO m => (Float, Float) -> Camera s -> m ()
 rotateCamera (dhor, dver) cam = do
@@ -47,17 +49,17 @@ rotateCamera (dhor, dver) cam = do
       | otherwise      = CFloat dver
 
 camera :: GameEffectWire s
-camera = N.cursorMode N.CursorMode'Reset --> camWire
+camera = camWire
   where
     rotCam = mkGen_ $ \(x, y) -> Right <$> do
       cam <- use gameStateCamera
-      rotateCamera (-x * 10, -y * 10)  cam
+      rotateCamera (-x * 10, -y * 10) cam
     camWire = passWire $ rotCam <<< N.mouseMickies
 
 movePlayer :: GameWire s (L.V3 CFloat) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
   p <- use gameStatePlayer
-  setPlayerLinearVelocity p dir
+  playerApplyForce p (100 * dir)
 
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
@@ -72,12 +74,12 @@ close = cls <<< keyEsc
   where
     cls = effectWire $ gameStateShouldClose .= True
 
-jump :: GameEffectWire s
-jump = jmp <<< keySpace
-  where
-    jmp = effectWire $ do
-      p <- use $ gameStatePlayer . playerController
-      liftIO $ P.jump p
+-- jump :: GameEffectWire s
+-- jump = jmp <<< keySpace
+--   where
+--     jmp = effectWire $ do
+--       p <- use $ gameStatePlayer . playerController
+--       liftIO $ P.jump p
 
 basicEventStream :: (Fractional a, HasTime t s) => GameWire s a (Event a)
 basicEventStream = periodic 4 . timeF

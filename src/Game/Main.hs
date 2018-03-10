@@ -56,30 +56,31 @@ doGame initGS = void $ runGame initGS go
       unlessM (use gameStateShouldClose)
         go
 
-setupPhysics :: (ShaderPipeline, ShaderPipeline) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, P.RigidBody)
+setupPhysics :: (ShaderPipeline, ShaderPipeline) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, Entity s)
 setupPhysics ps = do
-  (theModelE, theModelRB) <- createTheModel ps
+  (theModel1E, theModel2E) <- createTheModel ps
   pw <- newPhysicsWorld
   pl' <- newPlayer
-  let pl = pl' -- & playerEntity . entityGraphics .~ (theModelE ^. entityGraphics)
-  go <- P.getGhostObject $ pl ^. playerController
-  cam <- newCamera go 2
-  cameraLookAtTarget cam
+  let pl = pl' & playerEntity . entityGraphics .~ (theModel1E ^. entityGraphics)
+      con = pl ^. playerController
+  cam <- newCamera con 4
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
   withCameraTransform cam $ \t -> do
     P.setIdentity t
-    P.setOrigin t 0 0 (-5)
+    P.setOrigin t 0 1 100
     setCameraTransform cam t
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
-  pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
-  pw'''' <- addEntityToPhysicsWorld theModelE pw'''
-  setGravityPhysicsWorld (L.V3 0 (-10) 0) pw''''
-  P.kccSetGravity (cam ^. cameraController) 0 0 0
-  return (pw'''', pl, cam, theModelE, theModelRB)
 
-createTheModel :: (ShaderPipeline, ShaderPipeline) -> IO (Entity s, P.RigidBody)
+  pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
+  pw'''' <- addEntityToPhysicsWorld theModel1E pw'''
+  pw''''' <- addEntityToPhysicsWorld theModel2E pw''''
+  setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''''
+  P.kccSetGravity (cam ^. cameraController) 0 0 0
+  return (pw''''', pl, cam, theModel1E, theModel2E)
+
+createTheModel :: (ShaderPipeline, ShaderPipeline) -> IO (Entity s, Entity s)
 createTheModel (phong, normalMap) = do
   model <- P.newBoxShape 0.5 0.5 0.5
   startXform <- P.new ((0, 0, 0, 0), (0, 0, 0))
@@ -89,58 +90,99 @@ createTheModel (phong, normalMap) = do
   ms <- P.new startXform
   rbci <- P.newRigidBodyConstructionInfo 1 ms model 0 1 0
   -- The MotionState ms now belongs to the cube.
-  rb   <- P.newRigidBody rbci
+  rb <- P.newRigidBody rbci
   P.del startXform
   P.del rbci
 
-  let modelRoot = "res" </> "models" -- </> "Bayonetta 1"
-      modelName = "Lowpoly_tree_sample.dae"
+  model' <- P.newBoxShape 0.5 0.5 0.5
+  startXform' <- P.new ((0, 0, 0, 0), (0, 0, 0))
+  P.setIdentity startXform'
+  P.setOrigin startXform' 4 1 0
+  -- Don't delete the ms!!  See below.
+  ms' <- P.new startXform'
+  rbci' <- P.newRigidBodyConstructionInfo 0 ms' model' 0 1 0
+  -- The MotionState ms now belongs to the cube.
+  rb' <- P.newRigidBody rbci'
+  P.del startXform'
+  P.del rbci'
+
+  let loadMeshes modelRoot defaultTexture aim = do
+        dif <- loadPngTexture $
+               maybe defaultTexture (modelRoot </>) $
+               aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
+        norm_ <- sequence $
+                 loadPngTexture . (modelRoot </>) <$>
+                 aim ^. assImpMeshTextureBundle . textureBundleNormalTexture
+        let pipeline = if isJust norm_
+                       then normalMap
+                       else phong
+        return $ VaoData
+          (_assImpMeshVAO aim)
+          pipeline
+          Triangles
+          (_assImpMeshIndexNum aim)
+          (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif
+                              & textureBundleNormalTexture .~ norm_)
+          (_assImpMeshShaderMaterial aim)
+
+  let modelRoot = "res" </> "models" </> "Bayonetta 1"
+      modelName = "bayo_default.dae"
       defaultTexture = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
-  vaoData <- forM meshes $ \aim -> do
-    dif <- loadPngTexture $
-           maybe defaultTexture (modelRoot </>) $
-           aim ^. assImpMeshTextureBundle . textureBundleDiffuseTexture
-    norm_ <- sequence $
-             loadPngTexture . (modelRoot </>) <$>
-             aim ^. assImpMeshTextureBundle . textureBundleNormalTexture
-    let pipeline = if isJust norm_
-                   then normalMap
-                   else phong
-    return $ VaoData
-      (_assImpMeshVAO aim)
-      pipeline
-      Triangles
-      (_assImpMeshIndexNum aim)
-      (emptyTextureBundle & textureBundleDiffuseTexture .~ Just dif
-                          & textureBundleNormalTexture .~ norm_)
-      (_assImpMeshShaderMaterial aim)
+  vaoData <- forM meshes $ loadMeshes modelRoot defaultTexture
+
+  let modelRoot' = "res" </> "models"
+      modelName' = "Lowpoly_tree_sample.dae"
+      defaultTexture' = "res" </> "models" </> "simple-cube-2.bmp"
+  (AssImpScene meshes') <- loadAssImpScene $ modelRoot' </> modelName'
+  vaoData' <- forM meshes' $ loadMeshes modelRoot' defaultTexture'
 
   src :: AL.Source <- ON.genObjectName
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")
   AL.buffer src AL.$= Just sbuf
 
-  let e = Entity
-          { _entityChildren = empty
-          , _entityGraphics = Just Gfx
-            { _gfxVaoData = vaoData
-            , _gfxChildren = empty
-            }
-          , _entitySounds = Just Sfx
-            { _sfxSources = singleton src }
-          , _entityLogic = Just Lfx
-            { _lfxScripts = fromList
-              [
-                -- \model_ -> do
-                --   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
-                --     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
-                --   return model_
-              ]
-            }
-          , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
-          , _entityRigidBody = Just $ RigidBody rb
-          }
-  return (e, rb)
+  let e1 = Entity
+           { _entityChildren = empty
+           , _entityGraphics = Just Gfx
+             { _gfxVaoData = vaoData
+             , _gfxChildren = empty
+             }
+           , _entitySounds = Just Sfx
+             { _sfxSources = singleton src }
+           , _entityLogic = Just Lfx
+             { _lfxScripts = fromList
+               [
+                 \model_ -> do
+                   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
+                     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
+                   return model_
+               ]
+             }
+           , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb
+           , _entityRigidBody = Just $ RigidBody rb
+           }
+      e2 = Entity
+           { _entityChildren = empty
+           , _entityGraphics = Just Gfx
+             { _gfxVaoData = vaoData'
+             , _gfxChildren = empty
+             }
+           , _entitySounds = Just Sfx
+             { _sfxSources = empty }
+           , _entityLogic = Just Lfx
+             { _lfxScripts = fromList
+               [
+                 -- \model_ -> do
+                 --   entityLocalClosestRayCast model_ (L.V3 0 (-2) 0) $
+                 --     const $ setEntityLinearVelocity model_ (L.V3 0 6 0)
+                 --   return model_
+               ]
+             }
+           , _entityCollisionObject = CollisionObject $ P.toCollisionObject rb'
+           , _entityRigidBody = Just $ RigidBody rb'
+           }
+
+  return (e1, e2)
 
 concatA :: ArrowPlus a => Vector (a b b) -> a b b
 concatA = foldr (<+>) id
@@ -194,7 +236,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       mctxt <- AL.createContext dev []
       let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
       AL.currentContext AL.$= Just ctxt
-      ((pPhong, _, _), (pNormalMap, _, _)) <- compilePipeline
+      -- ((pPhong, _, _), (pNormalMap, _, _)) <- compilePipeline
 
       (pToon, _, _) <- compileToonPipeline
 
@@ -229,10 +271,10 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
                                , playerHorizontalMovement >>> movePlayer
                                , physicsWire
                                , close
-                               , jump
+                               -- , jump
                                , camera
                                , zoomCamera
-                               , turnPlayer
+--                               , turnPlayer
                                ]
 
           gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld
