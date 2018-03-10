@@ -7,7 +7,7 @@
 module Game.Main where
 
 import           ClassyPrelude as ClassyP
-import           Control.Lens
+import           Control.Lens hiding (snoc)
 import           Control.Wire.Core
 import qualified Data.ObjectName as ON
 import           FRP.Netwire
@@ -242,6 +242,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
 
       AL.distanceModel AL.$= AL.InverseDistance
       (physicsWorld, player, cam, _, _) <- liftIO (setupPhysics (pToon, pToon))
+
       buffBundle <- liftIO setupDynamicBuffers
       specularTex <- load1DPngTexture $ "res" </> "textures" </> "specular1d" ClassyP.<.> "png"
 

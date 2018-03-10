@@ -8,6 +8,7 @@ import ClassyPrelude
 import Control.Lens
 import Foreign.C.Types
 import Game.Types
+import Game.Entity
 import qualified Linear         as L
 import qualified Physics.Bullet as P
 
@@ -30,7 +31,14 @@ newPlayer = liftIO $ do
           { _entityChildren = empty
           , _entityGraphics = Nothing
           , _entitySounds   = Nothing
-          , _entityLogic    = Nothing
+          , _entityLogic    = Just Lfx
+                              { _lfxScripts =
+                                  fromList [ \model_ -> do
+                                               entityLocalClosestRayCast model_ (L.V3 0 (-3) 0) $
+                                                 const $ entityApplyForce model_ (L.V3 0 8.75 0)
+                                               return model_
+                                           ]
+                              }
           , _entityRigidBody = Just $ RigidBody playerRigidBody
           , _entityCollisionObject = CollisionObject (P.toCollisionObject playerRigidBody)
           }

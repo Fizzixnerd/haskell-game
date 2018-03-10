@@ -65,11 +65,8 @@ camera = camWire
 movePlayer :: GameWire s (L.V3 CFloat) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
   p <- use gameStatePlayer
-  c <- use gameStateCamera
   let force_ = 100 * dir
   playerApplyForce p force_
-  phiHat <- getCameraPhiHat c
-  cameraApplyAzimuthalForce c (L.dot force_ phiHat)
 
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
