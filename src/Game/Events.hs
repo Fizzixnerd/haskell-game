@@ -60,7 +60,7 @@ camera = N.cursorMode N.CursorMode'Reset --> camWire
 movePlayer :: GameWire s (L.V3 CFloat) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
   p <- use gameStatePlayer
-  playerApplyForce p dir
+  playerApplyForce p (100 * dir)
 
 playerHorizontalMovement :: GameWire s a (L.V3 CFloat)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire

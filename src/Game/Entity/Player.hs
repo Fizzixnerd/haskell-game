@@ -19,7 +19,7 @@ newPlayer = liftIO $ do
   P.setOrigin startXform 0 4 4
   playerMotionState <- P.new startXform
   playerShape <- P.newCapsuleShape 2 0.35
-  rbci <- P.newRigidBodyConstructionInfo 1 playerMotionState playerShape 0 1 0
+  rbci <- P.newRigidBodyConstructionInfo 1 playerMotionState playerShape 0 0 0
   playerRigidBody <- P.newRigidBody rbci
   P.del startXform
   P.del rbci
