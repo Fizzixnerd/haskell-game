@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds #-}
+{-# language DataKinds #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -67,16 +67,15 @@ setupPhysics ps = do
   pw'' <- addCameraToPhysicsWorld cam pw'
   withCameraTransform cam $ \t -> do
     P.setIdentity t
-    P.setOrigin t 0 1 100
+    P.setOrigin t 0 1 5
     setCameraTransform cam t
-  cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
 
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   pw'''' <- addEntityToPhysicsWorld theModel1E pw'''
   pw''''' <- addEntityToPhysicsWorld theModel2E pw''''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw'''''
-  P.kccSetGravity (cam ^. cameraController) 0 0 0
+  P.rbSetGravity (cam ^. cameraController) 0 0 0
   return (pw''''', pl, cam, theModel1E, theModel2E)
 
 createTheModel :: (ShaderPipeline, ShaderPipeline) -> IO (Entity s, Entity s)
@@ -270,7 +269,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
                                , playerHorizontalMovement >>> movePlayer
                                , physicsWire
                                , close
-                               -- , jump
+                               , jump
                                , camera
                                , zoomCamera
 --                               , turnPlayer

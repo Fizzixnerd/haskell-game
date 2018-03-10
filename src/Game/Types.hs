@@ -138,7 +138,7 @@ initGameState = GameState
 
 data Camera s = Camera
   { _cameraFOV :: Float
-  , _cameraController        :: P.KinematicCharacterController
+  , _cameraController        :: P.RigidBody
   , _cameraTarget            :: P.CollisionObject
   , _cameraPreferredDistance :: CFloat
   , _cameraEntity            :: Entity s

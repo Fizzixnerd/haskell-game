@@ -81,9 +81,7 @@ addGiantFeaturelessPlaneToPhysicsWorld g@(GiantFeaturelessPlane gfp _) w = liftI
 
 addCameraToPhysicsWorld :: MonadIO m => Camera s -> PhysicsWorld s -> m (PhysicsWorld s)
 addCameraToPhysicsWorld cam w = liftIO $ do
-  go <- P.getGhostObject (cam ^. cameraController)
-  P.addCollisionObject (w ^. physicsWorldDynamicsWorld) go
-  P.addAction (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
+  P.addRigidBody (w ^. physicsWorldDynamicsWorld) (cam ^. cameraController)
   w' <- updateIndex (cam ^. cameraEntity) w
   return $ w' & physicsWorldCameras %~ (`snoc` cam)
 

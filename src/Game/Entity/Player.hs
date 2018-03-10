@@ -90,6 +90,9 @@ playerApplyForce p f = liftIO $ P.applyForce
                        0
                        0
 
+playerJump :: MonadIO m => Player s -> m ()
+playerJump p = playerApplyForce p (100 * L.V3 0 1 0)
+
 getPlayerAngularVelocity :: MonadIO m => Player s -> m (L.V3 CFloat)
 getPlayerAngularVelocity p = liftIO $ do
   (alpha, beta, gamma) <- P.rbGetAngularVelocity $ p ^. playerController
