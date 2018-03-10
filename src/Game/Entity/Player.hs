@@ -20,7 +20,7 @@ newPlayer = liftIO $ do
   P.coSetWorldTransform pcgo startXform
   P.del startXform
 
-  playerShape <- P.newCapsuleShape 1 1
+  playerShape <- P.newCapsuleShape 2 0.5
   let stepHeight = 0.35
   controller <- P.newKinematicCharacterController pcgo playerShape stepHeight
   P.setLinearDamping controller 0.9

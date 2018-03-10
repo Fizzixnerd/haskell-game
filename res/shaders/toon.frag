@@ -59,15 +59,17 @@ void main() {
     specular_index = pow(max(dot(R, V), 0.0), material.specular_exponent) *
       material.specular_strength *
       fs_in.intensity[i];
-    specular += -texture(tex_specular, specular_index).rgb + 1;
+    // This is probably because y starts at the TOP of the texture?
+    specular += texture(tex_specular, specular_index).rgb;
   }
   vec3 outline = vec3(0);
-  // high poly smoother
-  float outliner = abs(dot(V, N));
-  if (outliner < 0.1) {
-    outline = mix(vec3(0), vec3(-1), outliner / 0.1);
-  }
+  // high poly outliner
+  // float outliner = abs(dot(V, N));
+  // if (outliner < 0.1) {
+  //   outline = mix(vec3(0), vec3(-1), outliner / 0.1);
+  // }
 
-  vec3 tex = texture(tex_color, floor(5 * fs_in.uv) / 5).rgb;
-  color = vec4(diffuse * 0.1 + specular * 0.1 + tex + outline + material.ambient_color.rgb * 0.1, 1.0);
+  float toon_factor = 5;
+  vec3 tex = texture(tex_color, floor(toon_factor * fs_in.uv) / toon_factor).rgb;
+  color = vec4(diffuse + specular + tex + outline + material.ambient_color.rgb, 1.0);
 }

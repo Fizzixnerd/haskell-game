@@ -72,6 +72,7 @@ setupPhysics ps = do
     setCameraTransform cam t
   cameraLookAtTarget cam
   giantFeaturelessPlane <- newGiantFeaturelessPlane (L.V3 0 (-3) 0) 0
+  
   pw''' <- addGiantFeaturelessPlaneToPhysicsWorld giantFeaturelessPlane pw''
   pw'''' <- addEntityToPhysicsWorld theModelE pw'''
   setGravityPhysicsWorld (L.V3 0 (-10) 0) pw''''
@@ -193,7 +194,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
       mctxt <- AL.createContext dev []
       let ctxt = fromMaybe (error "Couldn't create the sound context.") mctxt
       AL.currentContext AL.$= Just ctxt
-      ((pPhong, _, _), (pNormalMap, _, _)) <- compilePipeline
+      -- ((pPhong, _, _), (pNormalMap, _, _)) <- compilePipeline
 
       (pToon, _, _) <- compileToonPipeline
 
