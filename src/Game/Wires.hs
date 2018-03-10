@@ -10,7 +10,6 @@ import           Control.Wire
 import qualified FRP.Netwire.Input as N
 import           Game.Types
 import           Graphics.Binding
-import           Data.Either (isLeft)
 
 -- * Wire utilities
 
