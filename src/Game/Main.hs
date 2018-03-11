@@ -52,8 +52,7 @@ doGame initGS = void $ runGame initGS go
       _ <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
-      unlessM (use gameStateShouldClose)
-        go
+      unlessM (use gameStateShouldClose) go
 
 setupPhysics :: (ShaderPipeline, ShaderPipeline) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, Entity s)
 setupPhysics ps = do

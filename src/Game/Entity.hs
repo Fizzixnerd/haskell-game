@@ -111,11 +111,6 @@ animateEntity e = do
   drawEntity cam e'
   return e'
 
-setEntityLinearVelocity :: Entity s -> L.V3 Float -> Game s ()
-setEntityLinearVelocity e (L.V3 x y z) = case e ^. entityRigidBody of
-  Nothing -> return ()
-  Just (RigidBody rb) -> liftIO $ P.rbSetLinearVelocity rb (CFloat x) (CFloat y) (CFloat z)
-
 entityLocalClosestRayCast :: Entity s
                           -> L.V3 Float -- ^ in Entity-local coordinates
                           -> (Entity s -> Game s ()) -- ^ callback
@@ -134,9 +129,68 @@ entityLocalClosestRayCast e v cb = do
     es <- use $ gameStatePhysicsWorld . physicsWorldEntities
     cb $ es `unsafeIndex` n
 
-entityApplyForce :: Entity s -> L.V3 Float -> Game s ()
+entityApplyForce :: MonadIO m => Entity s -> L.V3 Float -> m ()
 entityApplyForce e (L.V3 x y z) = liftIO $
   case e ^. entityRigidBody of
     Just (RigidBody rb) -> P.applyForce rb (CFloat x) (CFloat y) (CFloat z) 0 0 0
     Nothing -> return ()
 
+entityApplyTorque :: MonadIO m => Entity s -> L.V3 Float -> m ()
+entityApplyTorque e (L.V3 x y z) = liftIO $
+  case e ^. entityRigidBody of
+    Just (RigidBody rb) -> P.applyTorque rb (CFloat x) (CFloat y) (CFloat z)
+    Nothing -> return ()
+
+allocateEntityTransform :: MonadIO m => Entity s -> m P.Transform
+allocateEntityTransform e = liftIO $ P.coAllocateWorldTransform $ e ^. entityCollisionObject . unCollisionObject
+
+withEntityTransform :: MonadIO m => Entity s -> (P.Transform -> IO b) -> m b
+withEntityTransform e f = liftIO $ bracket (allocateEntityTransform e) P.del f
+
+getEntityOrientation e = liftIO $ do
+  (CFloat i, CFloat j, CFloat k, CFloat r) <- withEntityTransform e P.getRotation
+  return $ L.Quaternion r (L.V3 i j k)
+
+setEntityOrientation :: MonadIO m => Entity s -> L.Quaternion Float -> m ()
+setEntityOrientation e (L.Quaternion r (L.V3 i j k)) = liftIO $ do
+  withEntityTransform e $ \t -> do
+    P.setRotation t (CFloat i) (CFloat j) (CFloat k) (CFloat r)
+    P.coSetWorldTransform (e ^. entityCollisionObject . unCollisionObject) t
+
+getEntityLinearVelocity :: MonadIO m => Entity s -> m (L.V3 Float)
+getEntityLinearVelocity e = liftIO $
+  case e ^. entityRigidBody of
+    Nothing -> do
+      (CFloat x, CFloat y, CFloat z) <- P.getInterpolationLinearVelocity $
+                                        e ^. entityCollisionObject . unCollisionObject
+      return $ L.V3 x y z
+    Just (RigidBody rb) -> do
+      (CFloat x, CFloat y, CFloat z) <- P.rbGetLinearVelocity rb
+      return $ L.V3 x y z
+
+setEntityLinearVelocity :: MonadIO m => Entity s -> L.V3 Float -> m ()
+setEntityLinearVelocity e (L.V3 x y z) = liftIO $
+  case e ^. entityRigidBody of
+    Nothing -> P.setInterpolationLinearVelocity
+               (e ^. entityCollisionObject . unCollisionObject)
+               (CFloat x) (CFloat y) (CFloat z)
+    Just (RigidBody rb) -> P.rbSetLinearVelocity rb (CFloat x) (CFloat y) (CFloat z)
+
+getEntityAngularVelocity :: MonadIO m => Entity s -> m (L.V3 Float)
+getEntityAngularVelocity e = liftIO $
+  case e ^. entityRigidBody of
+    Nothing -> do
+      (CFloat x, CFloat y, CFloat z) <- P.getInterpolationAngularVelocity $
+                                        e ^. entityCollisionObject . unCollisionObject
+      return $ L.V3 x y z
+    Just (RigidBody rb) -> do
+      (CFloat x, CFloat y, CFloat z) <- P.rbGetAngularVelocity rb
+      return $ L.V3 x y z
+
+setEntityAngularVelocity :: MonadIO m => Entity s -> L.V3 Float -> m ()
+setEntityAngularVelocity e (L.V3 x y z) = liftIO $
+  case e ^. entityRigidBody of
+    Nothing -> P.setInterpolationAngularVelocity
+               (e ^. entityCollisionObject . unCollisionObject)
+               (CFloat x) (CFloat y) (CFloat z)
+    Just (RigidBody rb) -> P.rbSetAngularVelocity rb (CFloat x) (CFloat y) (CFloat z)
