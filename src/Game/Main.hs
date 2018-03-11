@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -184,9 +185,6 @@ createTheModel (phong, normalMap) = do
 
   return (e1, e2)
 
-concatA :: ArrowPlus a => Vector (a b b) -> a b b
-concatA = foldr (<+>) id
-
 setupDynamicBuffers :: IO DynamicBufferBundle
 setupDynamicBuffers  = do
   -- Do point lights
@@ -274,6 +272,14 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
                            , close
                            , devConsoleToggleWire
                            , jump
+                           ]
+
+          devConsoleWire :: GameEffectWire s
+          devConsoleWire = concatA $ fromList
+                           [ devConsoleToggleWire
+                           , devConsoleWriteWire
+                           , devConsoleDelWire
+                           , executeBufferWire
                            ]
 
           schemeSelector :: InputScheme -> GameWire s a a

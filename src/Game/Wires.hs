@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
@@ -12,6 +13,12 @@ import           Game.Types
 import           Graphics.Binding
 
 -- * Wire utilities
+
+unEvent :: Monad m => Wire s e m a (Event a) -> Wire s e m a a
+unEvent eventWire = passWire eventWire
+
+concatA :: ArrowPlus a => Vector (a b b) -> a b b
+concatA = foldr (<+>) id
 
 -- | Is the identity if only one wire is producing. If both are, it
 -- merges the results with merge. This steps both wires.
@@ -45,9 +52,13 @@ solderWireM merge' w1 w2 = WGen $ \s eea -> do
 effectWire :: Monad m => m c -> Wire s e m a a
 effectWire act = mkGen_ $ \a -> void act >> return (Right a)
 
+-- | Lift a monad-valued function to a wire
+mkLiftM_ :: Monad m => (a -> m b) -> Wire s e m a b
+mkLiftM_ act = mkGen_ $ fmap Right . act
+
 -- | A constant wire that executes a monadic action to obtain its output.
 mkConstM :: Monad m => m b -> Wire s e m a b
-mkConstM act = mkGen_ $ const $ Right <$> act
+mkConstM = mkLiftM_ . const
 
 -- | A wire transformer that executes the given wire, discards the result, and passes its input through unchanged.
 passWire :: Monad m => Wire s e m a b -> Wire s e m a a
@@ -248,9 +259,172 @@ keyEnter = N.keyPressed Key'Enter
 keyEsc :: GameWire s a a
 keyEsc = N.keyPressed Key'Escape
 
+keyDelete :: GameWire s a a
+keyDelete = N.keyPressed Key'Delete
+
 -- ** Mouse buttons
 mouseL :: GameWire s a a
 mouseL = N.mousePressed MouseButton'1
 
 mouseR :: GameWire s a a
 mouseR = N.mousePressed MouseButton'2
+-- * Key input wires - debounce versions.
+
+-- ** Various alphanumeric keys
+keydebApostrophe :: GameWire s a a
+keydebApostrophe = N.keyDebounced Key'Apostrophe
+
+keydebComma :: GameWire s a a
+keydebComma = N.keyDebounced Key'Comma
+
+keydebMinus :: GameWire s a a
+keydebMinus = N.keyDebounced Key'Minus
+
+keydebPeriod :: GameWire s a a
+keydebPeriod = N.keyDebounced Key'Period
+
+keydebSlash :: GameWire s a a
+keydebSlash = N.keyDebounced Key'Slash
+
+keydebRightBracket :: GameWire s a a
+keydebRightBracket = N.keyDebounced Key'RightBracket
+
+keydebLeftBracket :: GameWire s a a
+keydebLeftBracket = N.keyDebounced Key'LeftBracket
+
+keydeb0 :: GameWire s a a
+keydeb0 = N.keyDebounced Key'0
+
+keydeb1 :: GameWire s a a
+keydeb1 = N.keyDebounced Key'1
+
+keydeb2 :: GameWire s a a
+keydeb2 = N.keyDebounced Key'2
+
+keydeb3 :: GameWire s a a
+keydeb3 = N.keyDebounced Key'3
+
+keydeb4 :: GameWire s a a
+keydeb4 = N.keyDebounced Key'4
+
+keydeb5 :: GameWire s a a
+keydeb5 = N.keyDebounced Key'5
+
+keydeb6 :: GameWire s a a
+keydeb6 = N.keyDebounced Key'6
+
+keydeb7 :: GameWire s a a
+keydeb7 = N.keyDebounced Key'7
+
+keydeb8 :: GameWire s a a
+keydeb8 = N.keyDebounced Key'8
+
+keydeb9 :: GameWire s a a
+keydeb9 = N.keyDebounced Key'9
+
+keydebSemicolon :: GameWire s a a
+keydebSemicolon = N.keyDebounced Key'Semicolon
+
+keydebEqual :: GameWire s a a
+keydebEqual = N.keyDebounced Key'Equal
+
+keydebA :: GameWire s a a
+keydebA = N.keyDebounced Key'A
+
+keydebB :: GameWire s a a
+keydebB = N.keyDebounced Key'B
+
+keydebC :: GameWire s a a
+keydebC = N.keyDebounced Key'C
+
+keydebD :: GameWire s a a
+keydebD = N.keyDebounced Key'D
+
+keydebE :: GameWire s a a
+keydebE = N.keyDebounced Key'E
+
+keydebF :: GameWire s a a
+keydebF = N.keyDebounced Key'F
+
+keydebG :: GameWire s a a
+keydebG = N.keyDebounced Key'G
+
+keydebH :: GameWire s a a
+keydebH = N.keyDebounced Key'H
+
+keydebI :: GameWire s a a
+keydebI = N.keyDebounced Key'I
+
+keydebJ :: GameWire s a a
+keydebJ = N.keyDebounced Key'J
+
+keydebK :: GameWire s a a
+keydebK = N.keyDebounced Key'K
+
+keydebL :: GameWire s a a
+keydebL = N.keyDebounced Key'L
+
+keydebM :: GameWire s a a
+keydebM = N.keyDebounced Key'M
+
+keydebN :: GameWire s a a
+keydebN = N.keyDebounced Key'N
+
+keydebO :: GameWire s a a
+keydebO = N.keyDebounced Key'O
+
+keydebP :: GameWire s a a
+keydebP = N.keyDebounced Key'P
+
+keydebQ :: GameWire s a a
+keydebQ = N.keyDebounced Key'Q
+
+keydebR :: GameWire s a a
+keydebR = N.keyDebounced Key'R
+
+keydebS :: GameWire s a a
+keydebS = N.keyDebounced Key'S
+
+keydebT :: GameWire s a a
+keydebT = N.keyDebounced Key'T
+
+keydebU :: GameWire s a a
+keydebU = N.keyDebounced Key'U
+
+keydebV :: GameWire s a a
+keydebV = N.keyDebounced Key'V
+
+keydebW :: GameWire s a a
+keydebW = N.keyDebounced Key'W
+
+keydebX :: GameWire s a a
+keydebX = N.keyDebounced Key'X
+
+keydebY :: GameWire s a a
+keydebY = N.keyDebounced Key'Y
+
+keydebZ :: GameWire s a a
+keydebZ = N.keyDebounced Key'Z
+
+keydebBackslash :: GameWire s a a
+keydebBackslash = N.keyDebounced Key'Backslash
+
+keydebGrave :: GameWire s a a
+keydebGrave = N.keyDebounced Key'GraveAccent
+
+-- ** White space keydebs
+keydebSpace :: GameWire s a a
+keydebSpace = N.keyDebounced Key'Space
+
+keydebTab :: GameWire s a a
+keydebTab = N.keyDebounced Key'Tab
+
+keydebEnter :: GameWire s a a
+keydebEnter = N.keyDebounced Key'Enter
+
+-- ** Other keydebs
+keydebEsc :: GameWire s a a
+keydebEsc = N.keyDebounced Key'Escape
+
+keydebDelete :: GameWire s a a
+keydebDelete = N.keyDebounced Key'Delete

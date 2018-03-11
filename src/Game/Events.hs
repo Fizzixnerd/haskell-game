@@ -1,5 +1,8 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Game.Events where
 
@@ -10,6 +13,8 @@ import           Foreign.C.Types
 import           ClassyPrelude
 import           Control.Lens
 import           Game.Types
+import           Game.Graphics.Types
+import           Game.Graphics.Text
 import           Game.Entity.Player
 import           Game.Entity.Camera
 import qualified Physics.Bullet as P
@@ -17,7 +22,6 @@ import           Graphics.Binding
 import qualified Linear as L
 import qualified Sound.OpenAL as AL
 import           Game.Wires
-import qualified Data.Text as T
 
 zoomCamera :: GameEffectWire s
 zoomCamera = effectWire $ do
@@ -93,63 +97,61 @@ basicEventStream = periodic 4 . timeF
 
 -- * Typing
 
-keydebGrave :: GameWire s a a
-keydebGrave = N.keyDebounced Key'GraveAccent
-
 keyEitherShift :: GameWire s a a
 keyEitherShift = N.keyPressed Key'LeftShift <|> N.keyPressed Key'RightShift
 
-allTextWire :: GameWire s a Text
-allTextWire = mconcat . fmap (fmap T.singleton . makeKeyWire) $
-  [ (keyApostrophe, '\'', '\"')
-  , (keyComma, ',', '<')
-  , (keyMinus, '-', '_')
-  , (keyPeriod, '.', '>')
-  , (keySlash, '/', '?')
-  , (keyRightBracket, ']', '}')
-  , (keyLeftBracket, '[', '{')
-  , (key0, '0', ')')
-  , (key1, '1', '!')
-  , (key2, '2', '@')
-  , (key3, '3', '#')
-  , (key4, '4', '$')
-  , (key5, '5', '%')
-  , (key6, '6', '^')
-  , (key7, '7', '&')
-  , (key8, '8', '*')
-  , (key9, '9', '(')
-  , (keySemicolon, ';', ':')
-  , (keyEqual, '=', '+')
-  , (keyA, 'a', 'A')
-  , (keyB, 'b', 'B')
-  , (keyC, 'c', 'C')
-  , (keyD, 'd', 'D')
-  , (keyE, 'e', 'E')
-  , (keyF, 'f', 'F')
-  , (keyG, 'g', 'G')
-  , (keyH, 'h', 'H')
-  , (keyI, 'i', 'I')
-  , (keyJ, 'j', 'J')
-  , (keyK, 'k', 'K')
-  , (keyL, 'l', 'L')
-  , (keyM, 'm', 'M')
-  , (keyN, 'n', 'N')
-  , (keyO, 'o', 'O')
-  , (keyP, 'p', 'P')
-  , (keyQ, 'q', 'Q')
-  , (keyR, 'r', 'R')
-  , (keyS, 's', 'S')
-  , (keyT, 't', 'T')
-  , (keyU, 'u', 'U')
-  , (keyV, 'v', 'V')
-  , (keyW, 'w', 'W')
-  , (keyX, 'x', 'X')
-  , (keyY, 'y', 'Y')
-  , (keyZ, 'z', 'Z')
-  , (keyBackslash, '\\', '|')
+devConsoleWriteWire :: GameWire s a a
+devConsoleWriteWire = concatA $ fromList $ makeKeyWire <$>
+  [ (keydebApostrophe, '\'', '\"')
+  , (keydebComma, ',', '<')
+  , (keydebMinus, '-', '_')
+  , (keydebPeriod, '.', '>')
+  , (keydebSlash, '/', '?')
+  , (keydebRightBracket, ']', '}')
+  , (keydebLeftBracket, '[', '{')
+  , (keydeb0, '0', ')')
+  , (keydeb1, '1', '!')
+  , (keydeb2, '2', '@')
+  , (keydeb3, '3', '#')
+  , (keydeb4, '4', '$')
+  , (keydeb5, '5', '%')
+  , (keydeb6, '6', '^')
+  , (keydeb7, '7', '&')
+  , (keydeb8, '8', '*')
+  , (keydeb9, '9', '(')
+  , (keydebSemicolon, ';', ':')
+  , (keydebEqual, '=', '+')
+  , (keydebA, 'a', 'A')
+  , (keydebB, 'b', 'B')
+  , (keydebC, 'c', 'C')
+  , (keydebD, 'd', 'D')
+  , (keydebE, 'e', 'E')
+  , (keydebF, 'f', 'F')
+  , (keydebG, 'g', 'G')
+  , (keydebH, 'h', 'H')
+  , (keydebI, 'i', 'I')
+  , (keydebJ, 'j', 'J')
+  , (keydebK, 'k', 'K')
+  , (keydebL, 'l', 'L')
+  , (keydebM, 'm', 'M')
+  , (keydebN, 'n', 'N')
+  , (keydebO, 'o', 'O')
+  , (keydebP, 'p', 'P')
+  , (keydebQ, 'q', 'Q')
+  , (keydebR, 'r', 'R')
+  , (keydebS, 's', 'S')
+  , (keydebT, 't', 'T')
+  , (keydebU, 'u', 'U')
+  , (keydebV, 'v', 'V')
+  , (keydebW, 'w', 'W')
+  , (keydebX, 'x', 'X')
+  , (keydebY, 'y', 'Y')
+  , (keydebZ, 'z', 'Z')
+  , (keydebBackslash, '\\', '|')
   ]
   where
-    makeKeyWire (wire, noShiftKey, shiftKey) = wire >>> ((keyEitherShift >>> pure shiftKey) <|> pure noShiftKey)
+    snocWire ch = mkConstM $ gameStateDevConsole . _Just %= snocTextBuffer ch
+    makeKeyWire (wire, noShiftKey, shiftKey) = passWire $ wire >>> ((keyEitherShift >>> snocWire shiftKey) <|> snocWire noShiftKey)
 
 devConsoleToggleWire :: GameEffectWire s
 devConsoleToggleWire = keydebGrave >>> toggle_
@@ -160,5 +162,8 @@ devConsoleToggleWire = keydebGrave >>> toggle_
         InputPlaying    -> gameStateDevConsole .= Just initDevConsole >> gameStateKeyboardInputScheme .= InputDevConsole
         InputDevConsole -> gameStateDevConsole .= Nothing >> gameStateKeyboardInputScheme .= InputPlaying
 
-devConsoleWire :: GameEffectWire s
-devConsoleWire = devConsoleToggleWire
+devConsoleDelWire :: GameEffectWire s
+devConsoleDelWire = passWire $ keydebDelete >>> mkConstM (gameStateDevConsole . _Just %= delOffTextBuffer 1)
+
+executeBufferWire :: GameEffectWire s
+executeBufferWire = keydebEnter >>> effectWire (executeTextBufferWith print)

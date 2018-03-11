@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveFoldable #-}
@@ -322,16 +323,41 @@ data DirectionalLightBlock = DirectionalLightBlock deriving (Eq, Ord, Show)
 instance ForeignWrite () DirectionalLightBlock (DynamicBuffer DirectionalLightBundle) where
   writeR_ _ _ = bindFullDynamicUniformBuffer DirectionalLightBlock (error "Set me to a particular binding point!")
 
+-- * Text buffering
+
+newtype TextBuffer = TextBuffer
+  { _textBufferBufferText :: Text
+  } deriving (Eq, Ord, Show)
+
+initTextBuffer :: TextBuffer
+initTextBuffer = TextBuffer ""
+
+data TextBufferUpdate
+  = TextBufferAdd Char
+  | TextBufferBackSpace
+
+newtype DevConsole = DevConsole
+  { _devConsoleTextBuffer :: TextBuffer
+  } deriving (Eq, Ord, Show)
+
+initDevConsole :: DevConsole
+initDevConsole = DevConsole initTextBuffer
+
 makeFields ''LightCompressed
 makeFields ''Light
 makeFields ''PointLight
 makeFields ''DirectionalLight
+makeFields ''TextBuffer
+makeFields ''DevConsole
 
 instance HasLightPosition PointLight (L.V3 Float) where
   lightPosition = lightCompressed . lightPosition
 
 instance HasLightIntensity PointLight Float where
   lightIntensity = lightCompressed . lightIntensity
+
+instance HasBufferText DevConsole Text where
+  bufferText = textBuffer . bufferText
 
 mconcat <$> mapM makeLenses
   [ ''ExpandObjVTN

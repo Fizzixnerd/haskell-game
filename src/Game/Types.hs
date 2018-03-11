@@ -273,35 +273,10 @@ newtype Lfx s = Lfx
   { _lfxScripts :: Vector (Entity s -> Game s (Entity s))
   }
 
--- * Text buffering
-
-newtype TextBuffer = TextBuffer
-  { _textBufferText :: Text
-  } deriving (Eq, Ord, Show)
-
-initTextBuffer :: TextBuffer
-initTextBuffer = TextBuffer ""
-
-data TextBufferUpdate
-  = TextBufferAdd Char
-  | TextBufferBackSpace
-
-newtype DevConsole = DevConsole
-  { _devConsoleBuffer :: TextBuffer
-  } deriving (Eq, Ord, Show)
-
-initDevConsole :: DevConsole
-initDevConsole = DevConsole initTextBuffer
-
 data InputScheme
   = InputPlaying
   | InputDevConsole
   deriving (Eq, Ord, Show, Enum, Bounded)
-
-succOverflow :: (Eq a, Bounded a, Enum a) => a -> a
-succOverflow x
-  | x == maxBound = minBound
-  | otherwise     = succ x
 
 mconcat <$> mapM makeLenses
   [ ''Camera
