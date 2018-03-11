@@ -18,9 +18,10 @@ newPlayer = liftIO $ do
   P.setIdentity startXform
   P.setOrigin startXform 0 4 4
   playerMotionState <- P.new startXform
-  playerShape <- P.newCapsuleShape 2 0.35
+  playerShape <- P.newBoxShape 0.5 0.5 0.5
   rbci <- P.newRigidBodyConstructionInfo 1 playerMotionState playerShape 0 0 0
   playerRigidBody <- P.newRigidBody rbci
+  P.setActivationState playerRigidBody P.activationStateDisableDeactivation
   P.del startXform
   P.del rbci
 
@@ -31,12 +32,7 @@ newPlayer = liftIO $ do
           , _entityGraphics = Nothing
           , _entitySounds   = Nothing
           , _entityLogic    = Just Lfx
-                              { _lfxScripts =
-                                  fromList [ \model_ -> do
-                                               entityLocalClosestRayCast model_ (L.V3 0 (-3) 0) $
-                                                 const $ entityApplyForce model_ (L.V3 0 8.75 0)
-                                               return model_
-                                           ]
+                              { _lfxScripts = empty
                               }
           , _entityRigidBody = Just $ RigidBody playerRigidBody
           , _entityCollisionObject = CollisionObject (P.toCollisionObject playerRigidBody)

@@ -26,6 +26,7 @@ newCamera target _cameraPreferredDistance' = liftIO $ do
   cameraShape <- P.newSphereShape 0.5
   rbci <- P.newRigidBodyConstructionInfo 1 cameraMotionState cameraShape 0 0 0
   _cameraController <- P.newRigidBody rbci
+  P.setActivationState _cameraController P.activationStateDisableDeactivation
   P.del startXform
   P.del rbci
 
