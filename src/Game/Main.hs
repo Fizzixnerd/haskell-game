@@ -30,6 +30,8 @@ import           Graphics.Binding
 import           Linear as L
 import qualified Physics.Bullet as P
 import qualified Sound.ALUT as AL
+import           Foreign.Resource
+import           Game.Entity.Animate
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -55,8 +57,7 @@ doGame initGS = void $ runGame initGS go
       _ <- stepWire mainWire time_ (Right ())
       win <- use $ gameStateIOData . ioDataWindow
       liftIO $ swapBuffers win
-      unlessM (use gameStateShouldClose)
-        go
+      unlessM (use gameStateShouldClose) go
 
 setupPhysics :: (ShaderPipeline, ShaderPipeline) -> IO (PhysicsWorld s, Player s, Camera s, Entity s, Entity s)
 setupPhysics ps = do
