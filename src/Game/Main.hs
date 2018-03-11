@@ -8,7 +8,7 @@
 module Game.Main where
 
 import           ClassyPrelude as ClassyP
-import           Control.Lens hiding (snoc)
+import           Control.Lens
 import           Control.Wire.Core
 import qualified Data.ObjectName as ON
 import           FRP.Netwire
