@@ -9,12 +9,6 @@ module Game.Entity where
 import ClassyPrelude
 import Game.Entity.WorldTransform
 import Game.Types
-import Game.Graphics.Types
-import Game.Entity.Camera
-import Graphics.Binding
--- import Game.Graphics.Shader.Loader
-import Game.Graphics.Texture.Loader
-import qualified Linear as L
 import Control.Lens
 import Foreign.C.Types
 import qualified Linear as L

@@ -15,6 +15,7 @@ import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW as N
 import           Foreign.Resource
 import           Game.Entity
+import           Game.Entity.Animate
 import           Game.Entity.Camera
 import           Game.Entity.GiantFeaturelessPlane
 import           Game.Entity.Player
@@ -30,8 +31,6 @@ import           Graphics.Binding
 import           Linear as L
 import qualified Physics.Bullet as P
 import qualified Sound.ALUT as AL
-import           Foreign.Resource
-import           Game.Entity.Animate
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do

@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Game.Events where
 
@@ -104,6 +103,7 @@ devConsoleWriteWire :: GameWire s a a
 devConsoleWriteWire = concatA $ fromList $ makeKeyWire <$>
   [ (keydebApostrophe, '\'', '\"')
   , (keydebComma, ',', '<')
+  , (keydebSpace, ' ', ' ')
   , (keydebMinus, '-', '_')
   , (keydebPeriod, '.', '>')
   , (keydebSlash, '/', '?')

@@ -14,6 +14,7 @@ import Foreign.Resource
 import Game.Entity.Camera
 import Game.Graphics.Texture.Loader
 import Game.Types
+import Game.Graphics.Types
 import Graphics.Binding
 import qualified Linear as L
 
