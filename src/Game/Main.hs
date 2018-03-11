@@ -27,6 +27,7 @@ import           Linear as L
 import qualified Physics.Bullet as P
 import qualified Sound.ALUT as AL
 import           Foreign.Resource
+import           Game.Entity.Animate
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
