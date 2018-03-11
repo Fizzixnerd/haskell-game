@@ -36,3 +36,4 @@ cabal.project.local
 
 test/*.rdc
 test/*.cap
+res/blender

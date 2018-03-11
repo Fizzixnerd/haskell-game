@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -10,6 +12,8 @@ import           Foreign.C.Types
 import           ClassyPrelude
 import           Control.Lens
 import           Game.Types
+import           Game.Graphics.Types
+import           Game.Graphics.Text
 import           Game.Entity.Player
 import           Game.Entity.Camera
 import qualified Physics.Bullet as P
@@ -90,29 +94,76 @@ jump = jmp <<< keySpace
 basicEventStream :: (Fractional a, HasTime t s) => GameWire s a (Event a)
 basicEventStream = periodic 4 . timeF
 
-mouseL :: GameWire s a a
-mouseL = N.mousePressed MouseButton'1
+-- * Typing
 
-mouseR :: GameWire s a a
-mouseR = N.mousePressed MouseButton'2
+keyEitherShift :: GameWire s a a
+keyEitherShift = N.keyPressed Key'LeftShift <|> N.keyPressed Key'RightShift
 
-keyW :: GameWire s a a
-keyW = N.keyPressed Key'W
+devConsoleWriteWire :: GameWire s a a
+devConsoleWriteWire = concatA $ fromList $ makeKeyWire <$>
+  [ (keydebApostrophe, '\'', '\"')
+  , (keydebComma, ',', '<')
+  , (keydebSpace, ' ', ' ')
+  , (keydebMinus, '-', '_')
+  , (keydebPeriod, '.', '>')
+  , (keydebSlash, '/', '?')
+  , (keydebRightBracket, ']', '}')
+  , (keydebLeftBracket, '[', '{')
+  , (keydeb0, '0', ')')
+  , (keydeb1, '1', '!')
+  , (keydeb2, '2', '@')
+  , (keydeb3, '3', '#')
+  , (keydeb4, '4', '$')
+  , (keydeb5, '5', '%')
+  , (keydeb6, '6', '^')
+  , (keydeb7, '7', '&')
+  , (keydeb8, '8', '*')
+  , (keydeb9, '9', '(')
+  , (keydebSemicolon, ';', ':')
+  , (keydebEqual, '=', '+')
+  , (keydebA, 'a', 'A')
+  , (keydebB, 'b', 'B')
+  , (keydebC, 'c', 'C')
+  , (keydebD, 'd', 'D')
+  , (keydebE, 'e', 'E')
+  , (keydebF, 'f', 'F')
+  , (keydebG, 'g', 'G')
+  , (keydebH, 'h', 'H')
+  , (keydebI, 'i', 'I')
+  , (keydebJ, 'j', 'J')
+  , (keydebK, 'k', 'K')
+  , (keydebL, 'l', 'L')
+  , (keydebM, 'm', 'M')
+  , (keydebN, 'n', 'N')
+  , (keydebO, 'o', 'O')
+  , (keydebP, 'p', 'P')
+  , (keydebQ, 'q', 'Q')
+  , (keydebR, 'r', 'R')
+  , (keydebS, 's', 'S')
+  , (keydebT, 't', 'T')
+  , (keydebU, 'u', 'U')
+  , (keydebV, 'v', 'V')
+  , (keydebW, 'w', 'W')
+  , (keydebX, 'x', 'X')
+  , (keydebY, 'y', 'Y')
+  , (keydebZ, 'z', 'Z')
+  , (keydebBackslash, '\\', '|')
+  ]
+  where
+    snocWire ch = mkConstM $ gameStateDevConsole . _Just %= snocTextBuffer ch
+    makeKeyWire (wire, noShiftKey, shiftKey) = passWire $ wire >>> ((keyEitherShift >>> snocWire shiftKey) <|> snocWire noShiftKey)
 
-keyA :: GameWire s a a
-keyA = N.keyPressed Key'A
+devConsoleToggleWire :: GameEffectWire s
+devConsoleToggleWire = keydebGrave >>> toggle_
+  where
+    toggle_ = effectWire $ do
+      gis <- use gameStateKeyboardInputScheme
+      case gis of
+        InputPlaying    -> gameStateDevConsole .= Just initDevConsole >> gameStateKeyboardInputScheme .= InputDevConsole
+        InputDevConsole -> gameStateDevConsole .= Nothing >> gameStateKeyboardInputScheme .= InputPlaying
 
-keyS :: GameWire s a a
-keyS = N.keyPressed Key'S
+devConsoleDelWire :: GameEffectWire s
+devConsoleDelWire = passWire $ keydebDelete >>> mkConstM (gameStateDevConsole . _Just %= delOffTextBuffer 1)
 
-keyD :: GameWire s a a
-keyD = N.keyPressed Key'D
-
-keyP :: GameWire s a a
-keyP = N.keyPressed Key'P
-
-keyEsc :: GameWire s a a
-keyEsc = N.keyPressed Key'Escape
-
-keySpace :: GameWire s a a
-keySpace = N.keyPressed Key'Space
+executeBufferWire :: GameEffectWire s
+executeBufferWire = keydebEnter >>> effectWire (executeTextBufferWith print)

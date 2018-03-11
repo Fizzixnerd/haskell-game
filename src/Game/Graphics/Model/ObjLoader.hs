@@ -12,7 +12,7 @@ import qualified Control.Monad.State.Strict as MS
 import qualified Data.Vector.Storable       as VS
 import qualified Data.Map.Strict            as MS
 import           Foreign.C.Types
-import           Game.Types
+import           Game.Graphics.Types
 import qualified Linear                     as L
 
 type ExpandObjVTNState = MS.State ExpandObjVTN

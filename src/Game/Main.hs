@@ -1,4 +1,6 @@
-{-# language DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -6,12 +8,14 @@
 module Game.Main where
 
 import           ClassyPrelude as ClassyP
-import           Control.Lens hiding (snoc)
+import           Control.Lens
 import           Control.Wire.Core
 import qualified Data.ObjectName as ON
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW as N
+import           Foreign.Resource
 import           Game.Entity
+import           Game.Entity.Animate
 import           Game.Entity.Camera
 import           Game.Entity.GiantFeaturelessPlane
 import           Game.Entity.Player
@@ -19,6 +23,7 @@ import           Game.Events
 import           Game.Graphics.Model.AssImp
 import           Game.Graphics.Shader.Loader
 import           Game.Graphics.Texture.Loader
+import           Game.Graphics.Types
 import           Game.Types
 import           Game.Wires
 import           Game.World.Physics
@@ -26,8 +31,6 @@ import           Graphics.Binding
 import           Linear as L
 import qualified Physics.Bullet as P
 import qualified Sound.ALUT as AL
-import           Foreign.Resource
-import           Game.Entity.Animate
 
 updateGLFWInput :: Game s ()
 updateGLFWInput = do
@@ -130,7 +133,7 @@ createTheModel (phong, normalMap) = do
   vaoData <- forM meshes $ loadMeshes modelRoot defaultTexture
 
   let modelRoot' = "res" </> "models"
-      modelName' = "Lowpoly_tree_sample.dae"
+      modelName' = "golden_icosphere-2.dae"
       defaultTexture' = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes') <- loadAssImpScene $ modelRoot' </> modelName'
   vaoData' <- forM meshes' $ loadMeshes modelRoot' defaultTexture'
@@ -182,27 +185,24 @@ createTheModel (phong, normalMap) = do
 
   return (e1, e2)
 
-concatA :: ArrowPlus a => Vector (a b b) -> a b b
-concatA = foldr (<+>) id
-
 setupDynamicBuffers :: IO DynamicBufferBundle
 setupDynamicBuffers  = do
   -- Do point lights
-  let pointLight = PointLight
-                   { _pointLightPosition = V4 100 100 0 1
-                   , _pointLightIntensity = 1
+  let pointLight = Light
+                   { _lightPosition = V4 100 100 0 1
+                   , _lightIntensity = 1
                    }
-      pointLightBundle = PointLightBundle
-                         { _pointLightBundleLights = singleton pointLight
-                         , _pointLightBundleNum = 1
+      lightBundle = LightBundle
+                         { _lightBundleLights = singleton pointLight
+                         , _lightBundleNum = 1
                          }
 
   cdb  <- genName'
   CameraBlock $= cdb
 
   plbdb <- genName'
-  plbdb ~& FullBufferWrite .$= pointLightBundle
-  PointLightBlock $= plbdb
+  plbdb ~& FullBufferWrite .$= lightBundle
+  LightBlock $= plbdb
 
   smdb <- genName'
   ShaderMaterialBlock $= smdb
@@ -210,7 +210,7 @@ setupDynamicBuffers  = do
   return DynamicBufferBundle
     { _dynamicBufferBundleShaderCameraBuffer = cdb
     , _dynamicBufferBundleShaderMaterialBuffer = smdb
-    , _dynamicBufferBundlePointLightBundleBuffer = plbdb
+    , _dynamicBufferBundleLightBundleBuffer = plbdb
     }
 
 gameMain :: IO ()
@@ -218,7 +218,7 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
   where
     go :: ResIO ()
     go = do
-      allocLongR defaultGraphicsContext :: ResIO ()
+      ()  <- allocLongR defaultGraphicsContext
       win <- allocLongR defaultWindowConfig
       CurrentContext $= Just win
       --cullFace $= Just Back
@@ -266,11 +266,31 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
             pw <- use gameStatePhysicsWorld
             stepPhysicsWorld pw
 
+          playSchemeWire :: GameEffectWire s
+          playSchemeWire = concatA $ fromList
+                           [ passWire $ playerHorizontalMovement >>> movePlayer
+                           , close
+                           , devConsoleToggleWire
+                           , jump
+                           ]
+
+          devConsoleWire :: GameEffectWire s
+          devConsoleWire = concatA $ fromList
+                           [ devConsoleToggleWire
+                           , devConsoleWriteWire
+                           , devConsoleDelWire
+                           , executeBufferWire
+                           ]
+
+          schemeSelector :: InputScheme -> GameWire s a a
+          schemeSelector = \case
+            InputPlaying    -> playSchemeWire
+            InputDevConsole -> devConsoleWire
+
+
           mainWires = fromList [ animationWire
-                               , playerHorizontalMovement >>> movePlayer
+                               , stateSwitchingWire (use gameStateKeyboardInputScheme) schemeSelector
                                , physicsWire
-                               , close
-                               , jump
                                , camera
                                , zoomCamera
 --                               , turnPlayer

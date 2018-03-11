@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -23,7 +24,6 @@
 module Game.Types where
 
 import           ClassyPrelude
-import qualified Codec.Wavefront              as W
 import           Control.Lens
 import qualified Control.Monad.Catch          as MC
 import           Control.Monad.Fix            as Fix
@@ -32,20 +32,15 @@ import qualified Control.Monad.State.Strict   as MSS
 import qualified Control.Monad.Trans.Resource as RT
 import           Data.Dynamic
 import qualified Data.Map.Strict              as MS
-import qualified Data.Vector.Storable         as VS
 import           FRP.Netwire
 import qualified FRP.Netwire.Input.GLFW       as N
 import           Foreign.C.Types
-import           Foreign.Storable
-import           Foreign.Marshal.Utils
-import           Foreign.Ptr
 import           Graphics.Binding
-import qualified Linear                       as L
 import qualified Physics.Bullet               as P
 import qualified Sound.OpenAL                 as AL
 import           Text.Printf
-import           Data.Typeable
 import           Foreign.Resource
+import           Game.Graphics.Types
 
 type GameWire s a b = Wire s () (Game s) a b
 type GameEffectWire s = forall a. GameWire s a a
@@ -115,6 +110,8 @@ data GameState s = GameState
   , _gameStateWires                  :: Vector (GameWire s () ())
   , _gameStateDynamicBufferBundle :: DynamicBufferBundle
   , _gameStateSpecular1DTexture   :: TextureObject TextureTarget1D
+  , _gameStateKeyboardInputScheme :: InputScheme
+  , _gameStateDevConsole          :: Maybe DevConsole
   }
 
 initGameState :: GameState s
@@ -134,6 +131,8 @@ initGameState = GameState
   , _gameStateWires                   = empty
   , _gameStateDynamicBufferBundle  = error "bufferBundle not set."
   , _gameStateSpecular1DTexture    = error "specular1DTexture not set."
+  , _gameStateKeyboardInputScheme  = InputPlaying
+  , _gameStateDevConsole           = Nothing
   }
 
 data Camera s = Camera
@@ -148,16 +147,6 @@ data GiantFeaturelessPlane s = GiantFeaturelessPlane
   { _giantFeaturelessPlaneRigidBody :: P.RigidBody
   , _giantFeaturelessPlaneEntity :: Entity s
   }
-
-data ExpandObjVTN = ExpandObjVTN
-  { _expandObjVTNIndMap :: MS.Map VTNIndex CUInt
-  , _expandObjVTNPoints :: [VTNPoint]
-  , _expandObjVTNIndices :: [CUInt]
-  , _expandObjVTNNextInd :: CUInt
-  , _expandObjVTNVerts :: Vector W.Location
-  , _expandObjVTNTexs :: Vector W.TexCoord
-  , _expandObjVTNNorms :: Vector W.Normal
-  } deriving (Eq, Show)
 
 type ModuleName = String
 type EventName = Text
@@ -230,6 +219,15 @@ registerEventByName en e (EventRegister er) = MS.insert en e er
 -- registerEndo :: EndoName -> B.Event (GameState -> B.MomentIO GameState) -> EndoRegister -> EndoRegister
 -- registerEndo en e (EndoRegister er) = EndoRegister $ MS.insert en e er
 
+data Entity s = Entity
+  { _entityGraphics        :: Maybe (Gfx s)
+  , _entitySounds          :: Maybe (Sfx s)
+  , _entityLogic           :: Maybe (Lfx s)
+  , _entityChildren        :: Vector (Entity s)
+  , _entityCollisionObject :: CollisionObject
+  , _entityRigidBody       :: Maybe RigidBody
+  }
+
 data Player s = Player
   { _playerController :: P.RigidBody
   , _playerEntity     :: Entity s
@@ -250,102 +248,6 @@ data PhysicsWorld s = PhysicsWorld
   , _physicsWorldEntities :: Vector (Entity s)
   }
 
-data VTNPoint = VTNPoint
-  { _vtnPointV :: !(L.V4 CFloat)
-  , _vtnPointT :: !(L.V2 CFloat)
-  , _vtnPointN :: !(L.V3 CFloat)
-  } deriving (Eq, Show, Ord, Read)
-
-data AssImpVertex = AssImpVertex
-  { _assImpVertexV :: !(L.V3 Float)
-  , _assImpVertexT :: !(L.V2 Float)
-  , _assImpVertexN :: !(L.V3 Float)
-  } deriving (Eq, Show, Ord, Read)
-
-data VTNIndex = VTNIndex
-  { _vtnIndexV :: !Int
-  , _vtnIndexT :: !Int
-  , _vtnIndexN :: !Int
-  } deriving (Eq, Show, Ord, Read)
-
-instance Storable VTNPoint where
-  sizeOf _ = 9 * sizeOf (0 :: CFloat)
-  alignment _ = alignment (0 :: CFloat)
-  poke ptr (VTNPoint v t n) = do
-    pokeByteOff ptr 0 v
-    pokeByteOff ptr (4 * sizeOf (0 :: CFloat)) t
-    pokeByteOff ptr (6 * sizeOf (0 :: CFloat)) n
-  peek ptr = do
-    v <- peekByteOff ptr 0
-    t <- peekByteOff ptr (4 * sizeOf (0 :: CFloat))
-    n <- peekByteOff ptr (6 * sizeOf (0 :: CFloat))
-    return $ VTNPoint v t n
-
-instance Storable AssImpVertex where
-  sizeOf _ = 8 * sizeOf (0 :: Float)
-  alignment _ = alignment (0 :: Float)
-  poke ptr (AssImpVertex v t n) = do
-    pokeByteOff ptr 0 v
-    pokeByteOff ptr (3 * sizeOf (0 :: Float)) t
-    pokeByteOff ptr (5 * sizeOf (0 :: Float)) n
-  peek ptr = do
-    v <- peekByteOff ptr 0
-    t <- peekByteOff ptr (3 * sizeOf (0 :: Float))
-    n <- peekByteOff ptr (5 * sizeOf (0 :: Float))
-    return $ AssImpVertex v t n
-
-instance Storable VTNIndex where
-  sizeOf _ = 3 * sizeOf (0 :: Int)
-  alignment _ = alignment (0 :: Int)
-  poke ptr (VTNIndex v t n) = do
-    pokeByteOff ptr 0 v
-    pokeByteOff ptr (1 * sizeOf (0 :: Int)) t
-    pokeByteOff ptr (2 * sizeOf (0 :: Int)) n
-  peek ptr = do
-    v <- peekByteOff ptr 0
-    t <- peekByteOff ptr (1 * sizeOf (0 :: Int))
-    n <- peekByteOff ptr (2 * sizeOf (0 :: Int))
-    return $ VTNIndex v t n
-
-type WindowWidth  = Int
-type WindowHeight = Int
-
-data MousePos = MousePos
-  { _mousePos :: !(L.V2 Double)
-  } deriving (Eq, Ord, Show)
-
-data Entity s = Entity
-  { _entityGraphics        :: Maybe (Gfx s)
-  , _entitySounds          :: Maybe (Sfx s)
-  , _entityLogic           :: Maybe (Lfx s)
-  , _entityChildren        :: Vector (Entity s)
-  , _entityCollisionObject :: CollisionObject
-  , _entityRigidBody       :: Maybe RigidBody
-  }
-
-data TextureBundle s = TextureBundle
-  { _textureBundleDiffuseTexture      :: Maybe s
-  , _textureBundleSpecularTexture     :: Maybe s
-  , _textureBundleAmbientTexture      :: Maybe s
-  , _textureBundleEmmisiveTexture     :: Maybe s
-  , _textureBundleHeightTexture       :: Maybe s
-  , _textureBundleNormalTexture       :: Maybe s
-  , _textureBundleShininessTexture    :: Maybe s
-  , _textureBundleOpacityTexture      :: Maybe s
-  , _textureBundleDisplacementTexture :: Maybe s
-  , _textureBundleLightMapTexture     :: Maybe s
-  , _textureBundleReflectionTexture   :: Maybe s
-  } deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
-
-emptyTextureBundle :: TextureBundle s
-emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
-
-data DynamicBufferBundle = DynamicBufferBundle
-  { _dynamicBufferBundleShaderMaterialBuffer :: DynamicBuffer ShaderMaterial
-  , _dynamicBufferBundleShaderCameraBuffer :: DynamicBuffer ShaderCamera
-  , _dynamicBufferBundlePointLightBundleBuffer :: DynamicBuffer PointLightBundle
-  } deriving (Eq, Ord, Show)
-
 data VaoData = VaoData
   { _vaoDataVao            :: VertexArrayObject
   , _vaoDataShaderPipeline :: ShaderPipeline
@@ -363,150 +265,35 @@ data Gfx s = Gfx
 newtype CollisionObject = CollisionObject { _unCollisionObject :: P.CollisionObject }
 newtype RigidBody       = RigidBody       { _unRigidBody       :: P.RigidBody       }
 
-type VPMatrix = L.M44 Float
-type VMatrix  = L.M44 Float
-type PMatrix  = L.M44 Float
-
-data Sfx s = Sfx
+newtype Sfx s = Sfx
   { _sfxSources :: Vector AL.Source
   }
 
-data Lfx s = Lfx
+newtype Lfx s = Lfx
   { _lfxScripts :: Vector (Entity s -> Game s (Entity s))
   }
 
-newtype AssImpScene = AssImpScene
-  { _assImpMeshes :: Vector AssImpMesh }
-
-data AssImpMesh = AssImpMesh
-  { _assImpMeshVAO            :: VertexArrayObject
-  , _assImpMeshBufferName     :: BufferName
-  , _assImpMeshTextureDetails :: Vector Word32
-  , _assImpMeshIndexBO        :: BufferName
-  , _assImpMeshIndexBOType    :: IndexType
-  , _assImpMeshIndexNum       :: Word32
-  , _assImpMeshTextureBundle  :: TextureBundle FilePath
-  , _assImpMeshShaderMaterial :: ShaderMaterial
-  }
-
-data PointLight = PointLight
-  { _pointLightPosition :: L.V4 Float
-  , _pointLightIntensity :: Float
-  } deriving (Eq, Ord, Show)
-
-instance Storable PointLight where
-  sizeOf _ = (4 + 4) * sizeOf (0 :: Float)
-  alignment _ = 4 * alignment (error "unreachable" :: Float)
-  poke ptr (PointLight loc str) = do
-    pokeByteOff ptr 0 loc
-    pokeByteOff ptr (4 * sizeOf (0 :: Float)) str
-  peek ptr = do
-    loc <- peekByteOff ptr 0
-    str <- peekByteOff ptr (4 * sizeOf (0 :: Float))
-    return $ PointLight loc str
-
-instance GLSized PointLight where
-  gSize_ _ = sizeOf (error "unreachable" :: PointLight)
-
-instance GLWritable PointLight where
-  gPoke_ = poke
-
-data PointLightBundle = PointLightBundle
-  { _pointLightBundleLights :: VS.Vector PointLight
-  , _pointLightBundleNum :: Int
-  }
-
-data ShaderCamera = ShaderCamera
-  { _shaderCameraMVP :: L.M44 Float
-  , _shaderCameraMV  :: L.M44 Float
-  , _shaderCameraP   :: L.M44 Float
-  } deriving (Eq, Ord, Show)
-
-instance GLSized ShaderCamera where
-  gSize_ _ = 3 * sizeOf (error "unreachable" :: L.M44 Float)
-
-instance GLWritable ShaderCamera where
-  gPoke_ ptr (ShaderCamera mvp vp p) = do
-    pokeByteOff (castPtr ptr) (0*m) mvp
-    pokeByteOff (castPtr ptr) (1*m) vp
-    pokeByteOff (castPtr ptr) (2*m) p
-    where
-      m = 16 * sizeOf (error "unreachable" :: Float)
-
-data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
-
-instance ForeignWrite () CameraBlock (DynamicBuffer ShaderCamera) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer CameraBlock 0
-
-maxPointLights :: Int
-maxPointLights = 4
-
-instance GLSized PointLightBundle where
-  gSize_ _ = maxPointLights * gSize (Proxy :: Proxy PointLight) + sizeOf (0 :: Int)
-
-instance GLWritable PointLightBundle where
-  gPoke_ ptr (PointLightBundle ls n) = VS.unsafeWith ls $ \lsPtr -> do
-    copyBytes ptr (castPtr lsPtr) $ gSize (Proxy :: Proxy PointLight) * min maxPointLights (length ls)
-    poke (castPtr (ptr `plusPtr` (maxPointLights * gSize (Proxy :: Proxy PointLight) ))) n
-
-data PointLightBlock = PointLightBlock deriving (Eq, Ord, Show)
-
-instance ForeignWrite () PointLightBlock (DynamicBuffer PointLightBundle) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer PointLightBlock 1
-
-data ShaderMaterial = ShaderMaterial
-  { _shaderMaterialDiffuseColor     :: L.V4 Float
-  , _shaderMaterialAmbientColor     :: L.V4 Float
-  , _shaderMaterialSpecularColor    :: L.V4 Float
-  , _shaderMaterialSpecularStrength :: Float
-  , _shaderMaterialSpecularExponent :: Float
-  } deriving (Eq, Ord, Show)
-
-instance GLSized ShaderMaterial where
-  gSize_ _ = 16 * sizeOf (error "unreachable" :: Float)
-
-instance GLWritable ShaderMaterial where
-  gPoke_ ptr ShaderMaterial {..} = do
-    pokeByteOff ptr (0*m) _shaderMaterialDiffuseColor
-    pokeByteOff ptr (4*m) _shaderMaterialAmbientColor
-    pokeByteOff ptr (8*m) _shaderMaterialSpecularColor
-    pokeByteOff ptr (12*m) _shaderMaterialSpecularStrength
-    pokeByteOff ptr (13*m) _shaderMaterialSpecularExponent
-    where
-      m = sizeOf (error "unreachable" :: Float)
-
-data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
-
-instance ForeignWrite () ShaderMaterialBlock (DynamicBuffer ShaderMaterial) where
-  writeR_ _ _ = bindFullDynamicUniformBuffer ShaderMaterialBlock 2
+data InputScheme
+  = InputPlaying
+  | InputDevConsole
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 mconcat <$> mapM makeLenses
   [ ''Camera
   , ''Entity
   , ''EventRegister
-  , ''ExpandObjVTN
   , ''Game
   , ''GameState
   , ''Gfx
   , ''GiantFeaturelessPlane
   , ''Lfx
   , ''CollisionObject
-  , ''MousePos
   , ''PhysicsWorld
   , ''Player
   , ''RigidBody
   , ''Script
   , ''ScriptName
   , ''Sfx
-  , ''VTNIndex
-  , ''VTNPoint
   , ''IOData
-  , ''AssImpVertex
-  , ''AssImpScene
-  , ''AssImpMesh
   , ''VaoData
-  , ''TextureBundle
-  , ''PointLight
-  , ''PointLightBundle
-  , ''DynamicBufferBundle
   ]
