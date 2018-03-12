@@ -18,24 +18,20 @@ newPlayer = liftIO $ do
   P.setIdentity startXform
   P.setOrigin startXform 0 4 4
   playerMotionState <- P.new startXform
-  playerShape <- P.newBoxShape 0.5 0.5 0.5
+  playerShape <- P.newCapsuleShape 1 0.35
   rbci <- P.newRigidBodyConstructionInfo 1 playerMotionState playerShape 0 0 0
   playerRigidBody <- P.newRigidBody rbci
   P.setActivationState playerRigidBody P.activationStateDisableDeactivation
   P.del startXform
   P.del rbci
 
-  -- let stepHeight = 0.35
-  -- controller <- P.newKinematicCharacterController pcgo playerShape stepHeight
   let e = Entity
           { _entityChildren = empty
           , _entityGraphics = Nothing
           , _entitySounds   = Nothing
-          , _entityLogic    = Just Lfx
-                              { _lfxScripts = empty
-                              }
+          , _entityLogic    = Nothing
           , _entityRigidBody = Just $ RigidBody playerRigidBody
-          , _entityCollisionObject = CollisionObject (P.toCollisionObject playerRigidBody)
+          , _entityCollisionObject = CollisionObject $ P.toCollisionObject playerRigidBody
           }
   return Player
     { _playerController = playerRigidBody

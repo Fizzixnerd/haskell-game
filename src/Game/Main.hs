@@ -65,7 +65,7 @@ setupPhysics ps = do
   pl' <- newPlayer
   let pl = pl' & playerEntity . entityGraphics .~ (theModel1E ^. entityGraphics)
       con = pl ^. playerController
-  cam <- newCamera con 4
+  cam <- newCamera con 2.5
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
   withCameraTransform cam $ \t -> do
@@ -287,13 +287,12 @@ gameMain = runResourceTChecked $ AL.withProgNameAndArgs AL.runALUT $ \_progName 
             InputPlaying    -> playSchemeWire
             InputDevConsole -> devConsoleWire
 
-
           mainWires = fromList [ animationWire
                                , stateSwitchingWire (use gameStateKeyboardInputScheme) schemeSelector
                                , physicsWire
-                               , camera
-                               , zoomCamera
---                               , turnPlayer
+                               , cameraWire
+                               , zoomCameraWire
+                               , dampPlayerWire
                                ]
 
           gameState = initGameState & gameStatePhysicsWorld .~ physicsWorld

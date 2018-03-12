@@ -64,12 +64,15 @@ void main() {
   }
   vec3 outline = vec3(0);
   // high poly outliner
-  // float outliner = abs(dot(V, N));
-  // if (outliner < 0.1) {
-  //   outline = mix(vec3(0), vec3(-1), outliner / 0.1);
-  // }
+  float outliner = abs(dot(V, N));
+  float threshold = 0.2;
+  if (outliner < threshold) {
+    outline = mix(vec3(0), vec3(-10), outliner / threshold);
+  }
 
-  float toon_factor = 5;
-  vec3 tex = texture(tex_color, floor(toon_factor * fs_in.uv) / toon_factor).rgb;
-  color = vec4(diffuse + specular + tex + outline + material.ambient_color.rgb, 1.0);
+  // "pixelifier", for making things look cartoony-ish
+  //  float toon_factor = 5;
+  //vec3 tex = texture(tex_color, floor(toon_factor * fs_in.uv) / toon_factor).rgb;
+  vec3 tex = texture(tex_color, fs_in.uv).rgb;
+  color = vec4(diffuse * 0.1 + specular * 0.1 + tex + outline + material.ambient_color.rgb * 0.1, 1.0);
 }

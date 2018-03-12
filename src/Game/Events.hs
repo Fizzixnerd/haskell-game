@@ -22,8 +22,8 @@ import qualified Linear as L
 import qualified Sound.OpenAL as AL
 import           Game.Wires
 
-zoomCamera :: GameEffectWire s
-zoomCamera = effectWire $ do
+zoomCameraWire :: GameEffectWire s
+zoomCameraWire = effectWire $ do
   cam <- use gameStateCamera
   disp <- getCameraDisplacementFromTarget cam
   let dist = L.norm disp
@@ -57,8 +57,8 @@ rotateCamera (dhor, dver) cam = do
       | theta < (-0.9) = min 0 dver
       | otherwise      = dver
 
-camera :: GameEffectWire s
-camera = camWire
+cameraWire :: GameEffectWire s
+cameraWire = camWire
   where
     rotCam = mkGen_ $ \(x, y) -> Right <$> do
       cam <- use gameStateCamera
@@ -68,8 +68,15 @@ camera = camWire
 movePlayer :: GameWire s (L.V3 Float) ()
 movePlayer = mkGen_ $ \dir -> Right <$> do
   p <- use gameStatePlayer
-  let force_ = 100 * dir
-  playerApplyForce p force_
+  let impulse = 100 * dir
+  playerApplyForce p impulse
+
+dampPlayerWire :: GameEffectWire s
+dampPlayerWire = effectWire $ do
+  p <- use gameStatePlayer
+  v <- getPlayerLinearVelocity p
+  let drag = - v
+  playerApplyForce p drag
 
 playerHorizontalMovement :: GameWire s a (L.V3 Float)
 playerHorizontalMovement = (\v -> 0.1 * recip (L.norm v) L.*^ v) <$> solderWire (+) zwire xwire
