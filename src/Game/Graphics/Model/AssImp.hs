@@ -4,9 +4,11 @@
 module Game.Graphics.Model.AssImp where
 
 import ClassyPrelude as ClassyP
-import Asset.AssImp.Types
-import Asset.AssImp.Import
+import Control.Lens
+import qualified Asset.AssImp.Types as A
+import qualified Asset.AssImp.Import as A
 import Foreign.C.Types
+import qualified Data.Map as M
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
@@ -20,8 +22,8 @@ import qualified Data.Vector.Storable as VS
 import qualified Linear as L
 import Foreign.Resource
 
-importAssImpFileGood :: FilePath -> IO ScenePtr
-importAssImpFileGood = importAndProcessFileGood
+importAssImpFileGood :: FilePath -> IO A.ScenePtr
+importAssImpFileGood = A.importAndProcessFileGood
 
 rawInterleave :: forall a. (Storable a, Num a) => Int -> Int -> Vector (Ptr a, Word32, Word32) -> IO (VS.Vector a)
 rawInterleave numV chunkLen ptrData = do
@@ -38,22 +40,78 @@ rawInterleave numV chunkLen ptrData = do
     elemSize = sizeOf (error "how are you seeing this?" :: a)
     totalLen = chunkLen * numV
 
+peekV3 :: (A.MeshPtr -> IO (Ptr a)) -> A.MeshPtr -> IO (Vector (L.V3 Float))
+peekV3 f meshPtr = do
+  numVert <- A.meshNumVertices meshPtr
+  ptr <- f meshPtr
+  foldM (\vs i -> do
+            let offset = fromIntegral i * 3 * sizeOf (0 :: Float)
+            v <- A.peekVector3D $ castPtr $ ptr `plusPtr` offset
+            return $ vs `V.snoc` v)
+    V.empty [0..numVert-1]
+
+peekVertices :: A.MeshPtr -> IO (Vector (L.V3 Float))
+peekVertices = peekV3 A.meshVertices
+
+peekNormals :: A.MeshPtr -> IO (Vector (L.V3 Float))
+peekNormals = peekV3 A.meshNormals
+
+peekTangents :: A.MeshPtr -> IO (Vector (L.V3 Float))
+peekTangents = peekV3 A.meshTangents
+
+addBoneData :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
+addBoneData bd (L.V4 0 0 0 0) = L.V4 bd 0 0 0
+addBoneData bd (L.V4 x 0 0 0) = L.V4 x bd 0 0
+addBoneData bd (L.V4 x y 0 0) = L.V4 x y bd 0
+addBoneData bd (L.V4 x y z 0) = L.V4 x y z bd
+addBoneData _ _ = error "Attempt to addBoneData to full Bone datum!"
+
+peekVertexAttributes :: BoneMap -> Vector Bone -> A.MeshPtr -> IO (Vector AssImpVertex)
+peekVertexAttributes _ bones meshPtr = do
+  vs <- peekVertices meshPtr
+  ns <- peekNormals meshPtr
+  ts <- peekTangents meshPtr
+  let initBoneIDs :: Vector (L.V4 Int) = replicate (length vs) (L.V4 0 0 0 0)
+      initBoneWeights :: Vector (L.V4 Float) = replicate (length vs) (L.V4 0 0 0 0)
+  (boneIDs, boneWeights_) <-
+    foldM (\(bids, bws) b -> do
+              let bid = fromIntegral $ b ^. boneID
+              foldM (\(bids_, bws_) (vertexID, weight) -> do
+                        let bids' = bids_ & ix vertexID %~ addBoneData bid
+                            bws'  = bws_ & ix vertexID %~ addBoneData weight
+                        return (bids', bws'))
+                (bids, bws) (b ^. boneWeights))
+    (initBoneIDs, initBoneWeights) bones
+  return $ foldl' (\vertices i ->
+            let v = vs V.! i
+                n = ns V.! i
+                t = ts V.! i
+                bid = boneIDs V.! i
+                bw = boneWeights_ V.! i
+            in
+              vertices `V.snoc` AssImpVertex v (n ^. L._xy) t bid bw)
+    empty [0..length vs - 1]
+
 -- Layout:
 -- 0: Vertex
 -- 1: Normal
 -- 2: Tangent
--- 3+: texture channels
-massageAssImpMesh :: MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32)
-massageAssImpMesh ptr = do
-  numV    <- (\(CUInt x) -> x) <$> meshNumVertices ptr
-  numUVs  <- castPtr <$> meshNumUVComponents ptr :: IO (Ptr Word32)
-  vptr    <- castPtr <$> meshVertices ptr :: IO (Ptr Float)
-  nptr    <- castPtr <$> meshNormals ptr
-  tptr    <- castPtr <$> meshTangents ptr
-  tptrptr <- meshTextureCoords ptr
-  (faceptr, faceNum) <- bufferFaces ptr
+-- 3: BoneID
+-- 4: BoneWeight
+-- 5-13: Textures
+massageAssImpMesh :: BoneMap -> Vector Bone -> A.MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32, Vector AssImpVertex)
+massageAssImpMesh bm bv ptr = do
+  numV    <- (\(CUInt x) -> x) <$> A.meshNumVertices ptr
+  numUVs  <- castPtr <$> A.meshNumUVComponents ptr :: IO (Ptr Word32)
+  vptr    <- castPtr <$> A.meshVertices ptr :: IO (Ptr Float)
+  nptr    <- castPtr <$> A.meshNormals ptr
+  tptr    <- castPtr <$> A.meshTangents ptr
+  tptrptr <- A.meshTextureCoords ptr
+  (faceptr, faceNum) <- A.bufferFaces ptr
   uvs_   <- V.fromList <$> peekArray 8 numUVs
   tptrs_ <- fmap castPtr . V.fromList <$> peekArray 8 tptrptr
+
+  vertices <- peekVertexAttributes bm bv ptr
 
   let ptrs_       = V.fromList [vptr, nptr, tptr] <> tptrs_
       components_ = V.fromList [3, 3, 3] <> uvs_
@@ -63,11 +121,38 @@ massageAssImpMesh ptr = do
       chunkLen = fromIntegral $ sum components
 
   vdata <- rawInterleave (fromIntegral numV) chunkLen (V.zip3 ptrs components offsets)
-  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets)
+  return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets, vertices)
 
-marshalAssImpMesh :: ScenePtr -> MeshPtr -> IO AssImpMesh
+loadBonesFromMesh :: A.MeshPtr -> IO (BoneMap, Vector Bone)
+loadBonesFromMesh meshPtr = do
+  numBones <- A.meshNumBones meshPtr
+  meshBones_ <- A.meshBones meshPtr
+  bm <- foldM (\bMap boneID_ -> do
+                  let boneID' = fromIntegral boneID_
+                  bonePtr <- peekElemOff meshBones_ boneID'
+                  name <- fromString <$> A.peekAIString (A.boneName bonePtr)
+                  matrix <- A.peekMatrix4x4 $ A.boneOffsetMatrix bonePtr
+                  let weights = A.boneWeights bonePtr
+                  numWeights <- A.boneNumWeights bonePtr
+                  weightsVector <- V.generateM (fromIntegral numWeights) $ \i -> do
+                    vw <- A.peekVertexWeight $ weights `plusPtr` (A.sizeOfVertexWeight * i)
+                    return (A.vertexWeightVID vw, A.vertexWeightVWeight vw)
+                  let bone = Bone
+                             { _boneName = name
+                             , _boneID = boneID'
+                             , _boneMatrix = matrix
+                             , _boneWeights = weightsVector
+                             }
+                  return $ M.insert name bone bMap)
+        M.empty [0..numBones-1]
+  let bv = sortOn _boneID $ fromList $ toList bm
+  return (bm, bv)
+
+marshalAssImpMesh :: A.ScenePtr -> A.MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
-  (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets) <- massageAssImpMesh ptr
+  (boneMap, boneVector) <- loadBonesFromMesh ptr
+  (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets, _) <-
+    massageAssImpMesh boneMap boneVector ptr
 
   let texData = V.zip uvs . fmap ((* sizeOf (0 :: CFloat)) . fromIntegral) $ texOffsets
       flags   = defaultBufferAttribFlags
@@ -75,7 +160,8 @@ marshalAssImpMesh sc ptr = do
       stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
 
   vao <- genName'
-  vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
+  vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit
+    (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
 
   vertexArrayVertexBuffer vao 0 vbuf 0 (fromIntegral stride)
@@ -87,32 +173,32 @@ marshalAssImpMesh sc ptr = do
   V.imapM_ (\i (uv, offset) -> fullAttribInit (fromIntegral i) (fromIntegral uv) (fromIntegral offset)) texData
   bindElementBuffer vao ibuf
 
-  mats <- sceneMaterials sc
-  idx <- meshMaterialIndex ptr
+  mats <- A.sceneMaterials sc
+  idx <- A.meshMaterialIndex ptr
 
   mat <- peekElemOff mats (fromIntegral idx)
 
-  let matTex = fmap (mfilter $ not . null) . materialTexture mat
-  diffuseName      <- matTex TextureTypeDiffuse
-  specularName     <- matTex TextureTypeSpecular
-  ambientName      <- matTex TextureTypeAmbient
-  emmisiveName     <- matTex TextureTypeEmmisive
-  heightName       <- matTex TextureTypeHeight
-  normalName       <- matTex TextureTypeNormals
-  shininessName    <- matTex TextureTypeShininess
-  opacityName      <- matTex TextureTypeOpacity
-  displacementName <- matTex TextureTypeDisplacement
-  lightMapName     <- matTex TextureTypeLightMap
-  reflectionName   <- matTex TextureTypeReflection
+  let matTex = fmap (mfilter $ not . null) . A.materialTexture mat
+  diffuseName      <- matTex A.TextureTypeDiffuse
+  specularName     <- matTex A.TextureTypeSpecular
+  ambientName      <- matTex A.TextureTypeAmbient
+  emmisiveName     <- matTex A.TextureTypeEmmisive
+  heightName       <- matTex A.TextureTypeHeight
+  normalName       <- matTex A.TextureTypeNormals
+  shininessName    <- matTex A.TextureTypeShininess
+  opacityName      <- matTex A.TextureTypeOpacity
+  displacementName <- matTex A.TextureTypeDisplacement
+  lightMapName     <- matTex A.TextureTypeLightMap
+  reflectionName   <- matTex A.TextureTypeReflection
 
-  (Color3D dr dg db) <- materialColorDiffuse mat
+  (L.V3 dr dg db) <- A.materialColorDiffuse mat
   let diffuseColor = L.V4 dr dg db 0
-  (Color3D ar ag ab) <- materialColorAmbient mat
+  (L.V3 ar ag ab) <- A.materialColorAmbient mat
   let ambientColor = L.V4 ar ag ab 0
-  (Color3D sr sg sb) <- materialColorSpecular mat
+  (L.V3 sr sg sb) <- A.materialColorSpecular mat
   let specularColor = L.V4 sr sg sb 0
-  specularStrength <- materialShininessStrength mat
-  specularExponent <- materialShininess mat
+  specularStrength <- A.materialShininessStrength mat
+  specularExponent <- A.materialShininess mat
 
   return AssImpMesh
     { _assImpMeshVAO             = vao
@@ -141,13 +227,29 @@ marshalAssImpMesh sc ptr = do
       , _shaderMaterialSpecularStrength = specularStrength
       , _shaderMaterialSpecularExponent = specularExponent
       }
+    , _assImpMeshBones = boneVector
+    , _assImpMeshBoneMap = boneMap
     }
 
-marshalAssImpScene :: ScenePtr -> IO AssImpScene
+marshalAssImpScene :: A.ScenePtr -> IO AssImpScene
 marshalAssImpScene sc = do
-  numMeshes <- fromIntegral <$> sceneNumMeshes sc
-  mptr <- sceneMeshes sc
-  fmap AssImpScene $ V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh sc
+  numMeshes <- fromIntegral <$> A.sceneNumMeshes sc
+  numAnimations <- fromIntegral <$> A.sceneNumAnimations sc
+
+  animationsPtrPtr <- A.sceneAnimations sc
+
+  animationVector <- V.generateM numAnimations $ \i -> peekElemOff animationsPtrPtr i
+  animationMap <- foldM (\aMap animationPtr -> do
+                            animation <- peekAnimation animationPtr
+                            let name = animation ^. animationName
+                            return $ M.insert name animation aMap)
+                  M.empty animationVector
+  rootNodePtr <- A.sceneRootNode sc
+  mptr <- A.sceneMeshes sc
+
+
+  assImpMeshes_ <- V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh sc
+  return $ AssImpScene assImpMeshes_ undefined animationMap
 
 loadAssImpScene :: MonadIO m => FilePath -> m AssImpScene
 loadAssImpScene = liftIO . (importAssImpFileGood >=> marshalAssImpScene)

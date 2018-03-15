@@ -12,6 +12,7 @@
 
 module Game.Graphics.Types where
 
+import qualified Asset.AssImp.Types as A
 import ClassyPrelude
 import Foreign.Resource
 import Graphics.Binding
@@ -25,6 +26,7 @@ import Data.Typeable
 import Foreign.Ptr
 import Foreign.Marshal.Utils
 import Control.Lens
+import qualified Data.Vector as V
 
 -- * Obj file loading.
 data VTNPoint = VTNPoint
@@ -75,25 +77,35 @@ data ExpandObjVTN = ExpandObjVTN
   , _expandObjVTNNorms :: Vector W.Normal
   } deriving (Eq, Show)
 
+type BoneWeight = Float
+
 -- * AssImp loading.
 data AssImpVertex = AssImpVertex
-  { _assImpVertexV :: !(L.V3 Float)
-  , _assImpVertexT :: !(L.V2 Float)
-  , _assImpVertexN :: !(L.V3 Float)
+  { _assImpVertexV          :: !(L.V3 Float)
+  , _assImpVertexT          :: !(L.V2 Float)
+  , _assImpVertexN          :: !(L.V3 Float)
+  , _assImpBoneIDs          :: !(L.V4 BoneID)
+  , _assImpBoneWeights      :: !(L.V4 BoneWeight)
   } deriving (Eq, Show, Ord, Read)
 
 instance Storable AssImpVertex where
   sizeOf _ = 8 * sizeOf (0 :: Float)
   alignment _ = alignment (0 :: Float)
-  poke ptr (AssImpVertex v t n) = do
+  poke ptr (AssImpVertex v t n bids bweights) = do
     pokeByteOff ptr 0 v
     pokeByteOff ptr (3 * sizeOf (0 :: Float)) t
     pokeByteOff ptr (5 * sizeOf (0 :: Float)) n
+    pokeByteOff ptr (8 * sizeOf (0 :: Float)) bids
+    pokeByteOff ptr (8 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int)) bweights
   peek ptr = do
     v <- peekByteOff ptr 0
     t <- peekByteOff ptr (3 * sizeOf (0 :: Float))
     n <- peekByteOff ptr (5 * sizeOf (0 :: Float))
-    return $ AssImpVertex v t n
+    bids <- peekByteOff ptr (8 * sizeOf (0 :: Float))
+    bweights <- peekByteOff ptr (8 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int))
+    return $ AssImpVertex v t n bids bweights
+
+type BoneMap = Map Text Bone
 
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
@@ -104,10 +116,14 @@ data AssImpMesh = AssImpMesh
   , _assImpMeshIndexNum       :: Word32
   , _assImpMeshTextureBundle  :: TextureBundle FilePath
   , _assImpMeshShaderMaterial :: ShaderMaterial
+  , _assImpMeshBones          :: Vector Bone
+  , _assImpMeshBoneMap        :: BoneMap
   } deriving (Eq, Ord, Show)
 
-newtype AssImpScene = AssImpScene
+data AssImpScene = AssImpScene
   { _assImpMeshes :: Vector AssImpMesh
+  , _assImpNodes  :: NodeBundle
+  , _assImpAnimations :: Map Text Animation
   } deriving (Eq, Ord, Show)
 
 -- * Texture data
@@ -124,6 +140,131 @@ data TextureBundle s = TextureBundle
   , _textureBundleLightMapTexture     :: Maybe s
   , _textureBundleReflectionTexture   :: Maybe s
   } deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
+
+-- * Animation data
+type BoneID = Int
+type NodeID = Int
+type VertexID = Int
+type Weight = Float
+
+data Bone = Bone
+  { _boneName :: Text
+  , _boneID :: BoneID
+  , _boneWeights :: Vector (VertexID, Weight)
+  , _boneMatrix :: L.M44 Float
+  } deriving (Eq, Ord, Show)
+
+data Animation = Animation
+                 { _animationName :: Text
+                 , _animationDuration :: Double
+                 , _animationTicksPerSecond :: Double
+                 , _animationChannels :: Vector NodeAnim
+                 , _animationMeshChannels :: Vector MeshAnim
+                 , _animationMeshMorphChannels :: Vector MeshMorphAnim
+                 } deriving (Eq, Ord, Show)
+
+peekAnimation :: A.AnimationPtr -> IO Animation
+peekAnimation aptr = do
+  name <- fromString <$> A.peekAIString (A.animationName aptr)
+  (CDouble duration) <- A.animationDuration aptr
+  (CDouble tps) <- A.animationTicksPerSecond aptr
+  numChans <- fromIntegral <$> A.animationNumChannels aptr
+  chansPtr <- A.animationChannels aptr
+  chans <- V.generateM numChans $ \i ->
+    peekNodeAnim $ chansPtr `plusPtr` (i * A.sizeOfNodeAnim)
+  numMeshChans <- fromIntegral <$> A.animationNumMeshChannels aptr
+  meshChansPtr <- A.animationMeshChannels aptr
+  meshChans <- V.generateM numMeshChans $ \i ->
+    peekMeshAnim $ meshChansPtr `plusPtr` (i * A.sizeOfMeshAnim)
+  numMeshMorphChans <- fromIntegral <$> A.animationNumMorphMeshChannels aptr
+  meshMorphChansPtr <- A.animationMorphMeshChannels aptr
+  meshMorphChans <- V.generateM numMeshMorphChans $ \i ->
+    peekMeshMorphAnim $ meshMorphChansPtr `plusPtr` (i * A.sizeOfMeshMorphAnim)
+  return $ Animation name duration tps chans meshChans meshMorphChans
+
+data NodeAnim = NodeAnim
+                { _nodeAnimName :: Text
+                , _nodeAnimPositionKeys :: Vector PositionKey
+                , _nodeAnimRotationKeys :: Vector RotationKey
+                , _nodeAnimScalingKeys  :: Vector ScalingKey
+                , _nodeAnimPreState     :: A.AnimBehaviour
+                , _nodeAnimPostState    :: A.AnimBehaviour
+                } deriving (Eq, Ord, Show)
+
+peekNodeAnim :: A.NodeAnimPtr -> IO NodeAnim
+peekNodeAnim anp = do
+  name <- fromString <$> A.peekAIString (A.nodeAnimNodeName anp)
+  numPosKeys <- fromIntegral <$> A.nodeAnimNumPositionKeys anp
+  posKeysPtr <- A.nodeAnimPositionKeys anp
+  posKeys <- V.generateM numPosKeys $ \i ->
+    peekPositionKey $ posKeysPtr `plusPtr` (i * A.sizeOfVectorKey)
+  numRotKeys <-fromIntegral <$> A.nodeAnimNumRotationKeys anp
+  rotKeysPtr <- A.nodeAnimRotationKeys anp
+  rotKeys <- V.generateM numRotKeys $ \i ->
+    peekRotationKey $ rotKeysPtr `plusPtr` (i * A.sizeOfQuatKey)
+  numScaKeys <- fromIntegral <$> A.nodeAnimNumScalingKeys anp
+  scaKeysPtr <- A.nodeAnimScalingKeys anp
+  scaKeys <- V.generateM numScaKeys $ \i ->
+    peekScalingKey $ scaKeysPtr `plusPtr` (i * A.sizeOfVectorKey)
+  preState <- A.nodeAnimPreState anp
+  postState <- A.nodeAnimPostState anp
+  return $ NodeAnim name posKeys rotKeys scaKeys preState postState
+
+-- TODO: Implement these!
+data MeshAnim = MeshAnim deriving (Eq, Ord, Show)
+
+peekMeshAnim :: A.MeshAnimPtr -> IO MeshAnim
+peekMeshAnim = const $ return MeshAnim
+
+data MeshMorphAnim = MeshMorphAnim deriving (Eq, Ord, Show)
+
+peekMeshMorphAnim :: A.MeshMorphAnimPtr -> IO MeshMorphAnim
+peekMeshMorphAnim = const $ return MeshMorphAnim
+
+data PositionKey = PositionKey
+                   { _positionKeyTime :: Double
+                   , _positionKeyPosition :: L.V3 Float
+                   } deriving (Eq, Ord, Show)
+
+peekPositionKey :: A.VectorKeyPtr -> IO PositionKey
+peekPositionKey vkp = do
+  (CDouble time) <- A.vectorKeyTime vkp
+  pos <- A.peekVector3D $ A.vectorKeyValue vkp
+  return $ PositionKey time pos
+
+data RotationKey = RotationKey
+                   { _rotationKeyTime :: Double
+                   , _rotationKeyRotation :: L.Quaternion Float
+                   } deriving (Eq, Ord, Show)
+
+peekRotationKey :: A.QuatKeyPtr -> IO RotationKey
+peekRotationKey qkp = do
+  (CDouble time) <- A.quatKeyTime qkp
+  rot <- A.peekQuaternion $ A.quatKeyValue qkp
+  return $ RotationKey time rot
+
+data ScalingKey = ScalingKey
+                  { _scalingKeyTime :: Double
+                  , _scalingKeyScaling :: L.V3 Float
+                  } deriving (Eq, Ord, Show)
+
+peekScalingKey :: A.VectorKeyPtr -> IO ScalingKey
+peekScalingKey vkp = do
+  (CDouble time) <- A.vectorKeyTime vkp
+  sca <- A.peekVector3D $ A.vectorKeyValue vkp
+  return $ ScalingKey time sca
+
+data Node = Node
+  { _nodeName :: Text
+  , _nodeID :: NodeID
+  , _nodeMatrix :: L.M44 Float
+  , _nodeParent :: Maybe NodeID
+  , _nodeChildren :: Vector NodeID
+  } deriving (Eq, Ord, Show)
+
+data NodeBundle = NodeBundle
+  { _nodeBundleNodes :: Map Text (Node, Maybe Bone)
+  } deriving (Eq, Ord, Show)
 
 emptyTextureBundle :: TextureBundle s
 emptyTextureBundle = TextureBundle Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
@@ -324,7 +465,6 @@ instance ForeignWrite () DirectionalLightBlock (DynamicBuffer DirectionalLightBu
   writeR_ _ _ = bindFullDynamicUniformBuffer DirectionalLightBlock (error "Set me to a particular binding point!")
 
 -- * Text buffering
-
 newtype TextBuffer = TextBuffer
   { _textBufferBufferText :: Text
   } deriving (Eq, Ord, Show)
@@ -369,4 +509,9 @@ mconcat <$> mapM makeLenses
   , ''TextureBundle
   , ''LightBundle
   , ''DynamicBufferBundle
+  , ''Bone
+  , ''Node
+  , ''NodeBundle
+  , ''NodeAnim
+  , ''Animation
   ]

@@ -65,7 +65,7 @@ setupPhysics ps = do
   pl' <- newPlayer
   let pl = pl' & playerEntity . entityGraphics .~ (theModel1E ^. entityGraphics)
       con = pl ^. playerController
-  cam <- newCamera con 2.5
+  cam <- newCamera con 4
   pw' <- addPlayerToPhysicsWorld pl pw
   pw'' <- addCameraToPhysicsWorld cam pw'
   withCameraTransform cam $ \t -> do
@@ -98,7 +98,7 @@ createTheModel (phong, normalMap) = do
   model' <- P.newBoxShape 0.5 0.5 0.5
   startXform' <- P.new ((0, 0, 0, 0), (0, 0, 0))
   P.setIdentity startXform'
-  P.setOrigin startXform' 4 1 0
+  P.setOrigin startXform' 4 0 0
   -- Don't delete the ms!!  See below.
   ms' <- P.new startXform'
   rbci' <- P.newRigidBodyConstructionInfo 0 ms' model' 0 1 0
@@ -132,8 +132,8 @@ createTheModel (phong, normalMap) = do
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes $ loadMeshes modelRoot defaultTexture
 
-  let modelRoot' = "res" </> "models"
-      modelName' = "golden_icosphere-2.dae"
+  let modelRoot' = "res" </> "models" </> "wolf"
+      modelName' = "Wolf_dae.dae"
       defaultTexture' = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes') <- loadAssImpScene $ modelRoot' </> modelName'
   vaoData' <- forM meshes' $ loadMeshes modelRoot' defaultTexture'
