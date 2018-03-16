@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Game.Graphics.Model.AssImp where
 
@@ -66,7 +67,7 @@ addBoneData bd (L.V4 x y 0 0) = L.V4 x y bd 0
 addBoneData bd (L.V4 x y z 0) = L.V4 x y z bd
 addBoneData _ _ = error "Attempt to addBoneData to full Bone datum!"
 
-peekVertexAttributes :: BoneMap -> Vector Bone -> A.MeshPtr -> IO (Vector AssImpVertex)
+peekVertexAttributes :: BoneIDMap -> Vector Bone -> A.MeshPtr -> IO (Vector AssImpVertex)
 peekVertexAttributes _ bones meshPtr = do
   vs <- peekVertices meshPtr
   ns <- peekNormals meshPtr
@@ -99,7 +100,7 @@ peekVertexAttributes _ bones meshPtr = do
 -- 3: BoneID
 -- 4: BoneWeight
 -- 5-13: Textures
-massageAssImpMesh :: BoneMap -> Vector Bone -> A.MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32, Vector AssImpVertex)
+massageAssImpMesh :: BoneIDMap -> Vector Bone -> A.MeshPtr -> IO (VS.Vector Float, Word32, Ptr Word32, Word32, Vector Word32, Vector Word32, Vector AssImpVertex)
 massageAssImpMesh bm bv ptr = do
   numV    <- (\(CUInt x) -> x) <$> A.meshNumVertices ptr
   numUVs  <- castPtr <$> A.meshNumUVComponents ptr :: IO (Ptr Word32)
@@ -123,7 +124,7 @@ massageAssImpMesh bm bv ptr = do
   vdata <- rawInterleave (fromIntegral numV) chunkLen (V.zip3 ptrs components offsets)
   return (vdata, fromIntegral chunkLen, castPtr faceptr, fromIntegral faceNum, components, offsets, vertices)
 
-loadBonesFromMesh :: A.MeshPtr -> IO (BoneMap, Vector Bone)
+loadBonesFromMesh :: A.MeshPtr -> IO (BoneIDMap, Vector Bone)
 loadBonesFromMesh meshPtr = do
   numBones <- A.meshNumBones meshPtr
   meshBones_ <- A.meshBones meshPtr
@@ -146,18 +147,46 @@ loadBonesFromMesh meshPtr = do
                   return $ M.insert name bone bMap)
         M.empty [0..numBones-1]
   let bv = sortOn _boneID $ fromList $ toList bm
-  return (bm, bv)
+  return (_boneID <$> bm, bv)
 
 marshalAssImpMesh :: A.ScenePtr -> A.MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
-  (boneMap, boneVector) <- loadBonesFromMesh ptr
+  (boneIDMap, boneVector') <- loadBonesFromMesh ptr
   (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets, _) <-
-    massageAssImpMesh boneMap boneVector ptr
+    massageAssImpMesh boneIDMap boneVector' ptr
 
   let texData = V.zip uvs . fmap ((* sizeOf (0 :: CFloat)) . fromIntegral) $ texOffsets
       flags   = defaultBufferAttribFlags
       buffInit size_ ptr_ = initBufferName size_ flags (castPtr ptr_)
       stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
+
+  numAnimations <- fromIntegral <$> A.sceneNumAnimations sc
+
+  animationsPtrPtr <- A.sceneAnimations sc
+
+  animationPtrVector <- V.generateM numAnimations $ \i -> peekElemOff animationsPtrPtr i
+  animationMap <- foldM (\aMap animationPtr -> do
+                            animation <- peekAnimation animationPtr
+                            let name = animation ^. animationName
+                            return $ M.insert name animation aMap)
+                  M.empty animationPtrVector
+  let animationIDMap = M.fromList $ imap (\i (x, _) -> (x, i)) $ M.toList animationMap
+      animationVector :: Vector Animation = fromList $ toList animationMap
+  boneAnims <- foldM (\animations Animation {..} -> do
+                         boneAnim <- foldM (\boneAnimations NodeAnim {..} -> do
+                                               let _boneAnimationName = _animationName
+                                                   _boneAnimationPositions = _nodeAnimPositionKeys
+                                                   _boneAnimationRotations = _nodeAnimRotationKeys
+                                                   _boneAnimationScalings  = _nodeAnimScalingKeys
+                                                   _boneAnimationDuration  = _animationDuration
+                                                   _boneAnimationTicksPerSecond = _animationTicksPerSecond
+                                               return $ boneAnimations `V.snoc` BoneAnimation {..})
+                                     empty _animationChannels
+                         return $ animations `V.snoc` boneAnim)
+               empty animationVector
+  -- Now we transpose boneAnims
+  let boneAnims' :: Vector (Vector BoneAnimation) = fromList $ (transposeOf traverse $ toList <$> boneAnims)
+      boneVector = zip boneVector' boneAnims'
 
   vao <- genName'
   vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit
@@ -228,28 +257,17 @@ marshalAssImpMesh sc ptr = do
       , _shaderMaterialSpecularExponent = specularExponent
       }
     , _assImpMeshBones = boneVector
-    , _assImpMeshBoneMap = boneMap
+    , _assImpMeshBoneIDMap = boneIDMap
+    , _assImpMeshAnimationIDMap = animationIDMap
     }
 
 marshalAssImpScene :: A.ScenePtr -> IO AssImpScene
 marshalAssImpScene sc = do
   numMeshes <- fromIntegral <$> A.sceneNumMeshes sc
-  numAnimations <- fromIntegral <$> A.sceneNumAnimations sc
-
-  animationsPtrPtr <- A.sceneAnimations sc
-
-  animationVector <- V.generateM numAnimations $ \i -> peekElemOff animationsPtrPtr i
-  animationMap <- foldM (\aMap animationPtr -> do
-                            animation <- peekAnimation animationPtr
-                            let name = animation ^. animationName
-                            return $ M.insert name animation aMap)
-                  M.empty animationVector
-  rootNodePtr <- A.sceneRootNode sc
   mptr <- A.sceneMeshes sc
 
-
   assImpMeshes_ <- V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh sc
-  return $ AssImpScene assImpMeshes_ undefined animationMap
+  return $ AssImpScene assImpMeshes_
 
 loadAssImpScene :: MonadIO m => FilePath -> m AssImpScene
 loadAssImpScene = liftIO . (importAssImpFileGood >=> marshalAssImpScene)

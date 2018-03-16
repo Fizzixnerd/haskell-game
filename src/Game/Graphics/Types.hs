@@ -105,7 +105,11 @@ instance Storable AssImpVertex where
     bweights <- peekByteOff ptr (8 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int))
     return $ AssImpVertex v t n bids bweights
 
-type BoneMap = Map Text Bone
+type BoneMap = Map BoneName Bone
+type BoneIDMap = Map BoneName BoneID
+type BoneAnimationMap = Map AnimationName BoneAnimation
+type AnimationIDMap = Map AnimationName AnimationID
+type AnimationID = Int
 
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
@@ -116,14 +120,13 @@ data AssImpMesh = AssImpMesh
   , _assImpMeshIndexNum       :: Word32
   , _assImpMeshTextureBundle  :: TextureBundle FilePath
   , _assImpMeshShaderMaterial :: ShaderMaterial
-  , _assImpMeshBones          :: Vector Bone
-  , _assImpMeshBoneMap        :: BoneMap
+  , _assImpMeshBones          :: Vector (Bone, Vector BoneAnimation)
+  , _assImpMeshBoneIDMap      :: BoneIDMap
+  , _assImpMeshAnimationIDMap :: AnimationIDMap
   } deriving (Eq, Ord, Show)
 
 data AssImpScene = AssImpScene
   { _assImpMeshes :: Vector AssImpMesh
-  , _assImpNodes  :: NodeBundle
-  , _assImpAnimations :: Map Text Animation
   } deriving (Eq, Ord, Show)
 
 -- * Texture data
@@ -147,15 +150,19 @@ type NodeID = Int
 type VertexID = Int
 type Weight = Float
 
+type BoneName = Text
+
 data Bone = Bone
-  { _boneName :: Text
+  { _boneName :: BoneName
   , _boneID :: BoneID
   , _boneWeights :: Vector (VertexID, Weight)
   , _boneMatrix :: L.M44 Float
   } deriving (Eq, Ord, Show)
 
+type AnimationName = Text
+
 data Animation = Animation
-                 { _animationName :: Text
+                 { _animationName :: AnimationName
                  , _animationDuration :: Double
                  , _animationTicksPerSecond :: Double
                  , _animationChannels :: Vector NodeAnim
@@ -183,7 +190,7 @@ peekAnimation aptr = do
   return $ Animation name duration tps chans meshChans meshMorphChans
 
 data NodeAnim = NodeAnim
-                { _nodeAnimName :: Text
+                { _nodeAnimName :: BoneName
                 , _nodeAnimPositionKeys :: Vector PositionKey
                 , _nodeAnimRotationKeys :: Vector RotationKey
                 , _nodeAnimScalingKeys  :: Vector ScalingKey
@@ -209,6 +216,15 @@ peekNodeAnim anp = do
   preState <- A.nodeAnimPreState anp
   postState <- A.nodeAnimPostState anp
   return $ NodeAnim name posKeys rotKeys scaKeys preState postState
+
+data BoneAnimation = BoneAnimation
+                     { _boneAnimationName :: AnimationName
+                     , _boneAnimationPositions :: Vector PositionKey
+                     , _boneAnimationRotations :: Vector RotationKey
+                     , _boneAnimationScalings  :: Vector ScalingKey
+                     , _boneAnimationDuration :: Double
+                     , _boneAnimationTicksPerSecond :: Double
+                     } deriving (Eq, Ord, Show)
 
 -- TODO: Implement these!
 data MeshAnim = MeshAnim deriving (Eq, Ord, Show)
@@ -263,7 +279,8 @@ data Node = Node
   } deriving (Eq, Ord, Show)
 
 data NodeBundle = NodeBundle
-  { _nodeBundleNodes :: Map Text (Node, Maybe Bone)
+  { _nodeBundleNodes :: Vector (Node, Maybe (Bone, Vector BoneAnimation))
+  , _nodeBundleBoneIDMap :: Map BoneName BoneID
   } deriving (Eq, Ord, Show)
 
 emptyTextureBundle :: TextureBundle s
