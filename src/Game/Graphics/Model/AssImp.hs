@@ -65,21 +65,21 @@ addBoneWeight bd (L.V4 0 0 0 0) = L.V4 bd 0 0 0
 addBoneWeight bd (L.V4 x 0 0 0) = L.V4 x bd 0 0
 addBoneWeight bd (L.V4 x y 0 0) = L.V4 x y bd 0
 addBoneWeight bd (L.V4 x y z 0) = L.V4 x y z bd
-addBoneWeight _ _ = error "Attempt to addBoneData to full Bone datum!"
+addBoneWeight _ _ = error "Attempt to addBoneWeight to full Bone datum!"
 
 addBoneBoneID :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
 addBoneBoneID bd (L.V4 (-1) (-1) (-1) (-1)) = L.V4 bd (-1) (-1) (-1)
 addBoneBoneID bd (L.V4 x (-1) (-1) (-1)) = L.V4 x bd (-1) (-1)
 addBoneBoneID bd (L.V4 x y (-1) (-1)) = L.V4 x y bd (-1)
 addBoneBoneID bd (L.V4 x y z (-1)) = L.V4 x y z bd
-addBoneBoneID _ _ = error "Attempt to addBoneData to full Bone datum!"
+addBoneBoneID _ _ = error "Attempt to addBoneBoneID to full Bone datum!"
 
 peekVertexAttributes :: BoneIDMap -> Vector Bone -> A.MeshPtr -> IO (Vector AssImpVertex)
 peekVertexAttributes _ bones meshPtr = do
   vs <- peekVertices meshPtr
   ns <- peekNormals meshPtr
   ts <- peekTangents meshPtr
-  let initBoneIDs :: Vector (L.V4 Int) = replicate (length vs) (L.V4 0 0 0 0)
+  let initBoneIDs :: Vector (L.V4 Int) = replicate (length vs) (L.V4 (-1) (-1) (-1) (-1))
       initBoneWeights :: Vector (L.V4 Float) = replicate (length vs) (L.V4 0 0 0 0)
   (boneIDs, boneWeights_) <-
     foldM (\(bids, bws) b -> do
