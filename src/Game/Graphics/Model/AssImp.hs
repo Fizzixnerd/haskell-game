@@ -60,12 +60,19 @@ peekNormals = peekV3 A.meshNormals
 peekTangents :: A.MeshPtr -> IO (Vector (L.V3 Float))
 peekTangents = peekV3 A.meshTangents
 
-addBoneData :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
-addBoneData bd (L.V4 0 0 0 0) = L.V4 bd 0 0 0
-addBoneData bd (L.V4 x 0 0 0) = L.V4 x bd 0 0
-addBoneData bd (L.V4 x y 0 0) = L.V4 x y bd 0
-addBoneData bd (L.V4 x y z 0) = L.V4 x y z bd
-addBoneData _ _ = error "Attempt to addBoneData to full Bone datum!"
+addBoneWeight :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
+addBoneWeight bd (L.V4 0 0 0 0) = L.V4 bd 0 0 0
+addBoneWeight bd (L.V4 x 0 0 0) = L.V4 x bd 0 0
+addBoneWeight bd (L.V4 x y 0 0) = L.V4 x y bd 0
+addBoneWeight bd (L.V4 x y z 0) = L.V4 x y z bd
+addBoneWeight _ _ = error "Attempt to addBoneData to full Bone datum!"
+
+addBoneBoneID :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
+addBoneBoneID bd (L.V4 (-1) (-1) (-1) (-1)) = L.V4 bd (-1) (-1) (-1)
+addBoneBoneID bd (L.V4 x (-1) (-1) (-1)) = L.V4 x bd (-1) (-1)
+addBoneBoneID bd (L.V4 x y (-1) (-1)) = L.V4 x y bd (-1)
+addBoneBoneID bd (L.V4 x y z (-1)) = L.V4 x y z bd
+addBoneBoneID _ _ = error "Attempt to addBoneData to full Bone datum!"
 
 peekVertexAttributes :: BoneIDMap -> Vector Bone -> A.MeshPtr -> IO (Vector AssImpVertex)
 peekVertexAttributes _ bones meshPtr = do
@@ -78,8 +85,8 @@ peekVertexAttributes _ bones meshPtr = do
     foldM (\(bids, bws) b -> do
               let bid = fromIntegral $ b ^. boneID
               foldM (\(bids_, bws_) (vertexID, weight) -> do
-                        let bids' = bids_ & ix vertexID %~ addBoneData bid
-                            bws'  = bws_ & ix vertexID %~ addBoneData weight
+                        let bids' = bids_ & ix vertexID %~ addBoneBoneID bid
+                            bws'  = bws_ & ix vertexID %~ addBoneWeight weight
                         return (bids', bws'))
                 (bids, bws) (b ^. boneWeights))
     (initBoneIDs, initBoneWeights) bones
@@ -185,7 +192,8 @@ marshalAssImpMesh sc ptr = do
                          return $ animations `V.snoc` boneAnim)
                empty animationVector
   -- Now we transpose boneAnims
-  let boneAnims' :: Vector (Vector BoneAnimation) = fromList $ (transposeOf traverse $ toList <$> boneAnims)
+  let boneAnims' :: Vector (Vector BoneAnimation) =
+        fromList $ transposeOf traverse $ toList <$> boneAnims
       boneVector = zip boneVector' boneAnims'
 
   vao <- genName'
