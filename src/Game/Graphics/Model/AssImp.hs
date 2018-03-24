@@ -13,6 +13,7 @@ import qualified Data.Map as M
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
+import Foreign.Marshal.Alloc
 import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Game.Graphics.Types
@@ -22,9 +23,23 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import qualified Linear as L
 import Foreign.Resource
+import Text.Printf
 
 importAssImpFileGood :: FilePath -> IO A.ScenePtr
 importAssImpFileGood = A.importAndProcessFileGood
+
+-- Note that this function takes a "dynamic" sizeOfer where it WILL INSPECT THE
+-- ARGUMENT. However, it will assume all elements in the Vector as the same
+-- size. Returns a nullPtr when v is empty.
+interleaveWith :: (Ptr a -> a -> IO ()) -> (a -> Int) -> Vector a -> IO (Ptr a)
+interleaveWith poker sizeOfer v =
+  if null v
+  then return nullPtr
+  else do
+    let sizeOfA = sizeOfer $ v V.! 0
+    ptr <- mallocBytes $ sizeOfA * length v
+    forM_ [0 .. length v - 1] $ \i -> poker (ptr `plusPtr` (i * sizeOfA)) (v V.! i)
+    return ptr
 
 rawInterleave :: forall a. (Storable a, Num a) => Int -> Int -> Vector (Ptr a, Word32, Word32) -> IO (VS.Vector a)
 rawInterleave numV chunkLen ptrData = do
@@ -43,13 +58,11 @@ rawInterleave numV chunkLen ptrData = do
 
 peekV3 :: (A.MeshPtr -> IO (Ptr a)) -> A.MeshPtr -> IO (Vector (L.V3 Float))
 peekV3 f meshPtr = do
-  numVert <- A.meshNumVertices meshPtr
+  numVert <- fromIntegral <$> A.meshNumVertices meshPtr
   ptr <- f meshPtr
-  foldM (\vs i -> do
-            let offset = fromIntegral i * 3 * sizeOf (0 :: Float)
-            v <- A.peekVector3D $ castPtr $ ptr `plusPtr` offset
-            return $ vs `V.snoc` v)
-    V.empty [0..numVert-1]
+  V.generateM numVert $ \i -> do
+    let offset = i * A.sizeOfVector3D
+    A.peekVector3D $ castPtr $ ptr `plusPtr` offset
 
 peekVertices :: A.MeshPtr -> IO (Vector (L.V3 Float))
 peekVertices = peekV3 A.meshVertices
@@ -60,19 +73,19 @@ peekNormals = peekV3 A.meshNormals
 peekTangents :: A.MeshPtr -> IO (Vector (L.V3 Float))
 peekTangents = peekV3 A.meshTangents
 
-addBoneWeight :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
+addBoneWeight :: Float -> L.V4 Float -> L.V4 Float
 addBoneWeight bd (L.V4 0 0 0 0) = L.V4 bd 0 0 0
 addBoneWeight bd (L.V4 x 0 0 0) = L.V4 x bd 0 0
 addBoneWeight bd (L.V4 x y 0 0) = L.V4 x y bd 0
 addBoneWeight bd (L.V4 x y z 0) = L.V4 x y z bd
-addBoneWeight _ _ = error "Attempt to addBoneWeight to full Bone datum!"
+addBoneWeight _ x = trace "Attempt to addBoneWeight to full Bone datum!" x
 
-addBoneBoneID :: (Eq a, Num a) => a -> L.V4 a -> L.V4 a
-addBoneBoneID bd (L.V4 (-1) (-1) (-1) (-1)) = L.V4 bd (-1) (-1) (-1)
-addBoneBoneID bd (L.V4 x (-1) (-1) (-1)) = L.V4 x bd (-1) (-1)
-addBoneBoneID bd (L.V4 x y (-1) (-1)) = L.V4 x y bd (-1)
-addBoneBoneID bd (L.V4 x y z (-1)) = L.V4 x y z bd
-addBoneBoneID _ _ = error "Attempt to addBoneBoneID to full Bone datum!"
+addBoneID :: Int -> L.V4 Int -> L.V4 Int
+addBoneID bd (L.V4 (-1) (-1) (-1) (-1)) = L.V4 bd (-1) (-1) (-1)
+addBoneID bd (L.V4 x (-1) (-1) (-1)) = L.V4 x bd (-1) (-1)
+addBoneID bd (L.V4 x y (-1) (-1)) = L.V4 x y bd (-1)
+addBoneID bd (L.V4 x y z (-1)) = L.V4 x y z bd
+addBoneID _ x = trace "Attempt to addBoneID to full Bone datum!" x
 
 peekVertexAttributes :: BoneIDMap -> Vector Bone -> A.MeshPtr -> IO (Vector AssImpVertex)
 peekVertexAttributes _ bones meshPtr = do
@@ -85,20 +98,82 @@ peekVertexAttributes _ bones meshPtr = do
     foldM (\(bids, bws) b -> do
               let bid = fromIntegral $ b ^. boneID
               foldM (\(bids_, bws_) (vertexID, weight) -> do
-                        let bids' = bids_ & ix vertexID %~ addBoneBoneID bid
+                        let bids' = bids_ & ix vertexID %~ addBoneID bid
                             bws'  = bws_ & ix vertexID %~ addBoneWeight weight
                         return (bids', bws'))
                 (bids, bws) (b ^. boneWeights))
     (initBoneIDs, initBoneWeights) bones
-  return $ foldl' (\vertices i ->
-            let v = vs V.! i
-                n = ns V.! i
-                t = ts V.! i
-                bid = boneIDs V.! i
-                bw = boneWeights_ V.! i
-            in
-              vertices `V.snoc` AssImpVertex v (n ^. L._xy) t bid bw)
-    empty [0..length vs - 1]
+
+  -- now the textures. First we make sure they conform to the [4 x 2, 2 x 3, 2 x 1]
+  -- component framework.
+  numUVs <- castPtr <$> A.meshNumUVComponents meshPtr
+  numUVComponents :: Vector Word32 <- V.fromList <$> peekArray maxTextureChannels numUVs
+  let errorOnComponents :: Int -> Word32 -> Int -> m ()
+      errorOnComponents i n m = error $ printf "texture at index %s has %s components, expected 0 or %s." (show i) (show n) (show m)
+  imapM_ (\idx num -> if 0 <= idx && idx < 4 then
+                        when (num /= 0 && num /= 2) $
+                        errorOnComponents idx num 2
+                      else if 4 <= idx && idx < 6
+                           then when (num /= 0 && num /= 3) $
+                                errorOnComponents idx num 3
+                           else if 6 <= idx && idx < 8
+                                then when (num /= 0 && num /= 1) $
+                                     errorOnComponents idx num 1
+                                else error "Expected only 8 uv channels, but got more than that.") numUVComponents
+
+  -- this will get a Just (Vector (L.V3 Float)) if the numComponents isn't 0.
+  let getUV i = if numUVComponents V.! i == 0
+                then return Nothing
+                else do
+        uvs <- peekV3 (\ptr -> do
+                          tptrptr <- A.meshTextureCoords ptr
+                          peekElemOff tptrptr i) meshPtr
+        return $ Just uvs
+
+  uv0'  <- getUV 0
+  uv1'  <- getUV 1
+  uv2'  <- getUV 2
+  uv3'  <- getUV 3
+  uvw0' <- getUV 4
+  uvw1' <- getUV 5
+  u0'   <- getUV 6
+  u1'   <- getUV 7
+
+  -- FIXME: This really should not sequence. I should change the types... Also
+  -- apparently traverse = sequence . fmap? Alrighty...
+  let uv0  = fmap (fmap $ \x -> x ^. L._xy) uv0'
+      uv1  = fmap (fmap $ \x -> x ^. L._xy) uv1'
+      uv2  = fmap (fmap $ \x -> x ^. L._xy) uv2'
+      uv3  = fmap (fmap $ \x -> x ^. L._xy) uv3'
+      uvw0 = uvw0'
+      uvw1 = uvw1'
+      u0   = fmap (fmap $ \x -> x ^. L._x)  u0'
+      u1   = fmap (fmap $ \x -> x ^. L._x)  u1'
+
+  return $ V.generate (length vs) $
+    \i ->
+      let (!!?) :: Maybe (Vector a) -> Int -> Maybe a
+          x !!? j = do
+            x' <- x
+            return $ x' V.! j
+          v = vs V.! i
+          n = ns V.! i
+          t = ts V.! i
+          bid = boneIDs V.! i
+          bw = boneWeights_ V.! i
+          uv0_ = uv0 !!? i
+          uv1_ = uv1 !!? i
+          uv2_ = uv2 !!? i
+          uv3_ = uv3 !!? i
+          uvw0_ = uvw0 !!? i
+          uvw1_ = uvw1 !!? i
+          u0_ = u0 !!? i
+          u1_ = u1 !!? i
+      in
+        AssImpVertex v n t bid bw uv0_ uv1_ uv2_ uv3_ uvw0_ uvw1_ u0_ u1_
+
+maxTextureChannels :: Int
+maxTextureChannels = 8
 
 -- Layout:
 -- 0: Vertex
@@ -116,15 +191,16 @@ massageAssImpMesh bm bv ptr = do
   tptr    <- castPtr <$> A.meshTangents ptr
   tptrptr <- A.meshTextureCoords ptr
   (faceptr, faceNum) <- A.bufferFaces ptr
-  uvs_   <- V.fromList <$> peekArray 8 numUVs
-  tptrs_ <- fmap castPtr . V.fromList <$> peekArray 8 tptrptr
+  uvs_   <- V.fromList <$> peekArray maxTextureChannels numUVs
+  tptrs_ <- fmap castPtr . V.fromList <$> peekArray maxTextureChannels tptrptr
 
   vertices <- peekVertexAttributes bm bv ptr
 
   let ptrs_       = V.fromList [vptr, nptr, tptr] <> tptrs_
+      -- [3, 3, 3] stands for the number of components of Vertex/Normal/Tangents
       components_ = V.fromList [3, 3, 3] <> uvs_
       combined_   = V.filter ((/=0) . fst) $ V.zip components_ ptrs_
-      (components, ptrs) = (fmap fst combined_, fmap snd combined_)
+      (components, ptrs) = (fst <$> combined_, snd <$> combined_)
       offsets = V.prescanl' (+) 0 components
       chunkLen = fromIntegral $ sum components
 
@@ -156,16 +232,18 @@ loadBonesFromMesh meshPtr = do
   let bv = sortOn _boneID $ fromList $ toList bm
   return (_boneID <$> bm, bv)
 
+-- | Assumes the mesh in question contains at least one vertex.
 marshalAssImpMesh :: A.ScenePtr -> A.MeshPtr -> IO AssImpMesh
 marshalAssImpMesh sc ptr = do
   (boneIDMap, boneVector') <- loadBonesFromMesh ptr
-  (vdata, chunkLen, faceptr, faceNum, uvs, texOffsets, _) <-
+  (_, _, faceptr, faceNum, uvs, texOffsets, vertices) <-
     massageAssImpMesh boneIDMap boneVector' ptr
 
   let texData = V.zip uvs . fmap ((* sizeOf (0 :: CFloat)) . fromIntegral) $ texOffsets
       flags   = defaultBufferAttribFlags
       buffInit size_ ptr_ = initBufferName size_ flags (castPtr ptr_)
-      stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
+      stride = dynamicSizeOfAssImpVertex (vertices V.! 0)
+      --stride = sizeOf (0 :: CFloat) * fromIntegral chunkLen
 
   numAnimations <- fromIntegral <$> A.sceneNumAnimations sc
 
@@ -197,11 +275,12 @@ marshalAssImpMesh sc ptr = do
       boneVector = zip boneVector' boneAnims'
 
   vao <- genName'
-  vbuf <- VS.unsafeWith vdata $ \vptr -> buffInit
-    (fromIntegral $ length vdata * sizeOf (0 :: CFloat)) vptr
+  vptr <- interleaveWith dynamicPokeAssImpVertex dynamicSizeOfAssImpVertex vertices
+  vbuf <- buffInit (fromIntegral $ length vertices * stride) vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
 
   vertexArrayVertexBuffer vao 0 vbuf 0 (fromIntegral stride)
+  free vptr
   let fullAttribInit loc_ numComponents_ offset_ = do
         vertexArrayAttribFormat vao loc_ numComponents_ GLFloat NotNormalized offset_
         vertexArrayAttribCapability vao loc_ Enabled

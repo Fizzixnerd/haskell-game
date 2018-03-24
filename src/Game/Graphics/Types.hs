@@ -27,6 +27,7 @@ import Foreign.Ptr
 import Foreign.Marshal.Utils
 import Control.Lens
 import qualified Data.Vector as V
+import qualified Prelude as Prelude
 
 -- * Obj file loading.
 data VTNPoint = VTNPoint
@@ -81,29 +82,91 @@ type BoneWeight = Float
 
 -- * AssImp loading.
 data AssImpVertex = AssImpVertex
-  { _assImpVertexV          :: !(L.V3 Float)
-  , _assImpVertexT          :: !(L.V2 Float)
-  , _assImpVertexN          :: !(L.V3 Float)
-  , _assImpBoneIDs          :: !(L.V4 BoneID)
-  , _assImpBoneWeights      :: !(L.V4 BoneWeight)
+  { _assImpVertexV     :: !(L.V3 Float)
+  , _assImpVertexN     :: !(L.V3 Float)
+  , _assImpVertexT     :: !(L.V3 Float)
+  , _assImpBoneIDs     :: !(L.V4 BoneID)
+  , _assImpBoneWeights :: !(L.V4 BoneWeight)
+  , _assImpTex2D0      :: !(Maybe (L.V2 Float))
+  , _assImpTex2D1      :: !(Maybe (L.V2 Float))
+  , _assImpTex2D2      :: !(Maybe (L.V2 Float))
+  , _assImpTex2D3      :: !(Maybe (L.V2 Float))
+  , _assImpTex3D0      :: !(Maybe (L.V3 Float))
+  , _assImpTex3D1      :: !(Maybe (L.V3 Float))
+  , _assImpTex1D0      :: !(Maybe Float)
+  , _assImpTex1D1      :: !(Maybe Float)
   } deriving (Eq, Show, Ord, Read)
 
-instance Storable AssImpVertex where
-  sizeOf _ = 8 * sizeOf (0 :: Float)
-  alignment _ = alignment (0 :: Float)
-  poke ptr (AssImpVertex v t n bids bweights) = do
-    pokeByteOff ptr 0 v
-    pokeByteOff ptr (3 * sizeOf (0 :: Float)) t
-    pokeByteOff ptr (5 * sizeOf (0 :: Float)) n
-    pokeByteOff ptr (8 * sizeOf (0 :: Float)) bids
-    pokeByteOff ptr (8 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int)) bweights
-  peek ptr = do
-    v <- peekByteOff ptr 0
-    t <- peekByteOff ptr (3 * sizeOf (0 :: Float))
-    n <- peekByteOff ptr (5 * sizeOf (0 :: Float))
-    bids <- peekByteOff ptr (8 * sizeOf (0 :: Float))
-    bweights <- peekByteOff ptr (8 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int))
-    return $ AssImpVertex v t n bids bweights
+dynamicSizeOfAssImpVertex :: AssImpVertex -> Int
+dynamicSizeOfAssImpVertex (AssImpVertex _ _ _ _ _ uv0 uv1 uv2 uv3 uvw0 uvw1 u0 u1) =
+  13 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int) +
+  sizeOf2 uv0 +
+  sizeOf2 uv1 +
+  sizeOf2 uv2 +
+  sizeOf2 uv3 +
+  sizeOf3 uvw0 +
+  sizeOf3 uvw1 +
+  sizeOf1 u0 +
+  sizeOf1 u1
+  where
+    sizeOf2 :: Maybe (L.V2 Float) -> Int
+    sizeOf2 = maybe 0 (const $ 2 * sizeOf (0 :: Float))
+
+    sizeOf1 :: Maybe Float -> Int
+    sizeOf1 = maybe 0 (const $ 1 * sizeOf (0 :: Float))
+
+    sizeOf3 :: Maybe (L.V3 Float) -> Int
+    sizeOf3 = maybe 0 (const $ 3 * sizeOf (0 :: Float))
+
+dynamicAlignmentAssImpVertex :: AssImpVertex -> Int
+dynamicAlignmentAssImpVertex _ = Prelude.lcm (alignment (0 :: Float)) (alignment (0 :: Int))
+
+dynamicPokeAssImpVertex :: Ptr AssImpVertex -> AssImpVertex -> IO ()
+dynamicPokeAssImpVertex ptr (AssImpVertex v t n bids bweights uv0 uv1 uv2 uv3 uvw0 uvw1 u0 u1) = do
+  pokeByteOff ptr 0 v
+  pokeByteOff ptr (3 * sizeOf (0 :: Float)) n
+  pokeByteOff ptr (6 * sizeOf (0 :: Float)) t
+  -- This is Float and that's correct. The Int bit goes in the NEXT offset.
+  pokeByteOff ptr (9 * sizeOf (0 :: Float)) bids
+  pokeByteOff ptr (9 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int)) bweights
+  -- Next one will be 13 * Float + 4 * Int.
+  let offset0 = 13 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int)
+  offset1 <- case uv0 of
+    Nothing -> return offset0
+    Just uv0' -> do
+      pokeByteOff ptr offset0 uv0'
+      return $ offset0 + 2 * sizeOf (0 :: Float)
+  offset2 <- case uv1 of
+    Nothing -> return offset1
+    Just uv1' -> do
+      pokeByteOff ptr offset1 uv1'
+      return $ offset1 + 2 * sizeOf (0 :: Float)
+  offset3 <- case uv2 of
+    Nothing -> return offset2
+    Just uv2' -> do
+      pokeByteOff ptr offset2 uv2'
+      return $ offset2 + 2 * sizeOf (0 :: Float)
+  offset4 <- case uv3 of
+    Nothing -> return offset3
+    Just uv3' -> do
+      pokeByteOff ptr offset3 uv3'
+      return $ offset3 + 2 * sizeOf (0 :: Float)
+  offset5 <- case uvw0 of
+    Nothing -> return offset4
+    Just uvw0' -> do
+      pokeByteOff ptr offset4 uvw0'
+      return $ offset4 + 3 * sizeOf (0 :: Float)
+  offset6 <- case uvw1 of
+    Nothing -> return offset5
+    Just uvw1' -> do
+      pokeByteOff ptr offset5 uvw1'
+      return $ offset5 + 3 * sizeOf (0 :: Float)
+  offset7 <- case u0 of
+    Nothing -> return offset6
+    Just u0' -> do
+      pokeByteOff ptr offset6 u0'
+      return $ offset6 + sizeOf (0 :: Float)
+  forM_ u1 (pokeByteOff ptr offset7)
 
 type BoneMap = Map BoneName Bone
 type BoneIDMap = Map BoneName BoneID

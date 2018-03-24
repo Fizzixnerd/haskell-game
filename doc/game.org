@@ -1,5 +1,12 @@
 * Haskell Game
 
+** Textures
+
+   So we have to do some nonsense here.
+
+   Assimp offers up to 8 texture channels. That is, 8 different "UVWs", each
+   with associated
+
 ** Dynamic Wires
 
    Okay, let's hash this out baby.

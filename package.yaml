@@ -61,8 +61,6 @@ dependencies:
 - unliftio-core
 
 ghc-options:
-  - -fPIC
-  - -dynamic
 
 library:
   source-dirs: src
@@ -76,8 +74,6 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall
-    - -fPIC
-    - -dynamic
 
     dependencies:
     - haskell-game
@@ -90,7 +86,7 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -fPIC
-    - -dynamic
+    - -Wall
+
     dependencies:
     - haskell-game
