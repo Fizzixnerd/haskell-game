@@ -5,7 +5,9 @@
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 layout (location = 2) in vec3 tangent;
-layout (location = 3) in vec2 uv;
+layout (location = 3) in ivec4 bone_id;
+layout (location = 4) in vec4 bone_weight;
+layout (location = 5) in vec2 uv;
 
 layout (row_major, std140) uniform;
 

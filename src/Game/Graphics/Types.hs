@@ -177,7 +177,6 @@ type AnimationID = Int
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
   , _assImpMeshBufferName     :: BufferName
-  , _assImpMeshTextureDetails :: Vector Word32
   , _assImpMeshIndexBO        :: BufferName
   , _assImpMeshIndexBOType    :: IndexType
   , _assImpMeshIndexNum       :: Word32
