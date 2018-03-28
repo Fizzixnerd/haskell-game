@@ -24,6 +24,7 @@ import qualified Data.Vector.Storable as VS
 import qualified Linear as L
 import Foreign.Resource
 import Text.Printf
+import Data.Int
 
 importAssImpFileGood :: FilePath -> IO A.ScenePtr
 importAssImpFileGood = A.importAndProcessFileGood
@@ -278,23 +279,55 @@ marshalAssImpMesh sc ptr = do
   vertexArrayVertexBuffer vao 0 vbuf 0 (fromIntegral stride)
   -- TODO: Should this be freed here?
   -- free vptr
-  let fullAttribInit :: Int -> Bool -> IO ()
-      fullAttribInit i booleanShouldDo = when booleanShouldDo $ do
+
+  -- Here we defined functions for setting up the core and texture varyings with
+  -- the VAO. This is complicated slightly by the fact that one of the core
+  -- varyings is an ivec4, and not a vec4.
+  let coreAttribInit :: Int -> IO ()
+      coreAttribInit i = do
+        let numComponents_ = fromList [3, 3, 3, 4, 4, 2]
+            offsets_ = fromIntegral <$> V.prescanl (+) 0 (fromList [ 3 * sizeOf (0 :: CFloat)
+                                                                   , 3 * sizeOf (0 :: CFloat)
+                                                                   , 3 * sizeOf (0 :: CFloat)
+                                                                   , 4 * sizeOf (0 :: Int32)
+                                                                   , 4 * sizeOf (0 :: CFloat)
+                                                                   , 2 * sizeOf (0 :: CFloat)
+                                                                   ])
+        vertexArrayAttribFormat vao (fromIntegral i) (numComponents_ V.! i) (if i == 3 then GLInt else GLFloat) NotNormalized (offsets_ V.! i)
+        vertexArrayAttribCapability vao (fromIntegral i) Enabled
+        vertexArrayAttribBinding vao (fromIntegral i) 0
+
+      texAttribInit :: Int -> Bool -> IO ()
+      texAttribInit i booleanShouldDo = when booleanShouldDo $ do
         let numComponents_ = fromList [2, 2, 2, 2, 3, 3, 1, 1]
-            offsets_ = fromIntegral <$> V.prescanl' (+) 0 numComponents_
-            loc_ = fromIntegral i
-        vertexArrayAttribFormat vao loc_ (numComponents_ V.! i) GLFloat NotNormalized (offsets_ V.! i)
+            coreDataOffset = (3 + 3 + 3 + 4 + 2) * sizeOf (0 :: CFloat) +
+                             4 * sizeOf (0 :: Int32)
+            offsets_ = (\x -> fromIntegral (x * sizeOf (0 :: CFloat))) <$>
+                       V.prescanl' (+) coreDataOffset numComponents_
+            spanFromCoreData = 5
+            loc_ = fromIntegral $ i + spanFromCoreData
+        vertexArrayAttribFormat vao loc_ (fromIntegral $ numComponents_ V.! i) GLFloat NotNormalized (offsets_ V.! i)
         vertexArrayAttribCapability vao loc_ Enabled
         vertexArrayAttribBinding vao loc_ 0
       firstVertex = vertices V.! 0
-  fullAttribInit 0 (isJust $ firstVertex ^. assImpTex2D0)
-  fullAttribInit 1 (isJust $ firstVertex ^. assImpTex2D1)
-  fullAttribInit 2 (isJust $ firstVertex ^. assImpTex2D2)
-  fullAttribInit 3 (isJust $ firstVertex ^. assImpTex2D3)
-  fullAttribInit 4 (isJust $ firstVertex ^. assImpTex3D0)
-  fullAttribInit 5 (isJust $ firstVertex ^. assImpTex3D1)
-  fullAttribInit 6 (isJust $ firstVertex ^. assImpTex1D0)
-  fullAttribInit 7 (isJust $ firstVertex ^. assImpTex1D1)
+
+  -- Then we setup the actual varyings.
+  coreAttribInit 0
+  coreAttribInit 1
+  coreAttribInit 2
+  coreAttribInit 3
+  coreAttribInit 4
+
+  -- And the textures.
+  texAttribInit 0 (isJust $ firstVertex ^. assImpTex2D0)
+  texAttribInit 1 (isJust $ firstVertex ^. assImpTex2D1)
+  texAttribInit 2 (isJust $ firstVertex ^. assImpTex2D2)
+  texAttribInit 3 (isJust $ firstVertex ^. assImpTex2D3)
+  texAttribInit 4 (isJust $ firstVertex ^. assImpTex3D0)
+  texAttribInit 5 (isJust $ firstVertex ^. assImpTex3D1)
+  texAttribInit 6 (isJust $ firstVertex ^. assImpTex1D0)
+  texAttribInit 7 (isJust $ firstVertex ^. assImpTex1D1)
+
   bindElementBuffer vao ibuf
 
   mats <- A.sceneMaterials sc
@@ -359,7 +392,6 @@ marshalAssImpScene :: A.ScenePtr -> IO AssImpScene
 marshalAssImpScene sc = do
   numMeshes <- fromIntegral <$> A.sceneNumMeshes sc
   mptr <- A.sceneMeshes sc
-
   assImpMeshes_ <- V.generateM numMeshes $ peekElemOff mptr >=> marshalAssImpMesh sc
   return $ AssImpScene assImpMeshes_
 
