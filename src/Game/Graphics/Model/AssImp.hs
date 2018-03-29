@@ -11,26 +11,22 @@ import qualified Asset.AssImp.Import as A
 import Foreign.C.Types
 import qualified Data.Map as M
 import Foreign.Storable
-import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
-import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Game.Graphics.Types
 import Graphics.Binding
 import Control.Monad (mfilter)
 import qualified Data.Vector as V
-import qualified Data.Vector.Storable as VS
 import qualified Linear as L
 import Foreign.Resource
 import Text.Printf
-import Data.Int
 
 importAssImpFileGood :: FilePath -> IO A.ScenePtr
 importAssImpFileGood = A.importAndProcessFileGood
 
--- | Note that this function takes a "dynamic" sizeOfer where it WILL INSPECT
--- THE ARGUMENT. However, it will assume all elements in the Vector have the same
+-- | Note that this function takes a "dynamic" sizeOfer where it CAN INSPECT THE
+-- ARGUMENT. However, it will assume all elements in the Vector have the same
 -- size. Returns a nullPtr when v is empty.
 interleaveWith :: (Ptr a -> a -> IO ()) -> (a -> Int) -> Vector a -> IO (Ptr a)
 interleaveWith poker sizeOfer v =
@@ -41,21 +37,6 @@ interleaveWith poker sizeOfer v =
     ptr <- mallocBytes $ sizeOfA * length v
     forM_ [0 .. length v - 1] $ \i -> poker (ptr `plusPtr` (i * sizeOfA)) (v V.! i)
     return ptr
-
-rawInterleave :: forall a. (Storable a, Num a) => Int -> Int -> Vector (Ptr a, Word32, Word32) -> IO (VS.Vector a)
-rawInterleave numV chunkLen ptrData = do
-  mems <- mallocForeignPtrArray totalLen
-  withForeignPtr mems $
-    \memptr -> V.forM_ ptrData $
-    \(ptr_, compSize, elemOffset) -> forM_ [0..(numV-1)] $
-    \n -> let destPtr = plusPtr memptr $ elemSize * (chunkLen * n + fromIntegral elemOffset)
-              srcPtr  = plusPtr ptr_ $ elemSize * (3 * fromIntegral n)
-          in copyBytes destPtr srcPtr (fromIntegral compSize * fromIntegral elemSize)
-
-  return $ VS.unsafeFromForeignPtr0 mems totalLen
-  where
-    elemSize = sizeOf (error "how are you seeing this?" :: a)
-    totalLen = chunkLen * numV
 
 -- | Return the data pointed to by (f meshPtr). Data is assumed to have length
 -- equal to the number of vertices in meshPtr, and to be in the form of (V3
@@ -106,8 +87,8 @@ peekVertexAttributes _ bones meshPtr = do
                         if weight < 0.1
                         then return (bids_, bws_)
                         else do
-                          let bids' = bids_ & ix vertexID %~ addBoneID bid
-                              bws'  = bws_ & ix vertexID %~ addBoneWeight weight
+                          let bids' = bids_ & ix (fromIntegral vertexID) %~ addBoneID bid
+                              bws'  = bws_ & ix (fromIntegral vertexID) %~ addBoneWeight weight
                           return (bids', bws'))
                 (bids, bws) (b ^. boneWeights))
     (initBoneIDs, initBoneWeights) bones
@@ -178,18 +159,18 @@ peekVertexAttributes _ bones meshPtr = do
           u0_ = u0 !!? i
           u1_ = u1 !!? i
       in
-        AssImpVertex v n t bid bw uv0_ uv1_ uv2_ uv3_ uvw0_ uvw1_ u0_ u1_
+        AssImpVertex v n t (fromIntegral <$> bid) bw uv0_ uv1_ uv2_ uv3_ uvw0_ uvw1_ u0_ u1_
 
 maxTextureChannels :: Int
 maxTextureChannels = 8
 
--- | Layout:
+-- | Varyings Layout:
 -- 0: Vertex
 -- 1: Normal
 -- 2: Tangent
 -- 3: BoneID
 -- 4: BoneWeight
--- 5-13: Textures
+-- 5-13: Texture UVs
 massageAssImpMesh :: BoneIDMap -> Vector Bone -> A.MeshPtr
                   -> IO (Ptr Word32, Word32, Vector AssImpVertex)
 massageAssImpMesh bm bv ptr = do
@@ -213,9 +194,9 @@ loadBonesFromMesh meshPtr = do
                     return (A.vertexWeightVID vw, A.vertexWeightVWeight vw)
                   let bone = Bone
                              { _boneName = name
-                             , _boneID = boneID'
+                             , _boneID = fromIntegral boneID'
                              , _boneMatrix = matrix
-                             , _boneWeights = weightsVector
+                             , _boneWeights = (\(x, y) -> (fromIntegral x, y)) <$> weightsVector
                              }
                   return $ M.insert name bone bMap)
         M.empty [0 .. numBones - 1]
@@ -256,7 +237,7 @@ loadAnimations sc boneVector = do
         fromList $ transposeOf traverse $ toList <$> boneAnims
       boneVector' = zip boneVector boneAnims'
 
-  return (boneAnims', boneVector', animationIDMap)
+  return (boneAnims', boneVector', fromIntegral <$> animationIDMap)
 
 -- | Assumes the mesh in question contains at least one vertex.
 marshalAssImpMesh :: A.ScenePtr -> A.MeshPtr -> IO AssImpMesh
@@ -274,49 +255,54 @@ marshalAssImpMesh sc ptr = do
   let buffInit :: BufferSize -> Ptr a -> IO BufferName
       buffInit size_ ptr_ = initBufferName size_ flags (castPtr ptr_)
   vbuf <- buffInit (fromIntegral $ length vertices * stride) vptr
+  free vptr
   ibuf <- buffInit (fromIntegral $ fromIntegral faceNum * sizeOf (0 :: CUInt)) faceptr
 
   vertexArrayVertexBuffer vao 0 vbuf 0 (fromIntegral stride)
-  -- TODO: Should this be freed here?
-  -- free vptr
 
   -- Here we defined functions for setting up the core and texture varyings with
   -- the VAO. This is complicated slightly by the fact that one of the core
   -- varyings is an ivec4, and not a vec4.
   let coreAttribInit :: Int -> IO ()
       coreAttribInit i = do
-        let numComponents_ = fromList [3, 3, 3, 4, 4, 2]
-            offsets_ = fromIntegral <$> V.prescanl (+) 0 (fromList [ 3 * sizeOf (0 :: CFloat)
-                                                                   , 3 * sizeOf (0 :: CFloat)
-                                                                   , 3 * sizeOf (0 :: CFloat)
-                                                                   , 4 * sizeOf (0 :: Int32)
-                                                                   , 4 * sizeOf (0 :: CFloat)
-                                                                   , 2 * sizeOf (0 :: CFloat)
-                                                                   ])
-        vertexArrayAttribFormat vao (fromIntegral i) (numComponents_ V.! i) (if i == 3 then GLInt else GLFloat) NotNormalized (offsets_ V.! i)
+        let numComponents_ = fromList [3, 3, 3, 4, 4]
+            offsets_ = fromIntegral <$> V.prescanl (+) 0
+                       (fromList [ 3 * sizeOf (0 :: CFloat)
+                                 , 3 * sizeOf (0 :: CFloat)
+                                 , 3 * sizeOf (0 :: CFloat)
+                                 , 4 * sizeOf (0 :: Int32)
+                                 , 4 * sizeOf (0 :: CFloat)
+                                 ])
+        vertexArrayAttribFormat vao
+          (if i == 3 then VertexArrayIntegral else VertexArrayFloating NotNormalized)
+          (fromIntegral i)
+          (numComponents_ V.! i)
+          (if i == 3 then GLInt else GLFloat)
+          (offsets_ V.! i)
         vertexArrayAttribCapability vao (fromIntegral i) Enabled
         vertexArrayAttribBinding vao (fromIntegral i) 0
 
       texAttribInit :: Int -> Bool -> IO ()
       texAttribInit i booleanShouldDo = when booleanShouldDo $ do
         let numComponents_ = fromList [2, 2, 2, 2, 3, 3, 1, 1]
-            coreDataOffset = (3 + 3 + 3 + 4 + 2) * sizeOf (0 :: CFloat) +
+            coreDataOffset = (3 + 3 + 3 + 4) * sizeOf (0 :: CFloat) +
                              4 * sizeOf (0 :: Int32)
             offsets_ = (\x -> fromIntegral (x * sizeOf (0 :: CFloat))) <$>
                        V.prescanl' (+) coreDataOffset numComponents_
             spanFromCoreData = 5
             loc_ = fromIntegral $ i + spanFromCoreData
-        vertexArrayAttribFormat vao loc_ (fromIntegral $ numComponents_ V.! i) GLFloat NotNormalized (offsets_ V.! i)
+        vertexArrayAttribFormat vao
+          (VertexArrayFloating NotNormalized)
+          loc_
+          (fromIntegral $ numComponents_ V.! i)
+          GLFloat
+          (offsets_ V.! i)
         vertexArrayAttribCapability vao loc_ Enabled
         vertexArrayAttribBinding vao loc_ 0
       firstVertex = vertices V.! 0
 
   -- Then we setup the actual varyings.
-  coreAttribInit 0
-  coreAttribInit 1
-  coreAttribInit 2
-  coreAttribInit 3
-  coreAttribInit 4
+  forM_ [0 .. 4] coreAttribInit
 
   -- And the textures.
   texAttribInit 0 (isJust $ firstVertex ^. assImpTex2D0)

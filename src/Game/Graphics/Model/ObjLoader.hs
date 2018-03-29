@@ -27,7 +27,7 @@ loadObj fp = do
 tupleFaceIndex :: W.FaceIndex -> VTNIndex
 tupleFaceIndex fi = fromMaybe (error "Face not in VTN format") mres
   where
-    mres = VTNIndex (W.faceLocIndex fi - 1) <$> (subtract 1 <$> W.faceTexCoordIndex fi) <*> (subtract 1 <$> W.faceNorIndex fi)
+    mres = VTNIndex (fromIntegral $ W.faceLocIndex fi - 1) <$> (fromIntegral . subtract 1 <$> W.faceTexCoordIndex fi) <*> (fromIntegral . subtract 1 <$> W.faceNorIndex fi)
 
 objToVTNPoint :: W.Location -> W.TexCoord -> W.Normal -> VTNPoint
 objToVTNPoint (W.Location x y z w) (W.TexCoord r s _) (W.Normal nx ny nz) = VTNPoint loc tex nor
@@ -38,9 +38,9 @@ objToVTNPoint (W.Location x y z w) (W.TexCoord r s _) (W.Normal nx ny nz) = VTNP
 
 fetchVTNPoint :: VTNIndex -> ExpandObjVTNState VTNPoint
 fetchVTNPoint (VTNIndex v t n) = do
-  mver <- preuse $ expandObjVTNVerts.ix v
-  mtex <- preuse $ expandObjVTNTexs.ix t
-  mnor <- preuse $ expandObjVTNNorms.ix n
+  mver <- preuse $ expandObjVTNVerts.ix (fromIntegral v)
+  mtex <- preuse $ expandObjVTNTexs.ix (fromIntegral t)
+  mnor <- preuse $ expandObjVTNNorms.ix (fromIntegral n)
   return . fromMaybe (error "Invalid VTN format: could not fetch point.") $ objToVTNPoint <$> mver <*> mtex <*> mnor
 
 fetchVTNIndex :: VTNPoint -> VTNIndex -> ExpandObjVTNState CUInt

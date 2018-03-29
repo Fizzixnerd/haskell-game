@@ -27,7 +27,7 @@ import Foreign.Ptr
 import Foreign.Marshal.Utils
 import Control.Lens
 import qualified Data.Vector as V
-import qualified Prelude as Prelude
+import qualified Prelude
 
 -- * Obj file loading.
 data VTNPoint = VTNPoint
@@ -50,22 +50,22 @@ instance Storable VTNPoint where
     return $ VTNPoint v t n
 
 data VTNIndex = VTNIndex
-  { _vtnIndexV :: !Int
-  , _vtnIndexT :: !Int
-  , _vtnIndexN :: !Int
+  { _vtnIndexV :: !Int32
+  , _vtnIndexT :: !Int32
+  , _vtnIndexN :: !Int32
   } deriving (Eq, Show, Ord, Read)
 
 instance Storable VTNIndex where
-  sizeOf _ = 3 * sizeOf (0 :: Int)
-  alignment _ = alignment (0 :: Int)
+  sizeOf _ = 3 * sizeOf (0 :: Int32)
+  alignment _ = alignment (0 :: Int32)
   poke ptr (VTNIndex v t n) = do
     pokeByteOff ptr 0 v
-    pokeByteOff ptr (1 * sizeOf (0 :: Int)) t
-    pokeByteOff ptr (2 * sizeOf (0 :: Int)) n
+    pokeByteOff ptr (1 * sizeOf (0 :: Int32)) t
+    pokeByteOff ptr (2 * sizeOf (0 :: Int32)) n
   peek ptr = do
     v <- peekByteOff ptr 0
-    t <- peekByteOff ptr (1 * sizeOf (0 :: Int))
-    n <- peekByteOff ptr (2 * sizeOf (0 :: Int))
+    t <- peekByteOff ptr (1 * sizeOf (0 :: Int32))
+    n <- peekByteOff ptr (2 * sizeOf (0 :: Int32))
     return $ VTNIndex v t n
 
 data ExpandObjVTN = ExpandObjVTN
@@ -119,7 +119,7 @@ dynamicSizeOfAssImpVertex (AssImpVertex _ _ _ _ _ uv0 uv1 uv2 uv3 uvw0 uvw1 u0 u
     sizeOf3 = maybe 0 (const $ 3 * sizeOf (0 :: Float))
 
 dynamicAlignmentAssImpVertex :: AssImpVertex -> Int
-dynamicAlignmentAssImpVertex _ = Prelude.lcm (alignment (0 :: Float)) (alignment (0 :: Int))
+dynamicAlignmentAssImpVertex _ = Prelude.lcm (alignment (0 :: Float)) (alignment (0 :: Int32))
 
 dynamicPokeAssImpVertex :: Ptr AssImpVertex -> AssImpVertex -> IO ()
 dynamicPokeAssImpVertex ptr (AssImpVertex v t n bids bweights uv0 uv1 uv2 uv3 uvw0 uvw1 u0 u1) = do
@@ -128,9 +128,9 @@ dynamicPokeAssImpVertex ptr (AssImpVertex v t n bids bweights uv0 uv1 uv2 uv3 uv
   pokeByteOff ptr (6 * sizeOf (0 :: Float)) t
   -- This is Float and that's correct. The Int bit goes in the NEXT offset.
   pokeByteOff ptr (9 * sizeOf (0 :: Float)) bids
-  pokeByteOff ptr (9 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int)) bweights
+  pokeByteOff ptr (9 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int32)) bweights
   -- Next one will be 13 * Float + 4 * Int.
-  let offset0 = 13 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int)
+  let offset0 = 13 * sizeOf (0 :: Float) + 4 * sizeOf (0 :: Int32)
   offset1 <- case uv0 of
     Nothing -> return offset0
     Just uv0' -> do
@@ -171,8 +171,8 @@ dynamicPokeAssImpVertex ptr (AssImpVertex v t n bids bweights uv0 uv1 uv2 uv3 uv
 type BoneMap = Map BoneName Bone
 type BoneIDMap = Map BoneName BoneID
 type BoneAnimationMap = Map AnimationName BoneAnimation
+type AnimationID = Int32
 type AnimationIDMap = Map AnimationName AnimationID
-type AnimationID = Int
 
 data AssImpMesh = AssImpMesh
   { _assImpMeshVAO            :: VertexArrayObject
@@ -207,9 +207,9 @@ data TextureBundle s = TextureBundle
   } deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- * Animation data
-type BoneID = Int
-type NodeID = Int
-type VertexID = Int
+type BoneID = Int32
+type NodeID = Int32
+type VertexID = Int32
 type Weight = Float
 
 type BoneName = Text
@@ -419,7 +419,7 @@ instance GLWritable ShaderCamera where
     pokeByteOff ptr (1*m) vp
     pokeByteOff ptr (2*m) p
     where
-      m = 16 * sizeOf (error "unreachable" :: Float)
+      m = 16 * sizeOf (0 :: Float)
 
 data CameraBlock = CameraBlock deriving (Eq, Ord, Show)
 
@@ -435,7 +435,7 @@ data ShaderMaterial = ShaderMaterial
   } deriving (Eq, Ord, Show)
 
 instance GLSized ShaderMaterial where
-  gSize_ _ = 16 * sizeOf (error "unreachable" :: Float)
+  gSize_ _ = 16 * sizeOf (0 :: Float)
 
 instance GLWritable ShaderMaterial where
   gPoke_ ptr ShaderMaterial {..} = do
@@ -445,7 +445,7 @@ instance GLWritable ShaderMaterial where
     pokeByteOff ptr (12*m) _shaderMaterialSpecularStrength
     pokeByteOff ptr (13*m) _shaderMaterialSpecularExponent
     where
-      m = sizeOf (error "unreachable" :: Float)
+      m = sizeOf (0 :: Float)
 
 data ShaderMaterialBlock = ShaderMaterialBlock deriving (Eq, Ord, Show)
 

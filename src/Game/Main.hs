@@ -132,13 +132,17 @@ createTheModel (phong, normalMap) = do
   (AssImpScene meshes) <- loadAssImpScene $ modelRoot </> modelName
   vaoData <- forM meshes $ loadMeshes modelRoot defaultTexture
 
-  let modelRoot' = "res" </> "models" </> "wolf"
-      modelName' = "Wolf_dae.dae"
+  print "beforebefore"
+
+  let modelRoot' = "res" </> "models" </> "Bayonetta 1"
+      modelName' = "bayo_default.dae"
       defaultTexture' = "res" </> "models" </> "simple-cube-2.bmp"
   (AssImpScene meshes') <- loadAssImpScene $ modelRoot' </> modelName'
   vaoData' <- forM meshes' $ loadMeshes modelRoot' defaultTexture'
 
+  print "before"
   src :: AL.Source <- ON.genObjectName
+  print "after"
   sbuf <- AL.createBuffer (AL.File $ "res" </> "sound" </> "africa-toto.wav")
   AL.buffer src AL.$= Just sbuf
 
